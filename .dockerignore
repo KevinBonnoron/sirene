@@ -1,0 +1,11 @@
+node_modules/
+.git/
+data/
+*.md
+.env*
+.vscode/
+.devcontainer/
+.claude/
+inference/__pycache__/
+**/__pycache__/
+**/*.pyc

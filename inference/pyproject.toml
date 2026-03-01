@@ -1,0 +1,46 @@
+[project]
+name = "sirene-inference"
+version = "0.1.0"
+description = "Sirene TTS inference service"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.9.2",
+    "pydantic-settings>=2.7.0",
+    "numpy>=1.26.0",
+    "soundfile>=0.13.0",
+    "httpx>=0.28.0",
+    "sse-starlette>=2.2.0",
+    "faster-whisper>=1.1.0",
+    "python-multipart>=0.0.9",
+    "misaki[en,zh]>=0.7.0",
+]
+
+[project.optional-dependencies]
+backends = [
+    "torch>=2.5.0,<2.8",
+    "torchaudio>=2.5.0,<2.8",
+    "transformers>=4.47.0",
+    "qwen-tts>=0.1.0",
+    "f5-tts>=1.1.15,<1.2",
+    "cosyvoice>=0.0.8",
+    "pyworld>=0.3.4",
+    "wetext>=0.0.4",
+    "resemble-perth>=1.0.0",
+    "boson-multimodal>=0.1.0",
+    "pykakasi>=2.0.0",
+    "spacy-pkuseg>=1.0.0",
+    "onnx>=1.17.0,<1.21",
+    # loralib is a transitive dep of fish-speech installed separately (see below)
+    "loralib>=0.1.2",
+]
+cuda = ["sirene-inference[backends]", "onnxruntime-gpu>=1.20.0"]
+cpu = ["sirene-inference[backends]", "onnxruntime>=1.20.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

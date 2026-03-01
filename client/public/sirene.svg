@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#g)"/>
+  <!-- Siren's song — sound wave arcs rising upward -->
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-width="10">
+    <path d="M92 104 Q128 84 164 104" opacity=".55"/>
+    <path d="M76 74 Q128 46 180 74" opacity=".75"/>
+    <path d="M60 44 Q128 8 196 44" opacity=".95"/>
+  </g>
+  <!-- Mermaid tail fin -->
+  <path d="M44 228 C74 178 106 154 128 120 C150 154 182 178 212 228 C186 200 158 186 128 186 C98 186 70 200 44 228Z" fill="#fff" opacity=".95"/>
+</svg>

@@ -1,0 +1,15 @@
+services:
+  sirene:
+    image: ghcr.io/kevinbonnoron/sirene:latest
+    ports:
+      - "80:80"
+    volumes:
+      - sirene-data:/app/db/pb_data
+      - sirene-models:/app/data/models
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  sirene-data:
+  sirene-models:

@@ -1,0 +1,18 @@
+{
+  "name": "@sirene/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "electrobun dev",
+    "build": "electrobun build",
+    "build:release": "electrobun build --release"
+  },
+  "dependencies": {
+    "@sirene/server": "workspace:*",
+    "electrobun": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "~5.7.3"
+  }
+}

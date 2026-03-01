@@ -1,0 +1,29 @@
+services:
+  server:
+    image: ghcr.io/kevinbonnoron/sirene:latest
+    ports:
+      - "80:80"
+    volumes:
+      - sirene-data:/app/db/pb_data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  inference:
+    image: ghcr.io/kevinbonnoron/sirene-inference:cuda
+    volumes:
+      - sirene-models:/app/data/models
+      - sirene-packages:/app/data/packages
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  sirene-data:
+  sirene-models:
+  sirene-packages:

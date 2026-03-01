@@ -1,0 +1,72 @@
+# syntax=docker/dockerfile:1
+
+# ── Inference Python dependencies ─────────────────────────────────────────────
+
+FROM python:3.11-slim-bookworm AS inference-deps
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+ARG INFERENCE_VARIANT=cpu
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential portaudio19-dev cmake git \
+    && if [ "$INFERENCE_VARIANT" = "cuda" ]; then \
+        apt-get install -y --no-install-recommends wget \
+        && wget -qO /tmp/cuda-keyring.deb \
+            https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb \
+        && dpkg -i /tmp/cuda-keyring.deb \
+        && rm /tmp/cuda-keyring.deb \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends \
+            cuda-nvcc-12-4 cuda-cudart-dev-12-4; \
+    fi
+
+ENV PATH="/usr/local/cuda/bin:${PATH}"
+
+WORKDIR /app/inference
+
+COPY inference/pyproject.toml inference/overrides.txt ./
+
+ARG TARGETARCH
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-${TARGETARCH},sharing=locked \
+    uv venv --seed /opt/inference-venv \
+    && uv pip install --python /opt/inference-venv/bin/python --override overrides.txt "." \
+    && (find /opt/inference-venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true) \
+    && (find /opt/inference-venv -name "*.pyc" -delete 2>/dev/null || true) \
+    && (find /opt/inference-venv -name "*.pyo" -delete 2>/dev/null || true)
+
+# ── Final image ────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim-bookworm
+
+ARG INFERENCE_VARIANT=cpu
+ENV INFERENCE_DEVICE=${INFERENCE_VARIANT}
+
+# NVIDIA container runtime
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libsndfile1 espeak-ng ffmpeg sox git \
+    && mkdir -p /app/data/models /app/data/packages /app/data/cache/prompts
+
+WORKDIR /app/inference
+
+COPY --from=inference-deps /opt/inference-venv /opt/inference-venv
+COPY inference/src ./src
+
+ENV INFERENCE_MODELS_PATH=/app/data/models
+ENV INFERENCE_CACHE_DIR=/app/data/cache/prompts
+ENV SIRENE_PACKAGES_DIR=/app/data/packages
+
+EXPOSE 8000
+
+CMD ["/opt/inference-venv/bin/uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

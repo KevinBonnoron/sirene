@@ -1,0 +1,9 @@
+# descript-audiotools pins protobuf<3.20 which conflicts with onnx>=1.17.0
+# (requires protobuf>=3.20.2). The pin is overly conservative —
+# descript-audiotools works fine with protobuf 4.x at runtime.
+protobuf>=4.25.1
+
+# wandb 0.25.0 has a broken import (wandb.proto.wandb_telemetry_pb2.Imports).
+# Pulled transitively by f5-tts → Trainer → wandb.
+wandb<0.25
+

@@ -1,0 +1,46 @@
+{
+  "name": "sirene",
+  "version": "0.0.1",
+  "description": "Self-hosted multi-backend text-to-speech platform with voice cloning and a modern web UI",
+  "author": "Kevin Bonnoron",
+  "license": "MIT",
+  "homepage": "https://github.com/KevinBonnoron/sirene",
+  "packageManager": "bun@1.2.4",
+  "workspaces": [
+    "./db",
+    "./server",
+    "./client",
+    "./shared",
+    "./inference",
+    "./docs",
+    "./desktop"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter='!@sirene/desktop'",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "format": "biome format . --write"
+  },
+  "keywords": [
+    "text-to-speech",
+    "tts",
+    "voice-cloning",
+    "self-hosted",
+    "bun",
+    "hono",
+    "react",
+    "fastapi",
+    "pocketbase"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.6",
+    "bun-types": "latest",
+    "concurrently": "^9.2.1",
+    "turbo": "^2.8.14"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

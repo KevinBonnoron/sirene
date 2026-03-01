@@ -1,0 +1,141 @@
+name: Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build client
+        run: bun run -F @sirene/client build
+        env:
+          VITE_PB_URL: __VITE_PB_URL_PLACEHOLDER__
+          VITE_SERVER_URL: __VITE_SERVER_URL_PLACEHOLDER__
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist/
+
+  package:
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-latest
+            platform: macos-arm64
+          - os: windows-latest
+            platform: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Fix electrobun version detection
+        working-directory: desktop
+        shell: bash
+        run: |
+          rm -rf node_modules/electrobun
+          cp -r ../node_modules/electrobun node_modules/electrobun
+
+      - name: Download client artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist/
+
+      - name: Build desktop
+        working-directory: desktop
+        run: bun run build:release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: desktop/artifacts/
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+
+  update-flake:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Compute linux artifact hash
+        id: hash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/stable-linux-x64-Sirene.tar.zst"
+          wget -q "$URL" -O artifact.tar.zst
+          HASH=$(nix hash file --sri --type sha256 artifact.tar.zst)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update flake.nix
+        run: |
+          sed -i "s|version = \".*\";|version = \"${{ steps.hash.outputs.version }}\";|" flake.nix
+          sed -i "s|hash = \"sha256-.*\";|hash = \"${{ steps.hash.outputs.hash }}\";|" flake.nix
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          git commit -m "chore: update flake.nix for ${{ github.ref_name }}"
+          git push

@@ -1,0 +1,21 @@
+{
+  "name": "@sirene/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "predev": "bash scripts/download-pocketbase.sh",
+    "dev": "electrobun dev",
+    "prebuild": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh && bun build src/bun/server.ts --outfile vendor/server.js --target bun --minify",
+    "build": "electrobun build",
+    "prebuild:release": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh && bun build src/bun/server.ts --outfile vendor/server.js --target bun --minify",
+    "build:release": "electrobun build --env=stable"
+  },
+  "dependencies": {
+    "@sirene/server": "workspace:*",
+    "electrobun": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "~5.7.3"
+  }
+}

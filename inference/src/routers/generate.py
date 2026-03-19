@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import logging
 from pathlib import Path
 
@@ -39,6 +40,7 @@ async def _auto_install_deps(backend: str) -> None:
     async for event in install_backend_deps(backend, device=settings.device):
         if event.get("status") == "error":
             raise HTTPException(status_code=500, detail=event.get("message", f"Failed to install {backend} dependencies"))
+    importlib.invalidate_caches()
     logger.info(f"Dependencies for '{backend}' installed successfully, retrying generation")
 
 

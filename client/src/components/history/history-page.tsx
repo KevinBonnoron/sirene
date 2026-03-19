@@ -1,4 +1,4 @@
-import { eq, useLiveQuery } from '@tanstack/react-db';
+import { useLiveQuery } from '@tanstack/react-db';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, voiceCollection } from '@/collections';
@@ -17,7 +17,6 @@ export function HistoryPage() {
 
   const [voiceFilter, setVoiceFilter] = useState<string | null>(null);
 
-  // Get unique voice IDs from generations
   const voiceIds = useMemo(() => {
     if (!generations) {
       return [];
@@ -25,10 +24,7 @@ export function HistoryPage() {
     return [...new Set(generations.map((g) => g.voice))];
   }, [generations]);
 
-  // Fetch voices that appear in generations
-  const { data: voices } = useLiveQuery(
-    (q) => q.from({ voices: voiceCollection }).where(({ voices }) => eq(voices.id, voices.id)), // get all, we filter client-side
-  );
+  const { data: voices } = useLiveQuery((q) => q.from({ voices: voiceCollection }));
 
   // Build a voice name map
   const voiceMap = useMemo(() => {

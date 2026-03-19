@@ -38,7 +38,7 @@
 
         src = pkgs.fetchurl {
           url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/stable-linux-x64-Sirene.tar.zst";
-          hash = "sha256-LEsgTD/2NWXUG4yKHI19o8Od5HzKFh3tTQbfP6zl2js=";
+          hash = "sha256-zoIZ25VTl7oAifWNPSGYKmOmmG1aIMH15kZJWPZ7fF4=";
         };
 
         sourceRoot = "Sirene";

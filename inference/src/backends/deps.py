@@ -58,7 +58,7 @@ _REGISTRY: dict[str, BackendDeps] = {
         packages=[*_TORCH, "transformers>=4.47.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
-    "higgs-audio": BackendDeps(
+    "higgs_audio": BackendDeps(
         check_modules=["boson_multimodal"],
         packages=[*_TORCH, "boson-multimodal>=0.1.0"],
         extra_index_url=_TORCH_CPU_INDEX,

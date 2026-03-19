@@ -34,6 +34,10 @@ export interface CatalogModel {
   gated?: boolean;
   /** Language code (e.g. "fr", "en") — mainly for Piper custom imports. */
   language?: string;
+  /** Supports instruct_text for emotional tone control (e.g. CosyVoice, Qwen, HiggsAudio). */
+  supportsInstruct?: boolean;
+  /** Supports bracket effect tokens like [laughing] passed as literal text (e.g. Fish Speech). */
+  supportsEffects?: boolean;
 }
 
 /** Installation record — derived from filesystem + in-memory download state */

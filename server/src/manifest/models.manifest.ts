@@ -54,6 +54,7 @@ export const modelsCatalog: CatalogModel[] = [
     size: 3_400_000_000,
     types: ['cloning'],
     maxReferenceDuration: 30,
+    supportsInstruct: true,
   },
   {
     id: 'qwen3-tts-1.7B-custom-voice',
@@ -66,6 +67,7 @@ export const modelsCatalog: CatalogModel[] = [
     files: ['model.safetensors', 'config.json', 'generation_config.json', 'tokenizer_config.json', 'vocab.json', 'merges.txt', 'preprocessor_config.json', 'speech_tokenizer/config.json', 'speech_tokenizer/configuration.json', 'speech_tokenizer/model.safetensors', 'speech_tokenizer/preprocessor_config.json'],
     size: 4_500_000_000,
     types: ['preset'],
+    supportsInstruct: true,
     presetVoices: [
       { id: 'Vivian', label: 'Vivian' },
       { id: 'Serena', label: 'Serena' },
@@ -89,6 +91,7 @@ export const modelsCatalog: CatalogModel[] = [
     files: ['model.safetensors', 'config.json', 'generation_config.json', 'tokenizer_config.json', 'vocab.json', 'merges.txt', 'preprocessor_config.json', 'speech_tokenizer/config.json', 'speech_tokenizer/configuration.json', 'speech_tokenizer/model.safetensors', 'speech_tokenizer/preprocessor_config.json'],
     size: 4_520_000_000,
     types: ['design'],
+    supportsInstruct: true,
   },
   {
     id: 'qwen3-tts-0.6B',
@@ -102,6 +105,7 @@ export const modelsCatalog: CatalogModel[] = [
     size: 1_200_000_000,
     types: ['cloning'],
     maxReferenceDuration: 30,
+    supportsInstruct: true,
   },
   {
     id: 'qwen3-tts-0.6B-custom-voice',
@@ -114,6 +118,7 @@ export const modelsCatalog: CatalogModel[] = [
     files: ['model.safetensors', 'config.json', 'generation_config.json', 'tokenizer_config.json', 'vocab.json', 'merges.txt', 'preprocessor_config.json', 'speech_tokenizer/config.json', 'speech_tokenizer/configuration.json', 'speech_tokenizer/model.safetensors', 'speech_tokenizer/preprocessor_config.json'],
     size: 2_500_000_000,
     types: ['preset'],
+    supportsInstruct: true,
     presetVoices: [
       { id: 'Vivian', label: 'Vivian' },
       { id: 'Serena', label: 'Serena' },
@@ -169,6 +174,7 @@ export const modelsCatalog: CatalogModel[] = [
     size: 6_400_000_000,
     types: ['cloning', 'design'],
     maxReferenceDuration: 20,
+    supportsInstruct: true,
   },
   {
     id: 'cosyvoice2-0.5B',
@@ -199,6 +205,7 @@ export const modelsCatalog: CatalogModel[] = [
     size: 4_850_000_000,
     types: ['cloning', 'design'],
     maxReferenceDuration: 20,
+    supportsInstruct: true,
   },
   // ── OpenAudio S1-mini (multilingual cloning) ───────────────────────
   {
@@ -214,6 +221,7 @@ export const modelsCatalog: CatalogModel[] = [
     types: ['cloning'],
     maxReferenceDuration: 25,
     gated: true,
+    supportsEffects: true,
   },
   // ── Chatterbox (multilingual cloning with emotion control) ──────────
   {
@@ -633,6 +641,7 @@ export const modelsCatalog: CatalogModel[] = [
     size: 12_500_000_000,
     types: ['cloning'],
     maxReferenceDuration: 25,
+    supportsInstruct: true,
   },
 
   // ── OpenAI TTS (cloud API) ──────────────────────────────────────────

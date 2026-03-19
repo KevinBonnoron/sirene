@@ -1,83 +1,226 @@
 import type { GenerateRequest } from '@sirene/shared';
+import type { Editor } from '@tiptap/core';
+import Placeholder from '@tiptap/extension-placeholder';
+import { TextSelection } from '@tiptap/pm/state';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { Loader2, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { contentToSSML, EffectNode, getSpeedBorderColor, PAUSE_PRESETS, SOUND_EFFECT_PRESETS, SPEED_PRESETS, SpeedMark, stripSSML, TONE_PRESETS, ToneMark } from './ssml-mark';
+
+interface Capabilities {
+  tone: boolean;
+  effects: boolean;
+}
 
 interface Props {
   voiceId: string;
   generate: (request: GenerateRequest) => Promise<Blob>;
   isGenerating: boolean;
+  capabilities: Capabilities;
 }
 
-export function GenerationInput({ voiceId, generate, isGenerating }: Props) {
+function getActiveSpeed(editor: Editor | null): string {
+  if (!editor) {
+    return '';
+  }
+  return SPEED_PRESETS.find((p) => editor.isActive('speedMark', { rate: p.rate }))?.key ?? '';
+}
+
+function getActiveTone(editor: Editor | null): string {
+  if (!editor) {
+    return '';
+  }
+  return TONE_PRESETS.find((p) => editor.isActive('toneMark', { tone: p.key }))?.key ?? '';
+}
+
+export function GenerationInput({ voiceId, generate, isGenerating, capabilities }: Props) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
-  const [speed, setSpeed] = useState(1);
+  const [activeSpeed, setActiveSpeed] = useState('');
+  const [activeTone, setActiveTone] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!voiceId || !text.trim()) {
+  const submitRef = useRef<{ canSubmit: boolean; submit: () => void }>({ canSubmit: false, submit: () => {} });
+
+  function syncActiveMarks(editor: Editor) {
+    setActiveSpeed(getActiveSpeed(editor));
+    setActiveTone(getActiveTone(editor));
+  }
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bold: false,
+        italic: false,
+        strike: false,
+        code: false,
+        codeBlock: false,
+        blockquote: false,
+        heading: false,
+        horizontalRule: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+      }),
+      Placeholder.configure({ placeholder: t('generate.placeholder') }),
+      SpeedMark,
+      ToneMark,
+      EffectNode,
+    ],
+    content: { type: 'doc', content: [{ type: 'paragraph' }] },
+    onTransaction: ({ editor }) => {
+      setText(contentToSSML(editor.getJSON()));
+      syncActiveMarks(editor);
+    },
+    editorProps: {
+      attributes: { class: 'outline-none' },
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (submitRef.current.canSubmit) {
+            submitRef.current.submit();
+          }
+          return true;
+        }
+        if (event.key === 'Home') {
+          const { $anchor } = view.state.selection;
+          const startPos = $anchor.start($anchor.depth);
+          const resolved = view.state.doc.resolve(startPos);
+          if (event.shiftKey) {
+            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, view.state.selection.head, startPos)));
+          } else {
+            view.dispatch(view.state.tr.setSelection(TextSelection.near(resolved)));
+          }
+          return true;
+        }
+        return false;
+      },
+    },
+  });
+
+  useEffect(() => {
+    editor?.setEditable(!isGenerating);
+  }, [editor, isGenerating]);
+
+  function applySpeed(key: string) {
+    if (!editor || isGenerating) {
       return;
     }
-    try {
-      await generate({ voice: voiceId, input: text, speed });
-      setText('');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('generate.failed'));
+    if (!key) {
+      editor.chain().focus().unsetMark('speedMark').run();
+    } else {
+      const preset = SPEED_PRESETS.find((p) => p.key === key);
+      if (preset) {
+        editor.chain().focus().setMark('speedMark', { rate: preset.rate }).run();
+      }
     }
   }
 
-  const canSubmit = !isGenerating && !!voiceId && !!text.trim();
+  function applyTone(key: string) {
+    if (!editor || isGenerating) {
+      return;
+    }
+    if (!key) {
+      editor.chain().focus().unsetMark('toneMark').run();
+    } else {
+      editor.chain().focus().setMark('toneMark', { tone: key }).run();
+    }
+  }
+
+  function insertEffect(key: string, label: string) {
+    if (!editor || isGenerating) {
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: 'effectNode', attrs: { effect: key, label } })
+      .run();
+  }
+
+  const plainText = stripSSML(text);
+  const canSubmit = !isGenerating && !!voiceId && !!plainText.trim();
+
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!voiceId || !plainText.trim()) {
+      return;
+    }
+    try {
+      await generate({ voice: voiceId, input: text, speed: 1 });
+      setText('');
+      editor?.commands.clearContent();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('generate.failed'));
+    }
+  }
+
+  submitRef.current = { canSubmit, submit: () => handleSubmit() };
 
   return (
     <form onSubmit={handleSubmit}>
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
+          {/* Prosody toolbar */}
+          <div className="space-y-1.5 border-b px-3 py-2">
+            {/* Speed + Tone */}
+            <div className="flex flex-wrap items-center gap-2">
+              <ToggleGroup type="single" size="sm" variant="outline" value={activeSpeed} onValueChange={applySpeed}>
+                {SPEED_PRESETS.map(({ key, rate, labelKey }) => (
+                  <ToggleGroupItem key={key} value={key} className="gap-1 text-xs">
+                    <span className="size-1.5 shrink-0 rounded-full" style={{ background: getSpeedBorderColor(rate) }} />
+                    {t(labelKey)}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+
+              {capabilities.tone && (
+                <>
+                  <div className="h-4 w-px shrink-0 bg-border" />
+                  <ToggleGroup type="single" size="sm" variant="outline" value={activeTone} onValueChange={applyTone}>
+                    {TONE_PRESETS.map(({ key, labelKey }) => (
+                      <ToggleGroupItem key={key} value={key} className="text-xs">
+                        {t(labelKey)}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </>
+              )}
+            </div>
+
+            {/* Pauses (always available) + Sound effects (backend-dependent) */}
+            <div className="flex flex-wrap items-center gap-1">
+              {PAUSE_PRESETS.map(({ key, labelKey }) => (
+                <Button key={key} type="button" size="sm" variant="outline" className="h-6 rounded px-1.5 font-mono text-[11px]" style={{ borderColor: 'oklch(0.5 0.0 0 / 0.35)' }} onClick={() => insertEffect(key, t(labelKey))}>
+                  [{t(labelKey)}]
+                </Button>
+              ))}
+              {capabilities.effects &&
+                SOUND_EFFECT_PRESETS.map(({ key, labelKey }) => (
+                  <Button key={key} type="button" size="sm" variant="outline" className="h-6 rounded px-1.5 font-mono text-[11px]" style={{ borderColor: 'oklch(0.5 0.0 0 / 0.35)' }} onClick={() => insertEffect(key, t(labelKey))}>
+                    [{t(labelKey)}]
+                  </Button>
+                ))}
+            </div>
+          </div>
+
+          {/* Editor */}
           <div className="relative">
-            <Textarea
-              placeholder={t('generate.placeholder')}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (canSubmit) {
-                    handleSubmit(e);
-                  }
-                }
-              }}
-              disabled={isGenerating}
-              rows={2}
-              className="min-h-0 resize-none rounded-b-none border-0 px-4 py-3 pr-12 text-sm shadow-none focus-visible:ring-0"
-            />
+            <EditorContent editor={editor} className="[&_.tiptap]:min-h-[62px] [&_.tiptap]:px-4 [&_.tiptap]:py-3 [&_.tiptap]:pr-12 [&_.tiptap]:text-sm [&_.tiptap_p]:my-0 [&_.tiptap_p]:leading-normal" />
             <Button type="submit" size="icon" disabled={!canSubmit} className="absolute right-2 bottom-2 size-7 shrink-0 rounded-full">
               {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
             </Button>
           </div>
 
+          {/* Bottom bar */}
           <div className="border-t px-4 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Select value={`${speed}`} onValueChange={(v) => setSpeed(Number(v))}>
-                  <SelectTrigger className="h-7 w-auto gap-1.5 rounded-full border px-2.5 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
-                      <SelectItem key={s} value={`${s}`}>
-                        {s.toFixed(s % 1 ? 2 : 1)}x
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <span className="text-muted-foreground text-[10px]">{t('generate.chars', { count: text.length })}</span>
+            <div className="flex items-center justify-end">
+              <span className="text-muted-foreground text-[10px]">{t('generate.chars', { count: plainText.length })}</span>
             </div>
           </div>
         </CardContent>

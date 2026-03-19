@@ -3,6 +3,7 @@ import { eq, useLiveQuery } from '@tanstack/react-db';
 import { useTranslation } from 'react-i18next';
 import { voiceCollection } from '@/collections';
 import { DeleteGenerationButton } from '@/components/generation/delete-generation-button';
+import { stripSSML } from '@/components/generation/ssml-mark';
 import { Badge } from '@/components/ui/badge';
 import { Waveform } from '@/components/voice/waveform';
 import { pb } from '@/lib/pocketbase';
@@ -39,7 +40,7 @@ export function GenerationCard({ generation, autoPlay }: Props) {
         </div>
       </div>
       {generation.audio && <Waveform src={pb.files.getURL(generation, generation.audio)} autoPlay={autoPlay} />}
-      {generation.text && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{generation.text}</p>}
+      {generation.text && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{stripSSML(generation.text)}</p>}
     </div>
   );
 }

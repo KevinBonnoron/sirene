@@ -1,5 +1,7 @@
 import { useLiveQuery } from '@tanstack/react-db';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { modelClient } from '@/clients/model.client';
 import { voiceCollection } from '@/collections';
 import { Waveform } from '@/components/voice/waveform';
 import { useGenerate } from '@/hooks/use-generate';
@@ -10,6 +12,11 @@ export function GenerateForm() {
   const [voiceId, setVoiceId] = useState('');
   const { data: voices, isLoading: voicesLoading } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
   const { generate, isGenerating, lastAudioBlob } = useGenerate();
+  const { data: catalog = [] } = useQuery({ queryKey: ['models', 'catalog'], queryFn: () => modelClient.catalog() });
+
+  const selectedVoice = voices?.find((v) => v.id === voiceId);
+  const selectedModel = selectedVoice ? catalog.find((m) => m.id === selectedVoice.model) : undefined;
+  const capabilities = { tone: selectedModel?.supportsInstruct ?? false, effects: selectedModel?.supportsEffects ?? false };
 
   useEffect(() => {
     if (!voiceId && voices?.length) {
@@ -24,7 +31,7 @@ export function GenerateForm() {
       </div>
       <div className="-mx-6 -mb-6 shrink-0 space-y-3 bg-background px-6 py-4">
         {lastAudioBlob && <Waveform src={lastAudioBlob} autoPlay />}
-        <GenerationInput voiceId={voiceId} generate={generate} isGenerating={isGenerating} />
+        <GenerationInput voiceId={voiceId} generate={generate} isGenerating={isGenerating} capabilities={capabilities} />
       </div>
     </div>
   );

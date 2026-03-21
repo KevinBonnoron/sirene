@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VoicesRouteImport } from './routes/voices'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ModelsRouteImport } from './routes/models'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VoicesRoute = VoicesRouteImport.update({
+  id: '/voices',
+  path: '/voices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/models': typeof ModelsRoute
   '/settings': typeof SettingsRoute
+  '/voices': typeof VoicesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/models': typeof ModelsRoute
   '/settings': typeof SettingsRoute
+  '/voices': typeof VoicesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,21 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/models': typeof ModelsRoute
   '/settings': typeof SettingsRoute
+  '/voices': typeof VoicesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/history' | '/login' | '/models' | '/settings'
+  fullPaths: '/' | '/history' | '/login' | '/models' | '/settings' | '/voices'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/login' | '/models' | '/settings'
-  id: '__root__' | '/' | '/history' | '/login' | '/models' | '/settings'
+  to: '/' | '/history' | '/login' | '/models' | '/settings' | '/voices'
+  id:
+    | '__root__'
+    | '/'
+    | '/history'
+    | '/login'
+    | '/models'
+    | '/settings'
+    | '/voices'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,10 +93,18 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ModelsRoute: typeof ModelsRoute
   SettingsRoute: typeof SettingsRoute
+  VoicesRoute: typeof VoicesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voices': {
+      id: '/voices'
+      path: '/voices'
+      fullPath: '/voices'
+      preLoaderRoute: typeof VoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -125,6 +149,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ModelsRoute: ModelsRoute,
   SettingsRoute: SettingsRoute,
+  VoicesRoute: VoicesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

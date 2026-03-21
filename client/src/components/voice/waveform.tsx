@@ -6,11 +6,13 @@ import { downloadBlob } from '@/lib/download';
 import { formatTime } from '@/lib/format';
 
 function resolveColor(el: Element, varName: string): string {
-  const raw = getComputedStyle(el).getPropertyValue(varName).trim();
-  if (!raw) {
-    return '#888';
-  }
-  return raw;
+  const tmp = document.createElement('div');
+  tmp.style.color = `var(${varName})`;
+  tmp.style.display = 'none';
+  el.appendChild(tmp);
+  const color = getComputedStyle(tmp).color;
+  el.removeChild(tmp);
+  return color || '#888';
 }
 
 const audioBlobCache = new Map<string, Promise<Blob>>();

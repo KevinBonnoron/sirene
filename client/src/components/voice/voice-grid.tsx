@@ -14,7 +14,7 @@ import { VoiceDialog } from './voice-dialog';
 import { VoiceItem } from './voice-item';
 
 /** "+" dropdown menu — shown at all breakpoints, disables options with tooltip hints */
-function AddVoiceMenu({ children }: { children: React.ReactNode }) {
+export function AddVoiceMenu({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -89,9 +89,11 @@ interface VoiceGridProps {
   selectedId: string;
   onSelect: (id: string) => void;
   empty: boolean;
+  showAddButton?: boolean;
+  editOnClick?: boolean;
 }
 
-export function VoiceGrid({ voices, loading, selectedId, onSelect, empty }: VoiceGridProps) {
+export function VoiceGrid({ voices, loading, selectedId, onSelect, empty, showAddButton = true, editOnClick }: VoiceGridProps) {
   const { t } = useTranslation();
   const { catalog, installations } = useModels();
   const hasAnyModel = catalog.some((m) => !m.types.includes('transcription') && !m.types.every((t) => t === 'design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
@@ -132,6 +134,16 @@ export function VoiceGrid({ voices, loading, selectedId, onSelect, empty }: Voic
         </div>
       );
     }
+    if (!showAddButton) {
+      return (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-muted-foreground/25 py-6 text-center">
+          <p className="text-sm text-muted-foreground">{t('voice.emptyGoManage')}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/voices">{t('nav.voices')}</Link>
+          </Button>
+        </div>
+      );
+    }
     return (
       <>
         {/* Mobile */}
@@ -166,32 +178,34 @@ export function VoiceGrid({ voices, loading, selectedId, onSelect, empty }: Voic
       {/* Mobile: avatar bubbles */}
       <div className="flex flex-wrap gap-3 md:hidden">
         {voices.map((v) => (
-          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="bubble" />
+          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="bubble" editOnClick={editOnClick} />
         ))}
-        <AddVoiceMenu>
-          <button type="button" className="group flex flex-col items-center gap-1">
-            <div className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 transition-colors group-hover:border-muted-foreground/50 group-hover:bg-accent/50">
-              <Plus className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
-            </div>
-            <span className="w-14 text-center text-[10px] text-muted-foreground">{t('voice.add')}</span>
-          </button>
-        </AddVoiceMenu>
+        {showAddButton && (
+          <AddVoiceMenu>
+            <button type="button" className="group flex flex-col items-center gap-1">
+              <div className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 transition-colors group-hover:border-muted-foreground/50 group-hover:bg-accent/50">
+                <Plus className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+              </div>
+              <span className="w-14 text-center text-[10px] text-muted-foreground">{t('voice.add')}</span>
+            </button>
+          </AddVoiceMenu>
+        )}
       </div>
 
       {/* Tablet: compact cards */}
       <div className="hidden gap-2 md:grid md:grid-cols-4 lg:hidden">
         {voices.map((v) => (
-          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="compact" />
+          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="compact" editOnClick={editOnClick} />
         ))}
-        <AddButton className="group flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/40 focus-visible:outline-none" />
+        {showAddButton && <AddButton className="group flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/40 focus-visible:outline-none" />}
       </div>
 
       {/* Desktop: full cards */}
       <div className="hidden gap-4 lg:grid lg:grid-cols-3">
         {voices.map((v) => (
-          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="full" />
+          <VoiceItem key={v.id} voice={v} selected={selectedId === v.id} onSelect={onSelect} variant="full" editOnClick={editOnClick} />
         ))}
-        <AddButton className="group flex min-h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/40 focus-visible:outline-none" />
+        {showAddButton && <AddButton className="group flex min-h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/40 focus-visible:outline-none" />}
       </div>
     </>
   );

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Box, Clock, LogOut, Mic, Moon, Settings, Sun } from 'lucide-react';
+import { AudioLines, Box, Clock, LayoutDashboard, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useAuth } from '@/providers/auth-provider';
@@ -34,7 +34,8 @@ export function AppSidebar() {
   const currentPath = router.location.pathname;
 
   const navItems = [
-    { label: t('nav.generate'), href: '/', icon: Mic },
+    { label: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
+    { label: t('nav.voices'), href: '/voices', icon: AudioLines },
     { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];

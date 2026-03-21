@@ -22,9 +22,7 @@ function StatCard({ icon: Icon, label, value, loading }: { icon: React.ElementTy
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
         <Icon className="size-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        {loading ? <Skeleton className="h-8 w-16" /> : <p className="text-3xl font-bold">{value}</p>}
-      </CardContent>
+      <CardContent>{loading ? <Skeleton className="h-8 w-16" /> : <p className="text-3xl font-bold">{value}</p>}</CardContent>
     </Card>
   );
 }
@@ -38,7 +36,7 @@ function DashboardPage() {
   const { data: generations, isLoading: generationsLoading } = useLiveQuery((q) => q.from({ g: generationCollection }).orderBy(({ g }) => g.created, 'desc'));
 
   const installedCount = installations?.filter((i) => i.status === 'installed').length ?? 0;
-  const hasAnyModel = catalog.some((m) => !m.types.includes('transcription') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
+  const hasAnyModel = catalog.some((m) => m.types.some((t) => t !== 'transcription' && t !== 'design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
   const hasVoices = (voices?.length ?? 0) > 0;
 
   const recentGenerations = generations?.slice(0, 5) ?? [];

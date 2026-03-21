@@ -19,10 +19,7 @@ const generateSchema = z.object({
 
 type VoiceSample = { id: string; audio: string };
 
-type ResolvedGeneration =
-  | { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] }
-  | { type: 'elevenlabs'; elevenLabsRequest: ElevenLabsRequest; meta: GenerationMeta }
-  | { type: 'openai'; openAIRequest: OpenAITTSRequest; meta: GenerationMeta };
+type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenLabsRequest; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITTSRequest; meta: GenerationMeta };
 
 interface GenerationMeta {
   voice: string;
@@ -89,7 +86,15 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     }
 
     samples = rows.map((s) => ({ id: s.id, audio: s.audio as string }));
-    const cacheKey = createHash('sha256').update(samples.map((s) => s.id).sort().join(',')).digest('hex').slice(0, 24);
+    const cacheKey = createHash('sha256')
+      .update(
+        samples
+          .map((s) => s.id)
+          .sort()
+          .join(','),
+      )
+      .digest('hex')
+      .slice(0, 24);
     referenceText = rows.map((s) => (s.transcript as string) || '');
 
     return {
@@ -130,7 +135,9 @@ async function fetchSamplesAsBase64(samples: VoiceSample[]): Promise<string[]> {
     samples.map(async (s) => {
       const url = `${config.pb.url}/api/files/voice_samples/${s.id}/${s.audio}`;
       const response = await fetch(url, { headers: { Authorization: pb.authStore.token } });
-      if (!response.ok) { throw new Error(`Failed to fetch voice sample ${s.id}: ${response.status}`); }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch voice sample ${s.id}: ${response.status}`);
+      }
       const buffer = await response.arrayBuffer();
       const ext = s.audio.split('.').pop() ?? 'wav';
       const mime = ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`;
@@ -256,7 +263,9 @@ export const generateRoutes = new Hono<AuthEnv>()
       await saveGeneration(resolved.meta, audioBuffer, 'audio/wav', 'generation.wav');
       return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav' } });
     } catch (e) {
-      if (!(e instanceof CacheMissError) || !resolved.samples) { throw e; }
+      if (!(e instanceof CacheMissError) || !resolved.samples) {
+        throw e;
+      }
       const audioData = await fetchSamplesAsBase64(resolved.samples);
       const audioBuffer = await generateAudio({ ...resolved.inferenceRequest, referenceAudioData: audioData });
       await saveGeneration(resolved.meta, audioBuffer, 'audio/wav', 'generation.wav');
@@ -298,7 +307,9 @@ export const generateRoutes = new Hono<AuthEnv>()
     // so this fetch returns within ~30s and data flows continuously.
     try {
       const streamResponse = await generateAudioStream(resolved.inferenceRequest).catch(async (e) => {
-        if (!(e instanceof CacheMissError) || !resolved.samples) { throw e; }
+        if (!(e instanceof CacheMissError) || !resolved.samples) {
+          throw e;
+        }
         const audioData = await fetchSamplesAsBase64(resolved.samples);
         return generateAudioStream({ ...resolved.inferenceRequest, referenceAudioData: audioData });
       });

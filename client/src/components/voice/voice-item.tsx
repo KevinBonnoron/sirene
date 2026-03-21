@@ -147,7 +147,18 @@ function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, '
   const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
 
   return (
-    <Card className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')} onClick={handleClick}>
+    <Card
+      className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+    >
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-0">
         <Avatar className="size-10">
           <AvatarImage src={avatarUrl} alt={voice.name} />

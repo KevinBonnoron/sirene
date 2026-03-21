@@ -114,8 +114,11 @@ export function GenerationBar() {
   const [voiceId, setVoiceId] = useState('');
 
   useEffect(() => {
-    if (!voiceId && voices?.length) {
-      setVoiceId(voices[0].id);
+    if (!voices) {
+      return;
+    }
+    if (!voiceId || !voices.find((v) => v.id === voiceId)) {
+      setVoiceId(voices[0]?.id ?? '');
     }
   }, [voiceId, voices]);
 

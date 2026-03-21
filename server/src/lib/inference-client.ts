@@ -7,7 +7,7 @@ export interface InferenceRequest {
   modelPath: string;
   voicePath?: string;
   referenceAudio?: string[];
-  referenceAudioData?: string[];  // base64 data URIs, sent on cache miss retry
+  referenceAudioData?: string[]; // base64 data URIs, sent on cache miss retry
   referenceCacheKey?: string;
   referenceText?: string[];
   instructText?: string;

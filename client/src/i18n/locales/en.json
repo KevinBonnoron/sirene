@@ -104,6 +104,7 @@
     "variant": "Variant",
     "manage": "Manage voices",
     "pageSubtitle": "Create, import, and manage your voices.",
+    "selectVoice": "Select a voice",
     "emptyGoManage": "No voices yet. Head to the Voices page to create your first one."
   },
   "voiceDesigner": {

@@ -171,7 +171,7 @@ export function GenerationInput({ voiceId, generate, isGenerating, capabilities,
           <div className="space-y-1.5 border-b px-3 py-2">
             {/* Speed + Tone */}
             <div className="flex flex-wrap items-center gap-2">
-              <ToggleGroup type="single" size="sm" variant="outline" value={activeSpeed} onValueChange={applySpeed}>
+              <ToggleGroup type="single" size="sm" variant="outline" value={activeSpeed} onValueChange={applySpeed} className="flex-wrap">
                 {SPEED_PRESETS.map(({ key, rate, labelKey }) => (
                   <ToggleGroupItem key={key} value={key} className="gap-1 text-xs">
                     <span className="size-1.5 shrink-0 rounded-full" style={{ background: getSpeedBorderColor(rate) }} />
@@ -183,7 +183,7 @@ export function GenerationInput({ voiceId, generate, isGenerating, capabilities,
               {capabilities.tone && (
                 <>
                   <div className="h-4 w-px shrink-0 bg-border" />
-                  <ToggleGroup type="single" size="sm" variant="outline" value={activeTone} onValueChange={applyTone}>
+                  <ToggleGroup type="single" size="sm" variant="outline" value={activeTone} onValueChange={applyTone} className="flex-wrap">
                     {TONE_PRESETS.map(({ key, labelKey }) => (
                       <ToggleGroupItem key={key} value={key} className="text-xs">
                         {t(labelKey)}

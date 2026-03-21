@@ -127,9 +127,9 @@ export function GenerationBar() {
   const capabilities = { tone: selectedModel?.supportsInstruct ?? false, effects: selectedModel?.supportsEffects ?? false };
 
   return (
-    <div className="px-16 pb-16 pt-2 flex justify-center">
-      <div className="w-full max-w-6xl">
-        <div className="rounded-xl shadow-2xl ring-2 ring-border/60 bg-card">
+    <div className="flex justify-center md:px-8 md:pb-10 md:pt-2 lg:px-16 lg:pb-16">
+      <div className="w-full md:max-w-6xl">
+        <div className="rounded-none md:rounded-xl shadow-2xl ring-2 ring-border/60 bg-card">
           <div className={`transition-opacity${isGenerating ? ' pointer-events-none opacity-50' : ''}`}>
             <GenerationInput voiceId={voiceId} generate={generate} isGenerating={isGenerating} capabilities={capabilities} voiceSelector={<VoiceCombobox voiceId={voiceId} onChange={setVoiceId} />} />
           </div>

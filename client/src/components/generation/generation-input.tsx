@@ -23,6 +23,7 @@ interface Props {
   generate: (request: GenerateRequest) => Promise<Blob>;
   isGenerating: boolean;
   capabilities: Capabilities;
+  voiceSelector?: React.ReactNode;
 }
 
 function getActiveSpeed(editor: Editor | null): string {
@@ -39,7 +40,7 @@ function getActiveTone(editor: Editor | null): string {
   return TONE_PRESETS.find((p) => editor.isActive('toneMark', { tone: p.key }))?.key ?? '';
 }
 
-export function GenerationInput({ voiceId, generate, isGenerating, capabilities }: Props) {
+export function GenerationInput({ voiceId, generate, isGenerating, capabilities, voiceSelector }: Props) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [activeSpeed, setActiveSpeed] = useState('');
@@ -164,7 +165,7 @@ export function GenerationInput({ voiceId, generate, isGenerating, capabilities 
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className="gap-0 py-0">
+      <Card className="gap-0 py-0 rounded-none border-none shadow-none">
         <CardContent className="p-0">
           {/* Prosody toolbar */}
           <div className="space-y-1.5 border-b px-3 py-2">
@@ -209,18 +210,17 @@ export function GenerationInput({ voiceId, generate, isGenerating, capabilities 
             </div>
           </div>
 
-          {/* Editor */}
-          <div className="relative">
-            <EditorContent editor={editor} className="[&_.tiptap]:min-h-[62px] [&_.tiptap]:px-4 [&_.tiptap]:py-3 [&_.tiptap]:pr-12 [&_.tiptap]:text-sm [&_.tiptap_p]:my-0 [&_.tiptap_p]:leading-normal" />
-            <Button type="submit" size="icon" disabled={!canSubmit} className="absolute right-2 bottom-2 size-7 shrink-0 rounded-full">
-              {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            </Button>
-          </div>
+          {/* Voice selector */}
+          {voiceSelector && <div className="px-3 pt-2">{voiceSelector}</div>}
 
-          {/* Bottom bar */}
-          <div className="border-t px-4 py-2">
-            <div className="flex items-center justify-end">
-              <span className="text-muted-foreground text-[10px]">{t('generate.chars', { count: plainText.length })}</span>
+          {/* Editor + submit button */}
+          <div className="relative">
+            <EditorContent editor={editor} className="[&_.tiptap]:min-h-[62px] [&_.tiptap]:py-3 [&_.tiptap]:pl-4 [&_.tiptap]:pr-12 [&_.tiptap]:text-sm [&_.tiptap_p]:my-0 [&_.tiptap_p]:leading-normal" />
+            <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+              <Button type="submit" size="icon" disabled={!canSubmit} className="size-7 shrink-0 rounded-full">
+                {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+              </Button>
+              <span className="text-muted-foreground text-[10px] tabular-nums">{plainText.length}</span>
             </div>
           </div>
         </CardContent>

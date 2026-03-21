@@ -24,17 +24,20 @@ interface Props {
   selected?: boolean;
   onSelect: (id: string) => void;
   variant: 'bubble' | 'compact' | 'full';
+  editOnClick?: boolean;
 }
 
-function BubbleVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) {
+function BubbleVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, 'variant'>) {
   const avatarUrl = voice.avatar ? pb.files.getURL(voice, voice.avatar) : undefined;
   const [showEdit, setShowEdit] = useState(false);
   const { user } = useAuth();
   const isOwner = voice.user === user?.id;
 
+  const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
+
   return (
     <>
-      <button type="button" onClick={() => onSelect(voice.id)} onDoubleClick={isOwner ? () => setShowEdit(true) : undefined} className="flex flex-col items-center gap-1">
+      <button type="button" onClick={handleClick} className="flex flex-col items-center gap-1">
         <Avatar className={cn('size-12 transition-all', selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
           <AvatarImage src={avatarUrl} alt={voice.name} />
           <AvatarFallback className="text-sm">{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -46,16 +49,18 @@ function BubbleVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) 
   );
 }
 
-function CompactVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) {
+function CompactVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, 'variant'>) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isOwner = voice.user === user?.id;
   const avatarUrl = voice.avatar ? pb.files.getURL(voice, voice.avatar) : undefined;
   const [showEdit, setShowEdit] = useState(false);
 
+  const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
+
   return (
     <div className={cn('group relative flex w-full items-center rounded-lg border transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}>
-      <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 p-2 text-left" onClick={() => onSelect(voice.id)}>
+      <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 p-2 text-left" onClick={handleClick}>
         <Avatar className="size-8 shrink-0">
           <AvatarImage src={avatarUrl} alt={voice.name} />
           <AvatarFallback className="text-xs">{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -128,7 +133,7 @@ function CompactVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>)
   );
 }
 
-function FullVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) {
+function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, 'variant'>) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isOwner = voice.user === user?.id;
@@ -139,8 +144,21 @@ function FullVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) {
   const sampleCount = selectedModel?.types.includes('cloning') ? allSamples?.filter((s: VoiceSample) => s.voice === voice.id).length : undefined;
   const [showEdit, setShowEdit] = useState(false);
 
+  const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
+
   return (
-    <Card className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')} onClick={() => onSelect(voice.id)}>
+    <Card
+      className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+    >
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-0">
         <Avatar className="size-10">
           <AvatarImage src={avatarUrl} alt={voice.name} />
@@ -197,13 +215,13 @@ function FullVoiceItem({ voice, selected, onSelect }: Omit<Props, 'variant'>) {
   );
 }
 
-export function VoiceItem({ variant, ...props }: Props) {
+export function VoiceItem({ variant, editOnClick, ...props }: Props) {
   switch (variant) {
     case 'bubble':
-      return <BubbleVoiceItem {...props} />;
+      return <BubbleVoiceItem {...props} editOnClick={editOnClick} />;
     case 'compact':
-      return <CompactVoiceItem {...props} />;
+      return <CompactVoiceItem {...props} editOnClick={editOnClick} />;
     case 'full':
-      return <FullVoiceItem {...props} />;
+      return <FullVoiceItem {...props} editOnClick={editOnClick} />;
   }
 }

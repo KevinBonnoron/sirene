@@ -35,10 +35,10 @@
     "pocketbase"
   ],
   "devDependencies": {
-    "@biomejs/biome": "^2.4.6",
+    "@biomejs/biome": "^2.4.8",
     "bun-types": "latest",
     "concurrently": "^9.2.1",
-    "turbo": "^2.8.14"
+    "turbo": "^2.8.20"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"

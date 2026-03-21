@@ -101,7 +101,11 @@
     "emptyNoModel": "You need to install a TTS model before you can add a voice.",
     "needModelHint": "Install a TTS model first from the Models page",
     "needInstructHint": "Install a model with instruct support from the Models page",
-    "variant": "Variant"
+    "variant": "Variant",
+    "manage": "Manage voices",
+    "pageSubtitle": "Create, import, and manage your voices.",
+    "selectVoice": "Select a voice",
+    "emptyGoManage": "No voices yet. Head to the Voices page to create your first one."
   },
   "voiceDesigner": {
     "title": "Voice Designer",
@@ -165,12 +169,28 @@
     "appName": "Sirene",
     "appSubtitle": "TTS Open Router",
     "navigation": "Navigation",
-    "generate": "Generate",
+    "dashboard": "Dashboard",
+    "voices": "Voices",
     "models": "Models",
     "history": "History",
     "toggleTheme": "Toggle theme",
     "theme": "Theme",
     "settings": "Settings"
+  },
+  "dashboard": {
+    "greeting": "Welcome, {{name}}!",
+    "subtitle": "Here's an overview of your workspace.",
+    "voices": "Voices",
+    "generations": "Generations",
+    "modelsInstalled": "Models installed",
+    "ctaModelTitle": "Install a model",
+    "ctaModelDesc": "You need at least one TTS model to start generating speech.",
+    "ctaModelAction": "Browse models",
+    "ctaVoiceTitle": "Create your first voice",
+    "ctaVoiceDesc": "Create, import, or design a voice to get started.",
+    "ctaVoiceAction": "Create a voice",
+    "recentGenerations": "Recent generations",
+    "viewAll": "View all"
   },
   "settings": {
     "title": "Settings",

@@ -101,7 +101,11 @@
     "emptyNoModel": "Installez un modèle TTS avant de pouvoir ajouter une voix.",
     "needModelHint": "Installez d'abord un mod\u00e8le TTS depuis la page Mod\u00e8les",
     "needInstructHint": "Installez un modèle avec support instruct depuis la page Modèles",
-    "variant": "Variante"
+    "variant": "Variante",
+    "manage": "Gérer les voix",
+    "pageSubtitle": "Créez, importez et gérez vos voix.",
+    "selectVoice": "Sélectionner une voix",
+    "emptyGoManage": "Aucune voix. Rendez-vous sur la page Voix pour en créer une."
   },
   "voiceDesigner": {
     "title": "Designer de voix",
@@ -165,12 +169,28 @@
     "appName": "Sirene",
     "appSubtitle": "TTS Open Router",
     "navigation": "Navigation",
-    "generate": "G\u00e9n\u00e9rer",
+    "dashboard": "Tableau de bord",
+    "voices": "Voix",
     "models": "Mod\u00e8les",
     "history": "Historique",
     "toggleTheme": "Changer de th\u00e8me",
     "theme": "Th\u00e8me",
     "settings": "Param\u00e8tres"
+  },
+  "dashboard": {
+    "greeting": "Bienvenue, {{name}} !",
+    "subtitle": "Voici un aperçu de votre espace de travail.",
+    "voices": "Voix",
+    "generations": "Générations",
+    "modelsInstalled": "Modèles installés",
+    "ctaModelTitle": "Installer un modèle",
+    "ctaModelDesc": "Vous avez besoin d'au moins un modèle TTS pour générer de la parole.",
+    "ctaModelAction": "Parcourir les modèles",
+    "ctaVoiceTitle": "Créer votre première voix",
+    "ctaVoiceDesc": "Créez, importez ou designez une voix pour commencer.",
+    "ctaVoiceAction": "Créer une voix",
+    "recentGenerations": "Générations récentes",
+    "viewAll": "Voir tout"
   },
   "settings": {
     "title": "Param\u00e8tres",

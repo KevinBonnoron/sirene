@@ -10,7 +10,13 @@ function resolveColor(el: Element, varName: string): string {
   if (!raw) {
     return '#888';
   }
-  return raw;
+  const tmp = document.createElement('div');
+  tmp.style.color = raw;
+  tmp.style.display = 'none';
+  el.appendChild(tmp);
+  const color = getComputedStyle(tmp).color;
+  el.removeChild(tmp);
+  return color || '#888';
 }
 
 const audioBlobCache = new Map<string, Promise<Blob>>();

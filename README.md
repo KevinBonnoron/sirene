@@ -8,6 +8,24 @@ Self-hosted multi-backend text-to-speech platform with voice cloning and a moder
 
 > **Full documentation:** [kevinbonnoron.github.io/sirene](https://kevinbonnoron.github.io/sirene/)
 
+## Screenshots
+
+<div align="center">
+  <img src="docs/assets/login.png" width="100%" alt="Login" />
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="docs/assets/home.png" width="49%" alt="Dashboard" />
+  <img src="docs/assets/voices.png" width="49%" alt="Voices" />
+</div>
+
+<div align="center">
+  <img src="docs/assets/models.png" width="49%" alt="Models" />
+  <img src="docs/assets/history.png" width="49%" alt="History" />
+</div>
+
 ## Quick Start
 
 ```bash

@@ -147,71 +147,73 @@ function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, '
   const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
 
   return (
-    <Card
-      className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-    >
-      <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-0">
-        <Avatar className="size-10">
-          <AvatarImage src={avatarUrl} alt={voice.name} />
-          <AvatarFallback>{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <CardTitle className="text-base">{voice.name}</CardTitle>
-          {voice.description && <p className="line-clamp-1 text-xs text-muted-foreground">{voice.description}</p>}
-        </div>
-        <CardAction className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigator.clipboard.writeText(voice.id);
-              toast.success(t('voice.idCopied'));
-            }}
-          >
-            <Copy className="size-3.5" />
-          </Button>
-          <DownloadVoiceButton voice={voice} />
-          {isOwner && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowEdit(true);
-                }}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <DeleteVoiceButton voiceId={voice.id} voiceName={voice.name} />
-            </>
+    <>
+      <Card
+        className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+      >
+        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-0">
+          <Avatar className="size-10">
+            <AvatarImage src={avatarUrl} alt={voice.name} />
+            <AvatarFallback>{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <CardTitle className="text-base">{voice.name}</CardTitle>
+            {voice.description && <p className="line-clamp-1 text-xs text-muted-foreground">{voice.description}</p>}
+          </div>
+          <CardAction className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(voice.id);
+                toast.success(t('voice.idCopied'));
+              }}
+            >
+              <Copy className="size-3.5" />
+            </Button>
+            <DownloadVoiceButton voice={voice} />
+            {isOwner && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEdit(true);
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <DeleteVoiceButton voiceId={voice.id} voiceName={voice.name} />
+              </>
+            )}
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {voice.language && <Badge variant="secondary">{voice.language}</Badge>}
+          {selectedModel?.name && <Badge variant="outline">{selectedModel.name}</Badge>}
+          {sampleCount != null && (
+            <Badge variant="outline" className="gap-1">
+              <AudioLines className="size-3" />
+              {sampleCount}
+            </Badge>
           )}
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        {voice.language && <Badge variant="secondary">{voice.language}</Badge>}
-        {selectedModel?.name && <Badge variant="outline">{selectedModel.name}</Badge>}
-        {sampleCount != null && (
-          <Badge variant="outline" className="gap-1">
-            <AudioLines className="size-3" />
-            {sampleCount}
-          </Badge>
-        )}
-      </CardContent>
+        </CardContent>
+      </Card>
       {showEdit && <VoiceDialog voice={voice} open={showEdit} onOpenChange={setShowEdit} />}
-    </Card>
+    </>
   );
 }
 

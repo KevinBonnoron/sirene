@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 _TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
 _TORCH = ["torch>=2.5.0,<2.8", "torchaudio>=2.5.0,<2.8"]
+_TORCH_28 = ["torch==2.8.0", "torchaudio==2.8.0"]
 
 
 @dataclass
@@ -63,9 +64,21 @@ _REGISTRY: dict[str, BackendDeps] = {
         packages=[*_TORCH, "boson-multimodal>=0.1.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
-    "openaudio": BackendDeps(
+    "fish_audio": BackendDeps(
         check_modules=["fish_speech"],
-        packages=[*_TORCH, "transformers>=4.47.0"],
+        packages=[
+            *_TORCH_28,
+            "transformers<=4.57.3",
+            "hydra-core>=1.3.2",
+            "loguru>=0.6.0",
+            "tiktoken>=0.8.0",
+            "safetensors",
+            "einx[torch]==0.2.2",
+            "loralib>=0.1.2",
+            "rich>=13.5.3",
+            "natsort>=8.4.0",
+            "pyrootutils>=1.0.4",
+        ],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
 }
@@ -130,8 +143,8 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
         await _install_chatterbox_extras()
     elif backend_name == "cosyvoice":
         await _install_cosyvoice_extras()
-    elif backend_name == "openaudio":
-        await _install_openaudio_extras()
+    elif backend_name == "fish_audio":
+        await _install_fish_audio_extras()
 
     yield {"status": "deps_complete", "message": f"{backend_name} dependencies ready"}
 
@@ -181,5 +194,10 @@ async def _install_cosyvoice_extras() -> None:
     )
 
 
-async def _install_openaudio_extras() -> None:
-    await _run_pip("install", "--no-deps", "fish-speech==0.1.0")
+
+async def _install_fish_audio_extras() -> None:
+    # TODO: replace with `"fish-speech==2.0.0"` in packages once stable is on PyPI
+    await _run_pip(
+        "install", "--no-deps",
+        "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta",
+    )

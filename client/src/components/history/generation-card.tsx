@@ -3,10 +3,10 @@ import { eq, useLiveQuery } from '@tanstack/react-db';
 import { useTranslation } from 'react-i18next';
 import { voiceCollection } from '@/collections';
 import { DeleteGenerationButton } from '@/components/generation/delete-generation-button';
-import { stripSSML } from '@/components/generation/ssml-mark';
 import { Badge } from '@/components/ui/badge';
 import { Waveform } from '@/components/voice/waveform';
 import { pb } from '@/lib/pocketbase';
+import { stripSSML } from '@/utils/ssml';
 
 interface Props {
   generation: Pick<Generation, 'id' | 'voice' | 'model' | 'text' | 'audio' | 'language' | 'created'>;

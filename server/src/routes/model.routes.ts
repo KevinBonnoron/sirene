@@ -6,14 +6,13 @@ import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport, importPiperModelToInference } from '../lib/inference-client';
 import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
-import type { AuthEnv } from '../middleware';
+import { type AuthEnv, authMiddleware } from '../middleware';
 import { modelService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
-/** Public SSE routes — mounted before auth middleware since EventSource cannot send headers. */
-export const modelSseRoutes = new Hono()
-
+/** Public SSE routes — EventSource cannot send auth headers. */
+const modelSseRoutes = new Hono()
   .get('/:id/pull', zValidator('param', idParamSchema), async (c) => {
     const { id: modelId } = c.req.valid('param');
 
@@ -68,7 +67,8 @@ export const modelSseRoutes = new Hono()
     });
   });
 
-export const modelRoutes = new Hono<AuthEnv>()
+const modelProtectedRoutes = new Hono<AuthEnv>()
+  .use(authMiddleware)
 
   .get('/catalog', async (c) => {
     const userId = c.get('userId');
@@ -184,3 +184,5 @@ export const modelRoutes = new Hono<AuthEnv>()
       },
     });
   });
+
+export const modelRoutes = new Hono().route('/', modelSseRoutes).route('/', modelProtectedRoutes);

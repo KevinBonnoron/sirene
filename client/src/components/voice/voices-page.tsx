@@ -1,17 +1,12 @@
 import { useLiveQuery } from '@tanstack/react-db';
-import { createFileRoute } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { voiceCollection } from '@/collections';
 import { VoiceList } from '@/components/generation/voice-list';
 import { Button } from '@/components/ui/button';
-import { AddVoiceMenu } from '@/components/voice/voice-grid';
+import { AddVoiceMenu } from './add-voice-menu';
 
-export const Route = createFileRoute('/voices')({
-  component: VoicesPage,
-});
-
-function VoicesPage() {
+export function VoicesPage() {
   const { t } = useTranslation();
   const { data: voices, isLoading: voicesLoading } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
 

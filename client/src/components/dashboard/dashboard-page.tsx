@@ -1,19 +1,15 @@
 import { useLiveQuery } from '@tanstack/react-db';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { AudioLines, Box, Clock, Plus, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, voiceCollection } from '@/collections';
 import { GenerationCard } from '@/components/history/generation-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { AddVoiceMenu } from '@/components/voice/voice-grid';
+import { AddVoiceMenu } from '@/components/voice/add-voice-menu';
 import { useModels } from '@/hooks/use-models';
 import { useAuth } from '@/providers/auth-provider';
-
-export const Route = createFileRoute('/')({
-  component: DashboardPage,
-});
+import { Skeleton } from '../ui/skeleton';
 
 function StatCard({ icon: Icon, label, value, loading }: { icon: React.ElementType; label: string; value: number; loading: boolean }) {
   return (
@@ -27,7 +23,7 @@ function StatCard({ icon: Icon, label, value, loading }: { icon: React.ElementTy
   );
 }
 
-function DashboardPage() {
+export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { catalog, installations } = useModels();

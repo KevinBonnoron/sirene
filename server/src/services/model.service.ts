@@ -1,5 +1,5 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { deleteModel, getInstalledModels, pullModel, scanCustomPiperModels } from '../lib/inference-client';
+import { deleteModel, getModels, pullModel } from '../lib/inference-client';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
 
@@ -25,8 +25,8 @@ class ModelService {
 
   public async scanCustomModels(): Promise<CatalogModel[]> {
     const catalogIds = new Set(modelsCatalog.map((m) => m.id));
-    const all = await scanCustomPiperModels();
-    return all.filter((m) => !catalogIds.has(m.id));
+    const { custom } = await getModels();
+    return custom.filter((m) => !catalogIds.has(m.id));
   }
 
   public getDownloadState(modelId: string) {
@@ -37,7 +37,7 @@ class ModelService {
     if (catalog.types.includes('api')) {
       return true;
     }
-    const installed = await getInstalledModels();
+    const { installed } = await getModels();
     return installed.includes(catalog.id);
   }
 
@@ -60,7 +60,8 @@ class ModelService {
   }
 
   public async getInstallations(catalogModels: CatalogModel[]): Promise<Model[]> {
-    const installedIds = new Set(await getInstalledModels());
+    const { installed } = await getModels();
+    const installedIds = new Set(installed);
     const models: Model[] = [];
 
     for (const catalog of catalogModels) {

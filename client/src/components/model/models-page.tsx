@@ -1,5 +1,4 @@
 import type { CatalogModel, CatalogModelType, Model } from '@sirene/shared';
-import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ModelCard } from '@/components/model/model-card';
@@ -7,10 +6,6 @@ import { PiperImportDialog } from '@/components/model/piper-import-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModels, usePullModel } from '@/hooks/use-models';
 import { cn } from '@/lib/utils';
-
-export const Route = createFileRoute('/models')({
-  component: ModelsPage,
-});
 
 function groupByBackend(models: CatalogModel[], installations: Map<string, Model>) {
   const groups = new Map<string, { catalog: CatalogModel; installation?: Model }[]>();
@@ -36,7 +31,7 @@ const filterConfig: Record<FilterKey, { label: string; active: string }> = {
   gated: { label: 'model.hfToken', active: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400' },
 };
 
-function ModelsPage() {
+export function ModelsPage() {
   const { t } = useTranslation();
   const { catalog, installationsByName, isLoading } = useModels();
   const { pullModel, pulling } = usePullModel();

@@ -3,7 +3,7 @@ import { Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { voiceClient } from '@/clients/voice.client';
-import { downloadBlob } from '@/lib/download';
+import { downloadBlob } from '@/utils/download';
 import { Button } from '../ui/button';
 
 interface Props {

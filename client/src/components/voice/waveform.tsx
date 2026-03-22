@@ -2,8 +2,8 @@ import { Download, Pause, Play } from 'lucide-react';
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { Button } from '@/components/ui/button';
-import { downloadBlob } from '@/lib/download';
-import { formatTime } from '@/lib/format';
+import { downloadBlob } from '@/utils/download';
+import { formatTime } from '@/utils/format';
 
 function resolveColor(el: Element, varName: string): string {
   const raw = getComputedStyle(el).getPropertyValue(varName).trim();

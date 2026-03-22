@@ -11,7 +11,9 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { contentToSSML, EffectNode, getSpeedBorderColor, PAUSE_PRESETS, SOUND_EFFECT_PRESETS, SPEED_PRESETS, SpeedMark, stripSSML, TONE_PRESETS, ToneMark } from './ssml-mark';
+import { PAUSE_PRESETS, SOUND_EFFECT_PRESETS, SPEED_PRESETS, TONE_PRESETS } from '@/constants/ssml-presets';
+import { contentToSSML, getSpeedBorderColor, stripSSML } from '@/utils/ssml';
+import { EffectNode, SpeedMark, ToneMark } from './ssml-mark';
 
 interface Capabilities {
   tone: boolean;

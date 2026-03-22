@@ -37,12 +37,6 @@ function VoiceCombobox({ voiceId, onChange }: { voiceId: string; onChange: (id: 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [open]);
-
   function select(voice: Voice) {
     onChange(voice.id);
     setOpen(false);
@@ -51,9 +45,17 @@ function VoiceCombobox({ voiceId, onChange }: { voiceId: string; onChange: (id: 
 
   const triggerAvatar = selectedVoice?.avatar ? pb.files.getURL(selectedVoice, selectedVoice.avatar) : undefined;
 
+  function handleToggle() {
+    const next = !open;
+    setOpen(next);
+    if (next) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+      <button type="button" onClick={handleToggle} className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
         <Avatar className="size-5 shrink-0">
           <AvatarImage src={triggerAvatar} alt={selectedVoice?.name} />
           <AvatarFallback className="text-[10px]">{selectedVoice?.name.charAt(0).toUpperCase() ?? '?'}</AvatarFallback>

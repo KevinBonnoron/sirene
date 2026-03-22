@@ -5,7 +5,7 @@ import { logger } from 'hono/logger';
 import { spec } from './lib/openapi';
 import { initPocketBase } from './lib/pocketbase';
 import { authMiddleware } from './middleware';
-import { authRoutes, generateRoutes, generationRoutes, healthRoutes, modelRoutes, modelSseRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
+import { authRoutes, generateRoutes, generationRoutes, healthRoutes, modelRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
 import { modelService } from './services';
 
 initPocketBase();
@@ -21,12 +21,11 @@ export const app = new Hono()
   .route('/health', healthRoutes)
   .route('/version', versionRoutes)
   .route('/auth', authRoutes)
-  .route('/models', modelSseRoutes)
+  .route('/models', modelRoutes)
   // Protected routes (auth required)
   .use(authMiddleware)
   .route('/generate', generateRoutes)
   .route('/voices', voiceRoutes)
-  .route('/models', modelRoutes)
   .route('/generations', generationRoutes)
   .route('/transcribe', transcribeRoutes)
   .route('/settings', settingsRoutes)

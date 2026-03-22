@@ -18,18 +18,8 @@ from ..services.model_manager import model_manager
 router = APIRouter(prefix="/models")
 
 
-@router.get("")
-async def list_installed_models():
-    models_path = Path(settings.models_path)
-    if not models_path.exists():
-        return []
-    return [d.name for d in sorted(models_path.iterdir()) if d.is_dir()]
-
-
-@router.get("/piper-custom")
-async def list_custom_piper_models():
+def _scan_custom_piper_models(models_path: Path) -> list[dict]:
     """Returns CatalogModel-compatible metadata for user-imported Piper models."""
-    models_path = Path(settings.models_path)
     if not models_path.exists():
         return []
 
@@ -86,6 +76,14 @@ async def list_custom_piper_models():
         })
 
     return custom
+
+
+@router.get("")
+async def list_models():
+    models_path = Path(settings.models_path)
+    installed = [d.name for d in sorted(models_path.iterdir()) if d.is_dir()] if models_path.exists() else []
+    custom = _scan_custom_piper_models(models_path)
+    return {"installed": installed, "custom": custom}
 
 
 @router.post("/pull")

@@ -61,17 +61,17 @@ export async function installBackendDeps(backend: string): Promise<void> {
   }
 }
 
-export async function getInstalledModels(): Promise<string[]> {
+export async function getModels(): Promise<{ installed: string[]; custom: CatalogModel[] }> {
   try {
     const response = await fetch(`${config.inferenceUrl}/models`, {
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
-      return [];
+      return { installed: [], custom: [] };
     }
-    return response.json() as Promise<string[]>;
+    return response.json() as Promise<{ installed: string[]; custom: CatalogModel[] }>;
   } catch {
-    return [];
+    return { installed: [], custom: [] };
   }
 }
 
@@ -134,22 +134,6 @@ export async function* pullModel(options: PullModelOptions): AsyncGenerator<Reco
         }
       }
     }
-  }
-}
-
-export async function scanCustomPiperModels(): Promise<CatalogModel[]> {
-  try {
-    const response = await fetch(`${config.inferenceUrl}/models/piper-custom`, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      console.warn(`GET /models/piper-custom failed (${response.status}): ${await response.text()}`);
-      return [];
-    }
-    return response.json() as Promise<CatalogModel[]>;
-  } catch (err) {
-    console.warn('Could not fetch custom piper models from inference:', err);
-    return [];
   }
 }
 

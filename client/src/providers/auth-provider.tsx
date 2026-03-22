@@ -23,8 +23,8 @@ async function authRequest(path: string, body: Record<string, string>) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(data.error || `Request failed (${res.status})`);
+    const data = await res.json().catch(() => ({ code: 'requestFailed' }));
+    throw new Error(data.code || `requestFailed`);
   }
   return res.json() as Promise<{ token: string; user: User }>;
 }

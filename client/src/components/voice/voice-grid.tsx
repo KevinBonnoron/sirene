@@ -1,73 +1,11 @@
 import type { Voice } from '@sirene/shared';
 import { Link } from '@tanstack/react-router';
-import { Plus, Sparkles, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useModels } from '@/hooks/use-models';
-import { ImportVoiceDialog } from './import-voice-dialog';
-import { VoiceDesignerDialog } from './voice-designer-dialog';
-import { VoiceDialog } from './voice-dialog';
+import { AddVoiceMenu } from './add-voice-menu';
 import { VoiceItem } from './voice-item';
-
-/** "+" dropdown menu — shown at all breakpoints, disables options with tooltip hints */
-export function AddVoiceMenu({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation();
-  const [showNew, setShowNew] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [showDesign, setShowDesign] = useState(false);
-  const { catalog, installations } = useModels();
-
-  const hasAnyModel = catalog.some((m) => !m.types.includes('transcription') && !m.types.every((t) => t === 'design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
-  const hasInstructModels = catalog.some((m) => m.types.includes('design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
-
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {hasAnyModel ? (
-            <DropdownMenuItem onSelect={() => setShowNew(true)}>
-              <Plus className="size-4" /> {t('voice.newVoice')}
-            </DropdownMenuItem>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuItem disabled>
-                  <Plus className="size-4" /> {t('voice.newVoice')}
-                </DropdownMenuItem>
-              </TooltipTrigger>
-              <TooltipContent side="right">{t('voice.needModelHint')}</TooltipContent>
-            </Tooltip>
-          )}
-          <DropdownMenuItem onSelect={() => setShowImport(true)}>
-            <Upload className="size-4" /> {t('voice.importVoice')}
-          </DropdownMenuItem>
-          {hasInstructModels ? (
-            <DropdownMenuItem onSelect={() => setShowDesign(true)}>
-              <Sparkles className="size-4" /> {t('voice.designVoice')}
-            </DropdownMenuItem>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuItem disabled>
-                  <Sparkles className="size-4" /> {t('voice.designVoice')}
-                </DropdownMenuItem>
-              </TooltipTrigger>
-              <TooltipContent side="right">{t('voice.needInstructHint')}</TooltipContent>
-            </Tooltip>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {showNew && <VoiceDialog open={showNew} onOpenChange={setShowNew} />}
-      {showImport && <ImportVoiceDialog open={showImport} onOpenChange={setShowImport} />}
-      {showDesign && <VoiceDesignerDialog open={showDesign} onOpenChange={setShowDesign} />}
-    </>
-  );
-}
 
 /** Dashed "+" trigger button used across all breakpoints */
 function AddButton({ className }: { className?: string }) {
@@ -83,9 +21,8 @@ function AddButton({ className }: { className?: string }) {
   );
 }
 
-interface VoiceGridProps {
+interface Props {
   voices: Voice[];
-  loading: boolean;
   selectedId: string;
   onSelect: (id: string) => void;
   empty: boolean;
@@ -93,35 +30,10 @@ interface VoiceGridProps {
   editOnClick?: boolean;
 }
 
-export function VoiceGrid({ voices, loading, selectedId, onSelect, empty, showAddButton = true, editOnClick }: VoiceGridProps) {
+export function VoiceGrid({ voices, selectedId, onSelect, empty, showAddButton = true, editOnClick }: Props) {
   const { t } = useTranslation();
   const { catalog, installations } = useModels();
   const hasAnyModel = catalog.some((m) => !m.types.includes('transcription') && !m.types.every((t) => t === 'design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
-
-  if (loading) {
-    return (
-      <>
-        {/* Mobile skeletons */}
-        <div className="flex gap-3 md:hidden">
-          {['m1', 'm2', 'm3', 'm4', 'm5'].map((id) => (
-            <Skeleton key={id} className="size-12 rounded-full" />
-          ))}
-        </div>
-        {/* Tablet skeletons */}
-        <div className="hidden gap-2 md:grid md:grid-cols-4 lg:hidden">
-          {['t1', 't2', 't3', 't4'].map((id) => (
-            <Skeleton key={id} className="h-14 rounded-lg" />
-          ))}
-        </div>
-        {/* Desktop skeletons */}
-        <div className="hidden gap-4 lg:grid lg:grid-cols-3">
-          {['d1', 'd2', 'd3'].map((id) => (
-            <Skeleton key={id} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      </>
-    );
-  }
 
   if (voices.length === 0 && empty) {
     if (!hasAnyModel) {

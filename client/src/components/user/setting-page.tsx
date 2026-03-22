@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
 import { Eye, EyeOff, Loader2, Pencil, Save, Trash2 } from 'lucide-react';
 import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,10 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-
-export const Route = createFileRoute('/settings')({
-  component: SettingsPage,
-});
 
 const KEYS = [
   { key: 'openai_api_key', labelKey: 'settings.openAIKey', placeholder: 'sk-...' },
@@ -139,7 +134,7 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
   );
 }
 
-function SettingsPage() {
+export function SettingsPage() {
   const { t } = useTranslation();
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],

@@ -5,9 +5,9 @@ import { toast } from 'sonner';
 import { modelClient } from '@/clients/model.client';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { downloadBlob } from '@/lib/download';
-import { formatFileSize } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { downloadBlob } from '@/utils/download';
+import { formatFileSize } from '@/utils/format';
 
 type ModelStatus = 'available' | 'pulling' | 'installed' | 'error';
 

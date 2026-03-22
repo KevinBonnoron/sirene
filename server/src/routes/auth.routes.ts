@@ -34,7 +34,7 @@ export const authRoutes = new Hono()
         },
       });
     } catch {
-      return c.json({ error: 'Invalid credentials' }, 401);
+      return c.json({ code: 'invalidCredentials' }, 401);
     }
   })
 
@@ -59,9 +59,8 @@ export const authRoutes = new Hono()
         },
         201,
       );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Registration failed';
-      return c.json({ error: message }, 400);
+    } catch {
+      return c.json({ code: 'registrationFailed' }, 400);
     }
   })
 

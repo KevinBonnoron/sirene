@@ -12,7 +12,7 @@ export function getNextSampleId(): string {
   return `pending-${nextId++}`;
 }
 
-export type VoiceFormState = {
+type VoiceFormState = {
   internalOpen: boolean;
   loading: boolean;
   name: string;
@@ -29,7 +29,7 @@ export type VoiceFormState = {
   isPublic: boolean;
 };
 
-export type VoiceFormAction =
+type VoiceFormAction =
   | { type: 'setOpen'; value: boolean }
   | { type: 'setLoading'; value: boolean }
   | { type: 'setName'; value: string }

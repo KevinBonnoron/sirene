@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { voiceClient } from '@/clients/voice.client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { formatFileSize } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { formatFileSize } from '@/utils/format';
 
 interface ImportVoiceDialogProps {
   open?: boolean;

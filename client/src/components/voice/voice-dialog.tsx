@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useModels } from '@/hooks/use-models';
 import { getCurrentUserId } from '@/lib/auth-interceptor';
-import { LANGUAGES } from '@/lib/languages';
+import { LANGUAGES } from '@/constants/languages';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { AvatarPicker } from './voice-dialog/avatar-picker';

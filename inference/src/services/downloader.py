@@ -16,6 +16,7 @@ async def download_model_files(
     model_path.mkdir(parents=True, exist_ok=True)
 
     downloaded = 0
+    last_progress = -1
     headers = {}
     if hf_token:
         headers["Authorization"] = f"Bearer {hf_token}"
@@ -32,13 +33,15 @@ async def download_model_files(
                         f.write(chunk)
                         downloaded += len(chunk)
                         progress = min(int((downloaded / total_size) * 100), 99)
-                        yield {
-                            "status": "downloading",
-                            "file": file_entry.path,
-                            "progress": progress,
-                            "downloaded": downloaded,
-                            "total": total_size,
-                        }
+                        if progress != last_progress:
+                            last_progress = progress
+                            yield {
+                                "status": "downloading",
+                                "file": file_entry.path,
+                                "progress": progress,
+                                "downloaded": downloaded,
+                                "total": total_size,
+                            }
 
     yield {
         "status": "complete",

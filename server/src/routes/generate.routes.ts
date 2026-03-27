@@ -73,13 +73,14 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
   }
 
   const modelPath = catalog.id;
+  const presetVoice = catalog.types.includes('preset') ? (options.presetVoice as string | undefined) : undefined;
 
   let referenceAudio: string[] | undefined;
   let referenceText: string[] | undefined;
 
   let samples: VoiceSample[] | undefined;
 
-  if (catalog.types.includes('cloning')) {
+  if (catalog.types.includes('cloning') && !presetVoice) {
     const rows = await voiceSampleRepository.getAllBy(`voice = "${body.voice}" && enabled = true`, { sort: 'order,created' });
     if (rows.length === 0) {
       return Response.json({ message: 'Voice cloning requires at least one enabled audio sample. Edit the voice to upload or enable a sample.' }, { status: 400 });
@@ -103,7 +104,6 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
         backend: catalog.backend,
         text: body.input,
         modelPath,
-        voicePath: catalog.types.includes('preset') ? (options.presetVoice as string) : undefined,
         referenceCacheKey: cacheKey,
         referenceText,
         speed: body.speed,
@@ -120,7 +120,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
       backend: catalog.backend,
       text: body.input,
       modelPath,
-      voicePath: catalog.types.includes('preset') ? (options.presetVoice as string) : undefined,
+      voicePath: presetVoice,
       referenceAudio,
       referenceText,
       speed: body.speed,

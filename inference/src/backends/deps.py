@@ -68,6 +68,10 @@ _REGISTRY: dict[str, BackendDeps] = {
         packages=[*_TORCH, "transformers>=4.47.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
+    "voxtral": BackendDeps(
+        check_modules=["vllm", "vllm_omni", "soundfile"],
+        packages=["vllm>=0.18.0", "soundfile>=0.12.0"],
+    ),
 }
 
 
@@ -132,6 +136,8 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
         await _install_cosyvoice_extras()
     elif backend_name == "openaudio":
         await _install_openaudio_extras()
+    elif backend_name == "voxtral":
+        await _install_voxtral_extras()
 
     yield {"status": "deps_complete", "message": f"{backend_name} dependencies ready"}
 
@@ -183,3 +189,7 @@ async def _install_cosyvoice_extras() -> None:
 
 async def _install_openaudio_extras() -> None:
     await _run_pip("install", "--no-deps", "fish-speech==0.1.0")
+
+
+async def _install_voxtral_extras() -> None:
+    await _run_pip("install", "git+https://github.com/vllm-project/vllm-omni.git")

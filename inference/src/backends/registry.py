@@ -7,6 +7,7 @@ from .qwen import QwenBackend
 from .f5tts import F5TTSBackend
 from .piper import PiperBackend
 from .higgs_audio import HiggsAudioBackend
+from .voxtral import VoxtralBackend
 
 _BACKENDS: dict[str, type[TTSBackend]] = {
     "kokoro": KokoroBackend,
@@ -17,6 +18,7 @@ _BACKENDS: dict[str, type[TTSBackend]] = {
     "openaudio": OpenAudioBackend,
     "chatterbox": ChatterboxBackend,
     "higgs_audio": HiggsAudioBackend,
+    "voxtral": VoxtralBackend,
 }
 
 

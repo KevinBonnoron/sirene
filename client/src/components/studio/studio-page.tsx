@@ -1,122 +1,30 @@
+import { useLiveQuery } from '@tanstack/react-db';
 import { Link } from '@tanstack/react-router';
 import { AudioLines, Plus, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { generationCollection, sessionCollection, voiceCollection } from '@/collections';
 import { Button } from '@/components/ui/button';
 import { useIsDesktop, useIsMobile } from '@/hooks/use-mobile';
+import { useModels } from '@/hooks/use-models';
+import { pb } from '@/lib/pocketbase';
+import { generationToTake } from './generation-to-take';
 import { StudioTopbar } from './studio-topbar';
-import { Take, type TakeData } from './take';
+import { Take, type TakeData, type TakeTuning } from './take';
 import { type BankEntry, TakeBank } from './take-bank';
 
-// TODO phase 2 — replace mocks with real Session + Take collections (TanStack DB)
-const MOCK_READY_TAKES: TakeData[] = [
-  {
-    id: 'take-1',
-    orderIndex: 1,
-    state: 'ready',
-    voiceName: 'Alice',
-    modelName: 'qwen3-tts-1.7B',
-    content: {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: "Bonjour à tous, je suis ravie de vous présenter aujourd'hui notre nouveau produit. " },
-            {
-              type: 'text',
-              text: 'Prenez un moment',
-              marks: [{ type: 'speedMark', attrs: { rate: 0.75 } }],
-            },
-            { type: 'text', text: ' pour imaginer ce que cela pourrait changer.' },
-          ],
-        },
-      ],
-    },
-    duration: 7.4,
-    tuning: { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 },
-  },
-  {
-    id: 'take-2',
-    orderIndex: 2,
-    state: 'tuned',
-    voiceName: 'Alice',
-    modelName: 'qwen3-tts-1.7B',
-    content: {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'text',
-              text: 'Notre solution',
-              marks: [{ type: 'toneMark', attrs: { tone: 'excited' } }],
-            },
-            { type: 'text', text: ' répond à un besoin que vous connaissez tous. ' },
-            { type: 'effectNode', attrs: { effect: 'pause', label: 'pause' } },
-            { type: 'text', text: ' Laissez-moi vous expliquer.' },
-          ],
-        },
-      ],
-    },
-    duration: 6.1,
-    tuning: { pitchShift: 0.5, speedMultiplier: 0.95, variationSeed: 0.5 },
-  },
-];
-
-function makeDraft(orderIndex: number, voiceName = 'Alice', modelName = 'qwen3-tts-1.7B'): TakeData {
+function makeDraft(orderIndex: number, voiceName: string, voiceAvatarUrl: string | undefined, modelName: string, tuning?: TakeTuning): TakeData {
   return {
-    id: `take-draft-${orderIndex}`,
+    id: `draft-${orderIndex}`,
     orderIndex,
     state: 'draft',
     voiceName,
+    voiceAvatarUrl,
     modelName,
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
-    tuning: { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 },
+    tuning: tuning ?? { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 },
   };
-}
-
-const MOCK_BANK: BankEntry[] = [
-  {
-    id: 'bank-1',
-    voiceName: 'Alice',
-    modelName: 'qwen3-tts',
-    text: "Bonjour à tous, je suis ravie de vous présenter aujourd'hui notre nouveau produit.",
-    duration: 7.4,
-    createdAt: new Date(Date.now() - 1000 * 60 * 3),
-  },
-  {
-    id: 'bank-2',
-    voiceName: 'Alice',
-    modelName: 'qwen3-tts',
-    text: 'Notre solution répond à un besoin que vous connaissez tous.',
-    duration: 6.1,
-    createdAt: new Date(Date.now() - 1000 * 60 * 5),
-  },
-  {
-    id: 'bank-3',
-    voiceName: 'Bob',
-    modelName: 'piper-fr',
-    text: 'Test de voix alternative pour le dialogue.',
-    duration: 3.2,
-    createdAt: new Date(Date.now() - 1000 * 60 * 42),
-  },
-];
-
-type Variant = 'no-voices' | 'empty' | 'single' | 'multi';
-
-function getTakesForVariant(variant: Variant): TakeData[] {
-  if (variant === 'no-voices') {
-    return [];
-  }
-  if (variant === 'empty') {
-    return [makeDraft(1)];
-  }
-  if (variant === 'single') {
-    return [MOCK_READY_TAKES[0], makeDraft(2)];
-  }
-  return [...MOCK_READY_TAKES, makeDraft(3)];
 }
 
 export function StudioPage() {
@@ -124,60 +32,165 @@ export function StudioPage() {
   const isDesktop = useIsDesktop();
   const isMobile = useIsMobile();
 
-  // TODO phase 2 — replace with real session/takes
-  const [variant, setVariant] = useState<Variant>('multi');
-  const [sessionName, setSessionName] = useState<string | null>('Présentation investisseurs');
-  const takes = getTakesForVariant(variant);
-  const generatedCount = takes.filter((take) => take.state !== 'draft').length;
-  const [bankEntries] = useState<BankEntry[]>(variant === 'empty' || variant === 'no-voices' ? [] : MOCK_BANK);
-  const showSessionTitle = variant === 'multi';
+  const { data: voices } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
+  const { data: generations } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
+  const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
+  const { catalog } = useModels();
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionNameDraft, setSessionNameDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number>(0);
+
+  const activeSession = useMemo(() => (activeSessionId ? sessions?.find((s) => s.id === activeSessionId) : undefined), [activeSessionId, sessions]);
+
+  // Sync local draft with the loaded session
+  useEffect(() => {
+    if (activeSession) {
+      setSessionNameDraft(activeSession.name?.length ? activeSession.name : null);
+    }
+  }, [activeSession]);
+
+  // Auto-save the session name (debounced 500ms)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!activeSession) {
+      return;
+    }
+    const current = activeSession.name?.length ? activeSession.name : null;
+    if (sessionNameDraft === current) {
+      return;
+    }
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        setSaving(true);
+        await pb.collection('sessions').update(activeSession.id, { name: sessionNameDraft ?? '' });
+        setSavedAt(Date.now());
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to save session');
+      } finally {
+        setSaving(false);
+      }
+    }, 500);
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [sessionNameDraft, activeSession]);
+
+  // --- Loading + gating states ----------------------------------------------
+  if (!voices) {
+    return (
+      <div className="flex h-svh items-center justify-center text-muted-foreground text-sm">
+        <span>{t('common.loading')}</span>
+      </div>
+    );
+  }
+
+  if (voices.length === 0) {
+    return (
+      <div className="flex h-svh overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <StudioTopbar sessionName={null} onSessionNameChange={() => {}} saved takeCount={0} />
+          <main className="custom-scrollbar flex-1 overflow-y-auto">
+            <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
+              <NoVoicesState />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Derive takes + bank from real data -----------------------------------
+  const defaultVoice = voices[0];
+  const defaultModel = catalog.find((m) => m.id === defaultVoice.model);
+
+  const sessionGenerations = (activeSession?.generations ?? []).map((genId) => generations?.find((g) => g.id === genId)).filter((g): g is NonNullable<typeof g> => Boolean(g));
+
+  const sessionTakes: TakeData[] = sessionGenerations.map((gen, i) => generationToTake(gen, i + 1, { voices, catalog }));
+
+  const draft = makeDraft(sessionTakes.length + 1, defaultVoice.name, defaultVoice.avatar ? pb.files.getURL(defaultVoice, defaultVoice.avatar) : undefined, defaultModel?.name ?? defaultVoice.model);
+
+  const displayTakes = [...sessionTakes, draft];
+  const generatedCount = sessionTakes.length;
+  const showSessionTitle = Boolean(activeSession);
+
+  // Bank: recent non-draft generations (skip the ones already shown in the session column to avoid duplicates)
+  const sessionGenerationIds = new Set(activeSession?.generations ?? []);
+  const bankEntries: BankEntry[] = (generations ?? [])
+    .filter((g) => g.audio && !sessionGenerationIds.has(g.id))
+    .slice(0, 30)
+    .map((g) => {
+      const voice = voices.find((v) => v.id === g.voice);
+      const model = catalog.find((m) => m.id === g.model);
+      return {
+        id: g.id,
+        voiceName: voice?.name ?? 'Inconnue',
+        voiceAvatarUrl: voice?.avatar ? pb.files.getURL(voice, voice.avatar) : undefined,
+        modelName: model?.name ?? g.model,
+        text: g.text,
+        duration: g.duration ?? 0,
+        createdAt: new Date(g.created),
+      };
+    });
+
+  async function handleAddTake() {
+    // TODO phase 3 — when the current draft has been generated, attach it;
+    // for now the button simply creates a session from the most recent solo generation.
+    if (activeSession) {
+      toast.info(t('studio.draftHint'));
+      return;
+    }
+    const latest = generations?.find((g) => Boolean(g.audio));
+    if (!latest) {
+      toast.info(t('studio.draftHint'));
+      return;
+    }
+    try {
+      const created = await pb.collection('sessions').create({ name: '', user: pb.authStore.record?.id, generations: [latest.id] });
+      setActiveSessionId(created.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create session');
+    }
+  }
+
+  const savedFeedback = savedAt > 0 && Date.now() - savedAt < 3000;
 
   return (
     <div className="flex h-svh overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <StudioTopbar sessionName={showSessionTitle ? sessionName : null} onSessionNameChange={setSessionName} saved takeCount={generatedCount} />
-
-        {/* Dev variant switcher — TODO phase 2: remove */}
-        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border-subtle bg-bg-elevated/40 px-3 py-1 text-[10px] text-dim sm:px-4">
-          <span className="shrink-0 uppercase tracking-wider">dev · variant</span>
-          {(['no-voices', 'empty', 'single', 'multi'] as const).map((v) => (
-            <button key={v} type="button" onClick={() => setVariant(v)} className={variant === v ? 'shrink-0 rounded bg-accent-amber/20 px-2 py-0.5 text-accent-amber' : 'shrink-0 rounded px-2 py-0.5 hover:bg-card'}>
-              {v}
-            </button>
-          ))}
-        </div>
+        <StudioTopbar sessionName={showSessionTitle ? sessionNameDraft : null} onSessionNameChange={setSessionNameDraft} saving={saving} saved={savedFeedback || !saving} takeCount={generatedCount} />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto">
           <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
-            {variant === 'no-voices' ? (
-              <NoVoicesState />
-            ) : (
-              <>
-                {variant === 'empty' && <EmptyState />}
+            {showSessionTitle && <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">{sessionNameDraft ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</h1>}
 
-                {showSessionTitle && <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">{sessionName ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</h1>}
+            {!activeSession && sessionTakes.length === 0 && <EmptyState />}
 
-                <ol className="space-y-4">
-                  {takes.map((take) => (
-                    <li key={take.id}>
-                      <Take take={take} />
-                    </li>
-                  ))}
-                </ol>
+            <ol className="space-y-4">
+              {displayTakes.map((take) => (
+                <li key={take.id}>
+                  <Take take={take} />
+                </li>
+              ))}
+            </ol>
 
-                {generatedCount >= 1 && (
-                  <button type="button" className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent-amber/60 hover:bg-card/40 hover:text-foreground">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Plus className="size-4 shrink-0" />
-                      <span className="truncate">
-                        {t('studio.addTake')}
-                        <span className="hidden text-muted-foreground/70 sm:inline"> — {t('studio.addTakeHint')}</span>
-                      </span>
-                    </span>
-                    <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-[11px] leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>
-                  </button>
-                )}
-              </>
+            {generatedCount >= 1 && (
+              <button type="button" onClick={handleAddTake} className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent-amber/60 hover:bg-card/40 hover:text-foreground">
+                <span className="flex min-w-0 items-center gap-2">
+                  <Plus className="size-4 shrink-0" />
+                  <span className="truncate">
+                    {t('studio.addTake')}
+                    <span className="hidden text-muted-foreground/70 sm:inline"> — {t('studio.addTakeHint')}</span>
+                  </span>
+                </span>
+                <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-[11px] leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>
+              </button>
             )}
           </div>
         </main>

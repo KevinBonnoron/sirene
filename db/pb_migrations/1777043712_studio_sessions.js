@@ -1,0 +1,164 @@
+/// <reference path="../pb_data/types.d.ts" />
+
+// Phase 2 — Studio data layer
+// - Extend `generations`: add `state`, `tuning`, `ssml_json`
+// - Create `sessions` collection (ordered relation to generations, no back-ref)
+
+migrate(
+  (app) => {
+    // ---- 1. Extend generations --------------------------------------------
+    const generations = app.findCollectionByNameOrId('generations');
+
+    generations.fields.add(
+      new Field({
+        id: 'select_state',
+        name: 'state',
+        type: 'select',
+        maxSelect: 1,
+        values: ['draft', 'ready', 'tuned'],
+        required: false,
+        presentable: false,
+        hidden: false,
+        system: false,
+      }),
+    );
+
+    generations.fields.add(
+      new Field({
+        id: 'json_tuning',
+        name: 'tuning',
+        type: 'json',
+        maxSize: 0,
+        required: false,
+        presentable: false,
+        hidden: false,
+        system: false,
+      }),
+    );
+
+    generations.fields.add(
+      new Field({
+        id: 'json_ssml',
+        name: 'ssml_json',
+        type: 'json',
+        maxSize: 0,
+        required: false,
+        presentable: false,
+        hidden: false,
+        system: false,
+      }),
+    );
+
+    app.save(generations);
+
+    // ---- 2. Create sessions -----------------------------------------------
+    const sessions = new Collection({
+      id: 'pbc_sessions_studio',
+      name: 'sessions',
+      type: 'base',
+      system: false,
+      createRule: "@request.auth.id != ''",
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      fields: [
+        {
+          id: 'text3208210256',
+          name: 'id',
+          type: 'text',
+          system: true,
+          primaryKey: true,
+          required: true,
+          autogeneratePattern: '[a-z0-9]{15}',
+          pattern: '^[a-z0-9]+$',
+          min: 15,
+          max: 15,
+          presentable: false,
+          hidden: false,
+        },
+        {
+          id: 'text_session_name',
+          name: 'name',
+          type: 'text',
+          system: false,
+          required: false,
+          presentable: false,
+          hidden: false,
+          autogeneratePattern: '',
+          pattern: '',
+          min: 0,
+          max: 120,
+          primaryKey: false,
+        },
+        {
+          id: 'relation_session_user',
+          name: 'user',
+          type: 'relation',
+          system: false,
+          required: true,
+          cascadeDelete: false,
+          collectionId: '_pb_users_auth_',
+          maxSelect: 1,
+          minSelect: 0,
+          presentable: false,
+          hidden: false,
+        },
+        {
+          id: 'relation_session_generations',
+          name: 'generations',
+          type: 'relation',
+          system: false,
+          required: false,
+          cascadeDelete: false,
+          collectionId: 'pbc_1512514359',
+          maxSelect: null,
+          minSelect: 0,
+          presentable: false,
+          hidden: false,
+        },
+        {
+          id: 'autodate2990389176',
+          name: 'created',
+          type: 'autodate',
+          system: false,
+          onCreate: true,
+          onUpdate: false,
+          presentable: false,
+          hidden: false,
+        },
+        {
+          id: 'autodate3332085495',
+          name: 'updated',
+          type: 'autodate',
+          system: false,
+          onCreate: true,
+          onUpdate: true,
+          presentable: false,
+          hidden: false,
+        },
+      ],
+      indexes: [],
+    });
+
+    app.save(sessions);
+  },
+  (app) => {
+    // ---- Down migration ---------------------------------------------------
+    const sessions = app.findCollectionByNameOrId('sessions');
+    if (sessions) {
+      app.delete(sessions);
+    }
+
+    const generations = app.findCollectionByNameOrId('generations');
+    if (generations) {
+      for (const fieldName of ['state', 'tuning', 'ssml_json']) {
+        const field = generations.fields.getByName(fieldName);
+        if (field) {
+          generations.fields.removeByName(fieldName);
+        }
+      }
+      app.save(generations);
+    }
+  },
+);

@@ -1,15 +1,16 @@
 import { Mark, mergeAttributes, Node } from '@tiptap/core';
-import { getSpeedStyle } from '@/utils/ssml';
-
-const TONE_STYLE = ['background: oklch(0.55 0.2 290 / 0.35)', 'border: 1px solid oklch(0.65 0.22 290 / 0.55)', 'border-radius: 4px', 'padding: 1px 4px'].join('; ');
-
-const EFFECT_BADGE_STYLE = ['display: inline-block', 'background: oklch(0.5 0.0 0 / 0.12)', 'border: 1px solid oklch(0.5 0.0 0 / 0.35)', 'border-radius: 4px', 'padding: 0 4px', 'font-size: 0.78em', 'font-family: monospace', 'line-height: 1.5', 'cursor: default', 'user-select: none', 'vertical-align: middle'].join(
-  '; ',
-);
+import './ssml-chip.css';
 
 // ---------------------------------------------------------------------------
-// SpeedMark — wraps text, controls rate
+// SpeedMark — wraps text, controls rate (slow / fast / xfast)
 // ---------------------------------------------------------------------------
+
+function speedClass(rate: number): string {
+  if (rate < 1) {
+    return 'ssml-chip ssml-chip-slow';
+  }
+  return 'ssml-chip ssml-chip-fast';
+}
 
 export const SpeedMark = Mark.create({
   name: 'speedMark',
@@ -21,7 +22,7 @@ export const SpeedMark = Mark.create({
         parseHTML: (el) => Number(el.getAttribute('data-rate')),
         renderHTML: (attrs) => ({
           'data-rate': attrs.rate,
-          style: getSpeedStyle(attrs.rate as number),
+          class: speedClass(attrs.rate as number),
         }),
       },
     };
@@ -37,7 +38,7 @@ export const SpeedMark = Mark.create({
 });
 
 // ---------------------------------------------------------------------------
-// ToneMark — wraps text, controls emotional tone
+// ToneMark — wraps text, controls emotional tone (sage chip)
 // ---------------------------------------------------------------------------
 
 export const ToneMark = Mark.create({
@@ -50,7 +51,7 @@ export const ToneMark = Mark.create({
         parseHTML: (el) => el.getAttribute('data-tone'),
         renderHTML: (attrs) => ({
           'data-tone': attrs.tone,
-          style: TONE_STYLE,
+          class: 'ssml-chip ssml-chip-tone',
         }),
       },
     };
@@ -66,8 +67,15 @@ export const ToneMark = Mark.create({
 });
 
 // ---------------------------------------------------------------------------
-// EffectNode — inline atom, inserts a sound/pause marker at cursor
+// EffectNode — inline atom: a sound effect or pause label rendered as a chip.
 // ---------------------------------------------------------------------------
+
+function effectClass(effect: string): string {
+  if (effect === 'pause' || effect === 'long pause') {
+    return 'ssml-chip ssml-chip-pause';
+  }
+  return 'ssml-chip ssml-chip-effect';
+}
 
 export const EffectNode = Node.create({
   name: 'effectNode',
@@ -95,16 +103,16 @@ export const EffectNode = Node.create({
   },
 
   renderHTML({ node }) {
-    const display = node.attrs.label ?? node.attrs.effect;
+    const display = (node.attrs.label ?? node.attrs.effect ?? '') as string;
     return [
       'span',
       {
         'data-effect': node.attrs.effect,
         'data-label': node.attrs.label,
         contenteditable: 'false',
-        style: EFFECT_BADGE_STYLE,
+        class: effectClass(node.attrs.effect as string),
       },
-      `[${display}]`,
+      display,
     ];
   },
 });

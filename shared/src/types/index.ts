@@ -1,3 +1,4 @@
+export * from './alignment.type';
 export * from './base.type';
 export * from './generate.type';
 export * from './generation.type';

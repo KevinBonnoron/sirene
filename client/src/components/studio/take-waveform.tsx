@@ -2,7 +2,7 @@ interface Props {
   seed?: number;
   bars?: number;
   active?: boolean;
-  progress?: number; // 0-1
+  progress?: number; // 0..1
   className?: string;
 }
 
@@ -14,43 +14,48 @@ function seededRandom(seed: number) {
   };
 }
 
-interface Bar {
-  key: string;
-  height: number;
-  ratio: number;
-}
+const VIEWBOX_WIDTH = 600;
+const VIEWBOX_HEIGHT = 40;
+const BAR_GAP = 2;
 
-export function TakeWaveform({ seed = 42, bars = 96, active = false, progress = 0, className }: Props) {
+export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 0, className }: Props) {
   const rand = seededRandom(seed);
-  const barData: Bar[] = Array.from({ length: bars }, (_, i) => {
-    const envelope = Math.sin((i / bars) * Math.PI) * 0.7 + 0.3;
-    return {
-      key: `${seed}-${i}`,
-      height: Math.max(0.15, rand() * envelope),
-      ratio: i / bars,
-    };
+  // Speech-like distribution: mostly quiet, occasional peaks. Matches the design handoff.
+  const data = Array.from({ length: bars }, () => {
+    const base = 0.08 + rand() * 0.18;
+    const peak = rand() > 0.72 ? rand() * 0.8 : 0;
+    return Math.min(1, base + peak);
   });
 
+  const barW = Math.max(1, (VIEWBOX_WIDTH - BAR_GAP * (bars - 1)) / bars);
   const activeColor = 'var(--accent-amber)';
   const idleColor = 'var(--dim)';
 
   return (
-    <div className={`flex h-10 items-center gap-[2px] ${className ?? ''}`}>
-      {barData.map(({ key, height, ratio }) => {
-        const isPlayed = ratio < progress;
-        const color = active ? activeColor : isPlayed ? activeColor : idleColor;
+    <svg viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label="waveform" className={`block h-10 w-full ${className ?? ''}`}>
+      {data.map((amp, i) => {
+        const h = Math.max(1.5, amp * VIEWBOX_HEIGHT);
+        const x = i * (barW + BAR_GAP);
+        const y = (VIEWBOX_HEIGHT - h) / 2;
+        const played = i / bars < progress;
+        const fill = active || played ? activeColor : idleColor;
+        const opacity = played ? 1 : active ? 0.55 : 0.7;
+        const r = barW / 2;
         return (
-          <div
-            key={key}
-            className="w-[2px] rounded-full transition-colors"
-            style={{
-              height: `${height * 100}%`,
-              background: color,
-              opacity: active && !isPlayed ? 0.45 : 1,
-            }}
+          <rect
+            // biome-ignore lint/suspicious/noArrayIndexKey: static waveform bars never reorder
+            key={i}
+            x={x}
+            y={y}
+            width={barW}
+            height={h}
+            rx={r}
+            ry={r}
+            fill={fill}
+            opacity={opacity}
           />
         );
       })}
-    </div>
+    </svg>
   );
 }

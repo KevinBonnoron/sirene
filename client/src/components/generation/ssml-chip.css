@@ -1,0 +1,65 @@
+/*
+ * SSML chips — small uppercase mono pills used by the Tiptap marks defined in
+ * `ssml-mark.ts` to render inline prosody / effect markers.
+ *
+ * These styles are global by necessity: Tiptap's `renderHTML` outputs raw
+ * class names that must resolve at the document level, so CSS modules / scoped
+ * styles aren't an option. Keeping them next to the marks makes ownership
+ * obvious — the file is imported from `ssml-mark.ts` so wherever the marks
+ * land in the bundle, the styles travel with them.
+ *
+ * Visual spec from the design handoff (d6-chip).
+ */
+
+.ssml-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1.5px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  cursor: default;
+  vertical-align: 1px;
+  margin: 0 1px;
+  transition: filter 0.1s;
+}
+
+.ssml-chip:hover {
+  filter: brightness(1.15);
+}
+
+.ssml-chip-slow {
+  background: color-mix(in oklch, var(--accent-sky) 15%, transparent);
+  color: var(--accent-sky);
+  border-color: color-mix(in oklch, var(--accent-sky) 30%, transparent);
+}
+
+.ssml-chip-fast {
+  background: color-mix(in oklch, var(--accent-rust) 18%, transparent);
+  color: var(--accent-rust);
+  border-color: color-mix(in oklch, var(--accent-rust) 35%, transparent);
+}
+
+.ssml-chip-tone {
+  background: color-mix(in oklch, var(--accent-sage) 18%, transparent);
+  color: var(--accent-sage);
+  border-color: color-mix(in oklch, var(--accent-sage) 35%, transparent);
+}
+
+.ssml-chip-pause,
+.ssml-chip-effect {
+  background: color-mix(in oklch, var(--accent-amber) 18%, transparent);
+  color: var(--accent-amber);
+  border-color: color-mix(in oklch, var(--accent-amber) 35%, transparent);
+}
+
+.ssml-chip-tuned {
+  background: color-mix(in oklch, var(--accent-violet) 15%, transparent);
+  color: var(--accent-violet);
+  border-color: color-mix(in oklch, var(--accent-violet) 40%, transparent);
+}

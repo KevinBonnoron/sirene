@@ -2,8 +2,8 @@ import type { Voice } from '@sirene/shared';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { VoiceFilterBar } from '@/components/voice/voice-filters';
-import { useVoiceFilters } from '@/hooks/use-voice-filters';
 import { VoiceGrid } from '@/components/voice/voice-grid';
+import { useVoiceFilters } from '@/hooks/use-voice-filters';
 import { Skeleton } from '../ui/skeleton';
 
 interface Props {

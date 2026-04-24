@@ -13,6 +13,8 @@ export interface InferenceRequest {
   instructText?: string;
   instructGender?: string;
   speed?: number;
+  /** Generation-level noise / variation. Only Piper consumes this today (maps to noise_scale). */
+  noiseScale?: number;
   language?: string;
 }
 
@@ -41,6 +43,7 @@ function buildInferenceBody(request: InferenceRequest) {
     instruct_text: request.instructText ?? null,
     instruct_gender: request.instructGender ?? null,
     speed: request.speed ?? 1.0,
+    noise_scale: request.noiseScale ?? null,
     language: request.language ?? 'en',
   };
 }

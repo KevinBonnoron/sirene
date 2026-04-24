@@ -1,3 +1,4 @@
+import { getVoiceCapabilities } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link } from '@tanstack/react-router';
 import type { Editor, JSONContent } from '@tiptap/core';
@@ -9,7 +10,9 @@ import { generationCollection, sessionCollection, voiceCollection } from '@/coll
 import { Button } from '@/components/ui/button';
 import { useGenerate } from '@/hooks/use-generate';
 import { useIsDesktop, useIsMobile } from '@/hooks/use-mobile';
+import { useModels } from '@/hooks/use-models';
 import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/providers/auth-provider';
 import { contentToSSML } from '@/utils/ssml';
 import { generationToTake } from './generation-to-take';
 import { StudioTopbar } from './studio-topbar';
@@ -25,9 +28,24 @@ interface DraftState {
 const DEFAULT_TUNING: TakeTuning = { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 };
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
 
-function makeDraftTake(orderIndex: number, draft: DraftState): TakeData {
+/**
+ * PocketBase multi-select relations can come back as either a string[] or — in some edge cases
+ * (single value, legacy data, race during realtime sync) — a bare string. Normalise everywhere
+ * we touch `session.generations` so the UI never crashes on `.map is not a function`.
+ */
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    return [value];
+  }
+  return [];
+}
+
+function makeDraftTake(orderIndex: number, version: number, draft: DraftState): TakeData {
   return {
-    id: `draft-${orderIndex}`,
+    id: `draft-${orderIndex}-${version}`,
     orderIndex,
     state: 'draft',
     voiceId: draft.voiceId,
@@ -40,23 +58,44 @@ export function StudioPage() {
   const { t } = useTranslation();
   const isDesktop = useIsDesktop();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   const { data: voices } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
   const { data: generations } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
   const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
-  const { generate, isGenerating } = useGenerate();
+  const { generate } = useGenerate();
+  const { catalog } = useModels();
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionNameDraft, setSessionNameDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(0);
+  // Which take is currently being generated / regenerated ('draft' for the composer, or a take id).
+  const [busyTakeId, setBusyTakeId] = useState<string | null>(null);
 
   // Draft state: seeded from the last session take's voice when available.
   const [draft, setDraft] = useState<DraftState | null>(null);
 
   const activeSession = useMemo(() => (activeSessionId ? sessions?.find((s) => s.id === activeSessionId) : undefined), [activeSessionId, sessions]);
 
-  const sessionGenerations = useMemo(() => (activeSession?.generations ?? []).map((genId) => generations?.find((g) => g.id === genId)).filter((g): g is NonNullable<typeof g> => Boolean(g)), [activeSession, generations]);
+  const activeSessionGenerationIds = useMemo(() => asStringArray(activeSession?.generations), [activeSession]);
+
+  const sessionGenerations = useMemo(() => activeSessionGenerationIds.map((genId) => generations?.find((g) => g.id === genId)).filter((g): g is NonNullable<typeof g> => Boolean(g)), [activeSessionGenerationIds, generations]);
+
+  // Solo take scoped to the current page session — the id of a generation produced *in this tab*.
+  // Null on initial load so reopening the app always lands on an empty composer.
+  const [currentSoloId, setCurrentSoloId] = useState<string | null>(null);
+
+  const currentSoloGeneration = useMemo(() => (currentSoloId ? generations?.find((g) => g.id === currentSoloId) : undefined), [currentSoloId, generations]);
+
+  // Bumped every time we reset the draft content. Included in the draft <Take>'s key so the
+  // Tiptap editor remounts with the fresh `initialContent` (Tiptap only reads `content:` on mount).
+  const [draftVersion, setDraftVersion] = useState(0);
+
+  // Whether to show the draft composer below the existing takes. Once at least one take exists,
+  // we hide the draft by default and show only the dashed "Ajouter une prise" prompt — clicking
+  // the prompt brings the composer back. Avoids the take + empty composer + dashed zone redundancy.
+  const [wantsDraft, setWantsDraft] = useState(true);
 
   // Sync session name with the loaded session
   useEffect(() => {
@@ -91,7 +130,9 @@ export function StudioPage() {
     saveTimerRef.current = setTimeout(async () => {
       try {
         setSaving(true);
-        await pb.collection('sessions').update(activeSession.id, { name: sessionNameDraft ?? '' });
+        await sessionCollection.update(activeSession.id, (draft) => {
+          draft.name = sessionNameDraft ?? '';
+        }).isPersisted.promise;
         setSavedAt(Date.now());
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to save session');
@@ -115,7 +156,7 @@ export function StudioPage() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    if (!draft || !draft.voiceId) {
+    if (!draft || !draft.voiceId || busyTakeId) {
       return;
     }
     const ssml = contentToSSML(draft.content);
@@ -123,6 +164,7 @@ export function StudioPage() {
       return;
     }
 
+    setBusyTakeId('draft');
     try {
       const { generationId } = await generate({
         voice: draft.voiceId,
@@ -131,43 +173,84 @@ export function StudioPage() {
         ssmlJson: draft.content as unknown as Record<string, unknown>,
       });
 
-      // Attach to active session
-      if (activeSessionId && generationId) {
-        const session = sessions?.find((s) => s.id === activeSessionId);
-        if (session) {
-          const nextGenerations = [...session.generations, generationId];
-          await pb.collection('sessions').update(activeSessionId, { generations: nextGenerations });
+      if (generationId) {
+        if (activeSessionId) {
+          // Already in session mode — append the new take.
+          const session = sessions?.find((s) => s.id === activeSessionId);
+          if (session) {
+            const nextGenerations = [...asStringArray(session.generations), generationId];
+            await sessionCollection.update(activeSessionId, (s) => {
+              s.generations = nextGenerations;
+            }).isPersisted.promise;
+          }
+        } else if (currentSoloId && user) {
+          // Auto-promote to session: the prior solo take is kept as #01, the new one as #02.
+          // We deliberately *don't* clear currentSoloId here — TanStack DB delivers the new
+          // session asynchronously, and clearing it before the session lands creates a render
+          // where mainGenerations is empty and the draft visually jumps to position #01.
+          // A useEffect clears it once the session is actually in the cache.
+          const created = await pb.collection('sessions').create({
+            name: '',
+            user: user.id,
+            generations: [currentSoloId, generationId],
+          });
+          setActiveSessionId(created.id);
+        } else {
+          // First generation of this page session — keep as solo above the composer.
+          setCurrentSoloId(generationId);
         }
       }
 
-      // Reset draft, keep voice + tuning for the next take
+      // Reset draft content, keep voice + tuning for the next take. Bumping the version forces
+      // the Tiptap editor to remount so the blank content actually shows. Hide the draft so the
+      // user can focus on tuning the just-generated take; the dashed prompt brings it back.
       setDraft((d) => (d ? { ...d, content: EMPTY_DOC } : d));
+      setDraftVersion((v) => v + 1);
+      setWantsDraft(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('generate.failed'));
+    } finally {
+      setBusyTakeId(null);
     }
-  }, [draft, generate, activeSessionId, sessions, t]);
+  }, [draft, busyTakeId, generate, activeSessionId, sessions, currentSoloId, user, t]);
 
   const handleRegenerate = useCallback(
-    async (take: TakeData, text: string) => {
+    async (take: TakeData, text: string, tuning: TakeTuning) => {
+      if (busyTakeId) {
+        return;
+      }
+      setBusyTakeId(take.id);
       try {
         const { generationId } = await generate({
           voice: take.voiceId,
           input: text,
-          tuning: take.tuning,
+          tuning,
           ssmlJson: take.content as unknown as Record<string, unknown>,
         });
-        if (activeSessionId && generationId) {
+        if (!generationId) {
+          return;
+        }
+        if (activeSessionId) {
+          // Session mode — swap the id at this slot.
           const session = sessions?.find((s) => s.id === activeSessionId);
           if (session) {
-            const nextGenerations = session.generations.map((id) => (id === take.id ? generationId : id));
-            await pb.collection('sessions').update(activeSessionId, { generations: nextGenerations });
+            const nextGenerations = asStringArray(session.generations).map((id) => (id === take.id ? generationId : id));
+            await sessionCollection.update(activeSessionId, (s) => {
+              s.generations = nextGenerations;
+            }).isPersisted.promise;
           }
+        } else if (currentSoloId === take.id) {
+          // Solo mode — point the solo slot at the freshly-generated row, otherwise the take
+          // card keeps playing the previous audio while the new one drifts into the bank.
+          setCurrentSoloId(generationId);
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t('generate.failed'));
+      } finally {
+        setBusyTakeId(null);
       }
     },
-    [generate, activeSessionId, sessions, t],
+    [busyTakeId, generate, activeSessionId, sessions, currentSoloId, t],
   );
 
   const handleDeleteTake = useCallback(
@@ -179,9 +262,11 @@ export function StudioPage() {
       if (!session) {
         return;
       }
-      const nextGenerations = session.generations.filter((id) => id !== takeId);
+      const nextGenerations = asStringArray(session.generations).filter((id) => id !== takeId);
       try {
-        await pb.collection('sessions').update(activeSessionId, { generations: nextGenerations });
+        await sessionCollection.update(activeSessionId, (s) => {
+          s.generations = nextGenerations;
+        }).isPersisted.promise;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to delete take');
       }
@@ -189,30 +274,30 @@ export function StudioPage() {
     [activeSessionId, sessions],
   );
 
-  const handleTuningChange = useCallback(async (take: TakeData, tuning: TakeTuning) => {
-    try {
-      await pb.collection('generations').update(take.id, { tuning, state: 'tuned' });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save tuning');
-    }
-  }, []);
-
   async function handleAddTake() {
+    // First and foremost: surface the draft composer.
+    setWantsDraft(true);
     if (activeSession) {
       return;
     }
-    const latest = generations?.find((g) => Boolean(g.audio));
-    if (!latest) {
-      toast.info(t('studio.draftHint'));
+    if (!currentSoloGeneration) {
+      // No solo to promote — empty state, the draft is now visible and ready.
       return;
     }
+    if (!user) {
+      toast.error('Not authenticated');
+      return;
+    }
+    // Promote the solo take into a fresh session so the next generation appends instead of
+    // replacing it.
     try {
       const created = await pb.collection('sessions').create({
         name: '',
-        user: pb.authStore.record?.id,
-        generations: [latest.id],
+        user: user.id,
+        generations: [currentSoloGeneration.id],
       });
       setActiveSessionId(created.id);
+      setCurrentSoloId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create session');
     }
@@ -251,16 +336,22 @@ export function StudioPage() {
   }
 
   // --- Derive takes from real data ------------------------------------------
-  const sessionTakes: TakeData[] = sessionGenerations.map((gen, i) => generationToTake(gen, i + 1));
-  const draftTake = makeDraftTake(sessionTakes.length + 1, draft);
-  const displayTakes = [...sessionTakes, draftTake];
-  const generatedCount = sessionTakes.length;
+  // Main column shows either the active session's takes, or — if no session — the take just
+  // produced in this page session as a single take above the draft composer.
+  const mainGenerations = activeSession ? sessionGenerations : currentSoloGeneration ? [currentSoloGeneration] : [];
+  const mainTakes: TakeData[] = mainGenerations.map((gen, i) => generationToTake(gen, i + 1));
+  const draftTake = makeDraftTake(mainTakes.length + 1, draftVersion, draft);
+  // Show the draft composer only on the empty state or when the user has explicitly asked for it
+  // (via "Ajouter une prise"). Avoids the redundant take + empty draft + dashed zone stack.
+  const showDraft = mainTakes.length === 0 || wantsDraft;
+  const displayTakes = showDraft ? [...mainTakes, draftTake] : mainTakes;
+  const generatedCount = mainTakes.length;
   const showSessionTitle = Boolean(activeSession);
 
-  // Bank: recent non-draft generations (skip ones already shown in the session column)
-  const sessionGenerationIds = new Set(activeSession?.generations ?? []);
+  // Bank: recent non-draft generations (skip ones already shown in the main column)
+  const mainGenerationIds = new Set(mainGenerations.map((g) => g.id));
   const bankEntries: BankEntry[] = (generations ?? [])
-    .filter((g) => g.audio && !sessionGenerationIds.has(g.id))
+    .filter((g) => g.audio && !mainGenerationIds.has(g.id))
     .slice(0, 30)
     .map((g) => {
       const voice = voices.find((v) => v.id === g.voice);
@@ -287,23 +378,32 @@ export function StudioPage() {
           <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
             {showSessionTitle && <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">{sessionNameDraft ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</h1>}
 
-            {!activeSession && sessionTakes.length === 0 && <EmptyState />}
+            {!activeSession && mainTakes.length === 0 && <EmptyState />}
 
             <ol className="space-y-4">
               {displayTakes.map((take) => {
                 const isCurrentDraft = take.state === 'draft';
                 const original = !isCurrentDraft ? generations?.find((g) => g.id === take.id) : undefined;
+                // Resolve voice → model → backend → tuning capabilities so we can disable
+                // sliders that wouldn't have any audible effect for the selected voice.
+                const voice = voices.find((v) => v.id === take.voiceId);
+                const modelEntry = voice ? catalog.find((m) => m.id === voice.model) : undefined;
+                const capabilities = getVoiceCapabilities(modelEntry?.backend);
                 return (
-                  <li key={take.id}>
+                  // Stable key by slot (not by generation id) so the Take instance survives a
+                  // regeneration — internal state like the open/close of the tuning + timeline
+                  // panels stays put while the underlying generation is swapped.
+                  <li key={isCurrentDraft ? `draft-${draftVersion}` : `slot-${take.orderIndex}`}>
                     <Take
                       take={take}
-                      isGenerating={isCurrentDraft ? isGenerating : false}
+                      isGenerating={busyTakeId === (isCurrentDraft ? 'draft' : take.id)}
+                      disabled={busyTakeId !== null && busyTakeId !== (isCurrentDraft ? 'draft' : take.id)}
+                      capabilities={capabilities}
                       onContentChange={isCurrentDraft ? handleDraftContentChange : undefined}
                       onVoiceChange={isCurrentDraft ? handleDraftVoiceChange : undefined}
                       onGenerate={isCurrentDraft ? handleGenerate : undefined}
-                      onRegenerate={!isCurrentDraft && original ? () => handleRegenerate(take, original.text) : undefined}
-                      onDelete={!isCurrentDraft ? () => handleDeleteTake(take.id) : undefined}
-                      onTuningChange={!isCurrentDraft ? (tuning) => handleTuningChange(take, tuning) : undefined}
+                      onRegenerate={!isCurrentDraft && original ? (tuning) => handleRegenerate(take, original.text, tuning) : undefined}
+                      onDelete={!isCurrentDraft && activeSession ? () => handleDeleteTake(take.id) : undefined}
                     />
                   </li>
                 );

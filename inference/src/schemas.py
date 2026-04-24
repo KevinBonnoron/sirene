@@ -13,6 +13,9 @@ class GenerateRequest(BaseModel):
     instruct_text: str | None = None
     instruct_gender: str | None = None
     speed: float = Field(default=1.0, ge=0.1, le=5.0)
+    # Generation-level noise/variation. Currently consumed only by Piper (overrides its
+    # static noise_scale). None means "use the backend's default".
+    noise_scale: float | None = Field(default=None, ge=0.0, le=2.0)
     language: str = "en"
 
 

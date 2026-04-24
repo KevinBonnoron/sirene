@@ -1,4 +1,4 @@
-import type { GenerateRequest } from '@sirene/shared';
+import type { GenerateRequest, GenerationAlignment } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
 import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
@@ -79,6 +79,10 @@ export const generationClient = universalClient(
       }
 
       return { audio: buildWav(chunks, totalBytes, sampleRate), generationId };
+    },
+
+    align(id: string): Promise<GenerationAlignment> {
+      return delegate.get<GenerationAlignment>(`/generations/${id}/align`);
     },
   })),
 );

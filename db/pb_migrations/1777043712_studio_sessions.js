@@ -112,7 +112,10 @@ migrate(
           required: false,
           cascadeDelete: false,
           collectionId: 'pbc_1512514359',
-          maxSelect: null,
+          // Large explicit maxSelect — PB 0.26 treats null/0 as single-select. The follow-up
+          // migration 1777118329_fix_sessions_generations_multi.js exists for installs that
+          // already applied this snapshot before the fix.
+          maxSelect: 999,
           minSelect: 0,
           presentable: false,
           hidden: false,

@@ -66,6 +66,9 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
   const options = (voice.options ?? {}) as Record<string, unknown>;
   const language = voice.language || 'en';
   const effectiveSpeed = body.tuning?.speedMultiplier ?? body.speed ?? 1;
+  // Map variationSeed (0..1, 0.5 default) to Piper's noise_scale (0.4..0.95). Other backends
+  // ignore the value — see `getVoiceCapabilities` on the shared side for what's actually wired.
+  const noiseScale = catalog.backend === 'piper' && typeof body.tuning?.variationSeed === 'number' ? 0.4 + Math.max(0, Math.min(1, body.tuning.variationSeed)) * 0.55 : undefined;
   const meta: GenerationMeta = {
     voice: body.voice,
     model: voice.model,
@@ -130,6 +133,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
         referenceCacheKey: cacheKey,
         referenceText,
         speed: effectiveSpeed,
+        noiseScale,
         language,
       },
       meta,
@@ -147,6 +151,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
       referenceAudio,
       referenceText,
       speed: effectiveSpeed,
+      noiseScale,
       language,
     },
     meta,

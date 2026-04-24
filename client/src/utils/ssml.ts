@@ -49,3 +49,22 @@ export function contentToSSML(doc: JSONContent): string {
 export function stripSSML(text: string): string {
   return text.replace(/<[^>]+>/g, '').replace(/\[[^\]]+\]/g, '');
 }
+
+/** Count words in a Tiptap document, ignoring effect nodes / SSML markers. */
+export function countWords(doc: JSONContent): number {
+  const plain = stripSSML(contentToSSML(doc)).trim();
+  if (!plain) {
+    return 0;
+  }
+  return plain.split(/\s+/).filter(Boolean).length;
+}
+
+const WORDS_PER_SECOND = 3;
+
+/** Rough seconds estimate from a word count, used for the draft "~0:03" hint. */
+export function estimateSpeechDuration(wordCount: number, speedMultiplier = 1): number {
+  if (!wordCount) {
+    return 0;
+  }
+  return wordCount / (WORDS_PER_SECOND * speedMultiplier);
+}

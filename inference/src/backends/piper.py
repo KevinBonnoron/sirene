@@ -157,8 +157,13 @@ class PiperBackend(TTSBackend):
         # Adjust length_scale for speed (higher speed = shorter length)
         length_scale = self._length_scale / params.speed
 
+        # Per-generation override for noise_scale (variation seed). Falls back to the
+        # backend default when unset so we don't change behaviour for callers that
+        # don't pass it.
+        noise_scale = params.noise_scale if params.noise_scale is not None else self._noise_scale
+
         scales = np.array(
-            [self._noise_scale, length_scale, self._noise_w],
+            [noise_scale, length_scale, self._noise_w],
             dtype=np.float32,
         )
 

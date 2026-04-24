@@ -5,16 +5,26 @@ import { z } from 'zod';
 import { config } from '../lib/config';
 import { type ElevenLabsRequest, generateElevenLabs } from '../lib/elevenlabs-client';
 import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest } from '../lib/inference-client';
-import { type OpenAITTSRequest, generateOpenAI } from '../lib/openai-tts-client';
+import { generateOpenAI, type OpenAITTSRequest } from '../lib/openai-tts-client';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
 import { generationRepository, voiceRepository, voiceSampleRepository } from '../repositories';
 import { modelService } from '../services';
 
+const tuningSchema = z
+  .object({
+    pitchShift: z.number().optional(),
+    speedMultiplier: z.number().optional(),
+    variationSeed: z.number().optional(),
+  })
+  .passthrough();
+
 const generateSchema = z.object({
   voice: z.string().min(1),
   input: z.string().min(1),
   speed: z.number().min(0.1).max(5).optional(),
+  tuning: tuningSchema.optional(),
+  ssmlJson: z.record(z.string(), z.any()).optional(),
 });
 
 type VoiceSample = { id: string; audio: string };
@@ -28,6 +38,9 @@ interface GenerationMeta {
   language: string;
   speed: number;
   user: string;
+  tuning?: z.infer<typeof tuningSchema>;
+  ssmlJson?: Record<string, unknown>;
+  generationId?: string;
 }
 
 async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: string): Promise<ResolvedGeneration | Response> {
@@ -52,7 +65,17 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
 
   const options = (voice.options ?? {}) as Record<string, unknown>;
   const language = voice.language || 'en';
-  const meta: GenerationMeta = { voice: body.voice, model: voice.model, text: body.input, language, speed: body.speed || 1, user: '' };
+  const effectiveSpeed = body.tuning?.speedMultiplier ?? body.speed ?? 1;
+  const meta: GenerationMeta = {
+    voice: body.voice,
+    model: voice.model,
+    text: body.input,
+    language,
+    speed: effectiveSpeed,
+    user: '',
+    tuning: body.tuning,
+    ssmlJson: body.ssmlJson,
+  };
 
   // ElevenLabs — direct API call, no inference service
   if (catalog.backend === 'elevenlabs') {
@@ -60,7 +83,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     if (!voiceId) {
       return Response.json({ message: 'ElevenLabs voice requires a preset voice ID. Edit the voice and select one.' }, { status: 400 });
     }
-    return { type: 'elevenlabs', elevenLabsRequest: { text: body.input, voiceId, speed: body.speed, userId }, meta };
+    return { type: 'elevenlabs', elevenLabsRequest: { text: body.input, voiceId, speed: effectiveSpeed, userId }, meta };
   }
 
   // OpenAI TTS — direct API call, no inference service
@@ -69,7 +92,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     if (!voiceId) {
       return Response.json({ message: 'OpenAI TTS voice requires a preset voice ID. Edit the voice and select one.' }, { status: 400 });
     }
-    return { type: 'openai', openAIRequest: { text: body.input, voiceId, speed: body.speed, userId }, meta };
+    return { type: 'openai', openAIRequest: { text: body.input, voiceId, speed: effectiveSpeed, userId }, meta };
   }
 
   const modelPath = catalog.id;
@@ -106,7 +129,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
         modelPath,
         referenceCacheKey: cacheKey,
         referenceText,
-        speed: body.speed,
+        speed: effectiveSpeed,
         language,
       },
       meta,
@@ -123,7 +146,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
       voicePath: presetVoice,
       referenceAudio,
       referenceText,
-      speed: body.speed,
+      speed: effectiveSpeed,
       language,
     },
     meta,
@@ -181,7 +204,29 @@ function buildWav(chunks: Uint8Array[], totalBytes: number, sampleRate: number):
   return wav;
 }
 
-async function accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate: number, meta: GenerationMeta) {
+async function preCreateGeneration(meta: GenerationMeta): Promise<string> {
+  const record = await generationRepository.create({
+    voice: meta.voice,
+    model: meta.model,
+    text: meta.text,
+    language: meta.language,
+    speed: meta.speed,
+    user: meta.user,
+    state: 'ready',
+    tuning: meta.tuning ?? null,
+    ssml_json: meta.ssmlJson ?? null,
+  });
+  return record.id;
+}
+
+async function finalizeGeneration(generationId: string, audio: ArrayBuffer | Buffer, duration: number, contentType: string, filename: string) {
+  const formData = new FormData();
+  formData.append('duration', String(Math.round(duration)));
+  formData.append('audio', new Blob([audio], { type: contentType }), filename);
+  await generationRepository.update(generationId, formData);
+}
+
+async function accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate: number, generationId: string) {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
@@ -201,31 +246,15 @@ async function accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate:
 
   const wavBuffer = buildWav(chunks, totalBytes, sampleRate);
   const duration = totalBytes / (2 * sampleRate);
-
-  const formData = new FormData();
-  formData.append('voice', meta.voice);
-  formData.append('model', meta.model);
-  formData.append('text', meta.text);
-  formData.append('language', meta.language);
-  formData.append('duration', String(Math.round(duration)));
-  formData.append('speed', String(meta.speed));
-  formData.append('user', meta.user);
-  formData.append('audio', new Blob([wavBuffer], { type: 'audio/wav' }), 'generation.wav');
-
-  await generationRepository.create(formData);
+  await finalizeGeneration(generationId, wavBuffer, duration, 'audio/wav', 'generation.wav');
 }
 
-async function saveGeneration(meta: GenerationMeta, audio: ArrayBuffer | Buffer, contentType: string, filename: string) {
-  const formData = new FormData();
-  formData.append('voice', meta.voice);
-  formData.append('model', meta.model);
-  formData.append('text', meta.text);
-  formData.append('language', meta.language);
-  formData.append('duration', '0');
-  formData.append('speed', String(meta.speed));
-  formData.append('user', meta.user);
-  formData.append('audio', new Blob([audio], { type: contentType }), filename);
-  await generationRepository.create(formData);
+async function cleanupFailedGeneration(generationId: string) {
+  try {
+    await generationRepository.delete(generationId);
+  } catch (err) {
+    console.error('[generate] Failed to clean up placeholder generation:', err);
+  }
 }
 
 export const generateRoutes = new Hono<AuthEnv>()
@@ -238,12 +267,19 @@ export const generateRoutes = new Hono<AuthEnv>()
     }
     resolved.meta.user = userId;
 
+    const generationId = await preCreateGeneration(resolved.meta);
+
+    async function finalize(audio: ArrayBuffer | Buffer, contentType: string, filename: string, duration: number) {
+      await finalizeGeneration(generationId, audio, duration, contentType, filename);
+    }
+
     if (resolved.type === 'elevenlabs') {
       try {
         const audioBuffer = await generateElevenLabs(resolved.elevenLabsRequest);
-        await saveGeneration(resolved.meta, audioBuffer, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg' } });
+        await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
+        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
+        await cleanupFailedGeneration(generationId);
         return c.json({ message: e instanceof Error ? e.message : 'ElevenLabs generation failed' }, 502);
       }
     }
@@ -251,25 +287,27 @@ export const generateRoutes = new Hono<AuthEnv>()
     if (resolved.type === 'openai') {
       try {
         const audioBuffer = await generateOpenAI(resolved.openAIRequest);
-        await saveGeneration(resolved.meta, audioBuffer, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg' } });
+        await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
+        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
+        await cleanupFailedGeneration(generationId);
         return c.json({ message: e instanceof Error ? e.message : 'OpenAI TTS generation failed' }, 502);
       }
     }
 
     try {
       const audioBuffer = await generateAudio(resolved.inferenceRequest);
-      await saveGeneration(resolved.meta, audioBuffer, 'audio/wav', 'generation.wav');
-      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav' } });
+      await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
+      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     } catch (e) {
       if (!(e instanceof CacheMissError) || !resolved.samples) {
+        await cleanupFailedGeneration(generationId);
         throw e;
       }
       const audioData = await fetchSamplesAsBase64(resolved.samples);
       const audioBuffer = await generateAudio({ ...resolved.inferenceRequest, referenceAudioData: audioData });
-      await saveGeneration(resolved.meta, audioBuffer, 'audio/wav', 'generation.wav');
-      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav' } });
+      await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
+      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     }
   })
   .post('/stream', zValidator('json', generateSchema), async (c) => {
@@ -281,13 +319,16 @@ export const generateRoutes = new Hono<AuthEnv>()
     }
     resolved.meta.user = userId;
 
+    const generationId = await preCreateGeneration(resolved.meta);
+
     // ElevenLabs: fall back to non-streaming
     if (resolved.type === 'elevenlabs') {
       try {
         const audioBuffer = await generateElevenLabs(resolved.elevenLabsRequest);
-        await saveGeneration(resolved.meta, audioBuffer, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg' } });
+        await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
+        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
+        await cleanupFailedGeneration(generationId);
         return c.json({ message: e instanceof Error ? e.message : 'ElevenLabs generation failed' }, 502);
       }
     }
@@ -296,9 +337,10 @@ export const generateRoutes = new Hono<AuthEnv>()
     if (resolved.type === 'openai') {
       try {
         const audioBuffer = await generateOpenAI(resolved.openAIRequest);
-        await saveGeneration(resolved.meta, audioBuffer, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg' } });
+        await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
+        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
+        await cleanupFailedGeneration(generationId);
         return c.json({ message: e instanceof Error ? e.message : 'OpenAI TTS generation failed' }, 502);
       }
     }
@@ -315,7 +357,10 @@ export const generateRoutes = new Hono<AuthEnv>()
       });
       const [clientStream, saveStream] = streamResponse.body.tee();
 
-      accumulateAndSave(saveStream, streamResponse.sampleRate, resolved.meta).catch((err) => console.error('[generate/stream] Failed to save generation:', err));
+      accumulateAndSave(saveStream, streamResponse.sampleRate, generationId).catch(async (err) => {
+        console.error('[generate/stream] Failed to save generation:', err);
+        await cleanupFailedGeneration(generationId);
+      });
 
       return new Response(clientStream, {
         headers: {
@@ -323,6 +368,7 @@ export const generateRoutes = new Hono<AuthEnv>()
           'X-Sample-Rate': String(streamResponse.sampleRate),
           'X-Channels': '1',
           'X-Bits-Per-Sample': '16',
+          'X-Generation-Id': generationId,
         },
       });
     } catch (e) {

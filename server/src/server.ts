@@ -13,7 +13,7 @@ modelService.startModelWatcher();
 
 export const app = new Hono()
   .basePath('/api')
-  .use(cors({ origin: '*', exposeHeaders: ['X-Sample-Rate', 'X-Channels', 'X-Bits-Per-Sample'] }))
+  .use(cors({ origin: '*', exposeHeaders: ['X-Sample-Rate', 'X-Channels', 'X-Bits-Per-Sample', 'X-Generation-Id'] }))
   .use(logger())
   .get('/openapi.json', (c) => c.json(spec))
   .get('/docs', apiReference({ spec: { url: '/api/openapi.json' } }))

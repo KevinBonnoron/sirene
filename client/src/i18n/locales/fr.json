@@ -234,7 +234,9 @@
     "allSessions": "Toutes les sessions",
     "noSessions": "Aucune session pour l'instant.",
     "takeCountSingular": "{{count}} prise",
-    "takeCountPlural": "{{count}} prises"
+    "takeCountPlural": "{{count}} prises",
+    "deleteSessionTitle": "Supprimer la session ?",
+    "deleteSessionDescription": "« {{name}} » sera supprimée. Les prises restent dans la banque — seul le regroupement est supprimé."
   },
   "settings": {
     "title": "Param\u00e8tres",

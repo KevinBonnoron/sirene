@@ -1,11 +1,12 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun } from 'lucide-react';
+import { AudioLines, Box, Clock, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, sessionCollection } from '@/collections';
+import { DeleteSessionAlert } from '@/components/studio/delete-session-alert';
 import { SessionsDialog } from '@/components/studio/sessions-dialog';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 
@@ -46,9 +47,16 @@ export function AppSidebar() {
   const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
   const { data: generations } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
   const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const recentSessions = (sessions ?? []).slice(0, RECENT_SESSIONS_LIMIT);
-  const hasMoreSessions = (sessions?.length ?? 0) > RECENT_SESSIONS_LIMIT;
+  // A session with a single take is indistinguishable from solo mode and clutters the list — hide
+  // those everywhere the list is user-facing. Same filter applies to the dialog.
+  const visibleSessions = (sessions ?? []).filter((s) => {
+    const ids = Array.isArray(s.generations) ? s.generations : typeof s.generations === 'string' ? [s.generations] : [];
+    return ids.length >= 2;
+  });
+  const recentSessions = visibleSessions.slice(0, RECENT_SESSIONS_LIMIT);
+  const hasMoreSessions = visibleSessions.length > RECENT_SESSIONS_LIMIT;
 
   const navItems = [
     { label: t('nav.studio'), href: '/', icon: Mic },
@@ -99,6 +107,20 @@ export function AppSidebar() {
                           <span className={!session.name?.trim() ? 'italic text-dim' : undefined}>{displayName}</span>
                         </Link>
                       </SidebarMenuButton>
+                      <SidebarMenuAction
+                        showOnHover
+                        onClick={(e) => {
+                          // The action is positioned over the link — stop the click from bubbling
+                          // through into navigation.
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPendingDelete({ id: session.id, name: displayName });
+                        }}
+                        aria-label={t('common.delete')}
+                        className="hover:text-destructive"
+                      >
+                        <Trash2 />
+                      </SidebarMenuAction>
                     </SidebarMenuItem>
                   );
                 })}
@@ -116,7 +138,8 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SessionsDialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen} sessions={sessions ?? []} generations={generations ?? []} activeSessionId={activeSessionId} />
+      <SessionsDialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen} sessions={visibleSessions} generations={generations ?? []} activeSessionId={activeSessionId} onRequestDelete={(id, name) => setPendingDelete({ id, name })} />
+      <DeleteSessionAlert pendingId={pendingDelete?.id ?? null} pendingName={pendingDelete?.name ?? ''} onClose={() => setPendingDelete(null)} />
       <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>

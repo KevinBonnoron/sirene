@@ -1,6 +1,6 @@
 import type { Generation, Session } from '@sirene/shared';
 import { useNavigate } from '@tanstack/react-router';
-import { Check, MessageSquareText } from 'lucide-react';
+import { Check, MessageSquareText, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,8 @@ interface Props {
   sessions: Session[];
   generations: Generation[];
   activeSessionId: string | null;
+  /** Triggered when the user clicks the trash icon. Parent owns the confirm dialog. */
+  onRequestDelete: (sessionId: string, displayName: string) => void;
 }
 
 function formatRelative(iso: string, now = new Date()): string {
@@ -41,7 +43,7 @@ function asStringArray(value: unknown): string[] {
   return [];
 }
 
-export function SessionsDialog({ open, onOpenChange, sessions, generations, activeSessionId }: Props) {
+export function SessionsDialog({ open, onOpenChange, sessions, generations, activeSessionId, onRequestDelete }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const handleSelect = (sessionId: string) => {
@@ -67,8 +69,8 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
               const isActive = session.id === activeSessionId;
               const displayName = session.name?.trim().length ? session.name : t('studio.untitledSession');
               return (
-                <li key={session.id}>
-                  <button type="button" onClick={() => handleSelect(session.id)} className={cn('flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors', isActive ? 'bg-accent-amber/10' : 'hover:bg-card')}>
+                <li key={session.id} className={cn('group/row relative flex items-stretch rounded-md transition-colors', isActive ? 'bg-accent-amber/10' : 'hover:bg-card')}>
+                  <button type="button" onClick={() => handleSelect(session.id)} className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2.5 text-left">
                     <MessageSquareText className={cn('size-4 shrink-0', isActive ? 'text-accent-amber' : 'text-dim')} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -81,6 +83,9 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
                       <span className="font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(session.updated)}</span>
                       <span className="font-mono text-[10px] tabular-nums text-dim">{t(ids.length === 1 ? 'studio.takeCountSingular' : 'studio.takeCountPlural', { count: ids.length })}</span>
                     </div>
+                  </button>
+                  <button type="button" onClick={() => onRequestDelete(session.id, displayName)} aria-label={t('common.delete')} className="flex shrink-0 items-center justify-center rounded-md px-2.5 text-dim opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100 focus-visible:opacity-100">
+                    <Trash2 className="size-3.5" />
                   </button>
                 </li>
               );

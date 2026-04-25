@@ -234,7 +234,9 @@
     "allSessions": "All sessions",
     "noSessions": "No sessions yet.",
     "takeCountSingular": "{{count}} take",
-    "takeCountPlural": "{{count}} takes"
+    "takeCountPlural": "{{count}} takes",
+    "deleteSessionTitle": "Delete session?",
+    "deleteSessionDescription": "\"{{name}}\" will be removed. The takes themselves stay in the bank — only the grouping is deleted."
   },
   "settings": {
     "title": "Settings",

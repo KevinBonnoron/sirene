@@ -49,14 +49,9 @@ export function AppSidebar() {
   const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
-  // A session with a single take is indistinguishable from solo mode and clutters the list — hide
-  // those everywhere the list is user-facing. Same filter applies to the dialog.
-  const visibleSessions = (sessions ?? []).filter((s) => {
-    const ids = Array.isArray(s.generations) ? s.generations : typeof s.generations === 'string' ? [s.generations] : [];
-    return ids.length >= 2;
-  });
-  const recentSessions = visibleSessions.slice(0, RECENT_SESSIONS_LIMIT);
-  const hasMoreSessions = visibleSessions.length > RECENT_SESSIONS_LIMIT;
+  const allSessions = sessions ?? [];
+  const recentSessions = allSessions.slice(0, RECENT_SESSIONS_LIMIT);
+  const hasMoreSessions = allSessions.length > RECENT_SESSIONS_LIMIT;
 
   const navItems = [
     { label: t('nav.studio'), href: '/', icon: Mic },
@@ -138,7 +133,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SessionsDialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen} sessions={visibleSessions} generations={generations ?? []} activeSessionId={activeSessionId} onRequestDelete={(id, name) => setPendingDelete({ id, name })} />
+      <SessionsDialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen} sessions={allSessions} generations={generations ?? []} activeSessionId={activeSessionId} onRequestDelete={(id, name) => setPendingDelete({ id, name })} />
       <DeleteSessionAlert pendingId={pendingDelete?.id ?? null} pendingName={pendingDelete?.name ?? ''} onClose={() => setPendingDelete(null)} />
       <SidebarFooter className="p-2">
         <SidebarMenu>

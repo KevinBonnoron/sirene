@@ -9,9 +9,12 @@ interface Props {
   saved?: boolean;
   saving?: boolean;
   takeCount: number;
+  /** True once the user has committed to session mode — drives the breadcrumb + title editor.
+   * Decoupled from takeCount because a fresh session can still be empty (just promoted from solo). */
+  inSession: boolean;
 }
 
-export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, saving = false, takeCount }: Props) {
+export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, saving = false, takeCount, inSession }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(sessionName ?? '');
@@ -34,7 +37,7 @@ export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, s
     setEditing(false);
   }
 
-  const hasSession = takeCount >= 2;
+  const hasSession = inSession;
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/70 px-3 backdrop-blur-sm sm:gap-3 sm:px-4">

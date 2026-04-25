@@ -418,7 +418,7 @@ export function StudioPage() {
     return (
       <div className="flex h-svh overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <StudioTopbar sessionName={null} onSessionNameChange={() => {}} saved takeCount={0} />
+          <StudioTopbar sessionName={null} onSessionNameChange={() => {}} saved takeCount={0} inSession={false} />
           <main className="custom-scrollbar flex-1 overflow-y-auto">
             <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
               <NoVoicesState />
@@ -474,7 +474,7 @@ export function StudioPage() {
   return (
     <div className="flex h-svh overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <StudioTopbar sessionName={showSessionTitle ? sessionNameDraft : null} onSessionNameChange={setSessionNameDraft} saving={saving} saved={savedFeedback || !saving} takeCount={generatedCount} />
+        <StudioTopbar sessionName={showSessionTitle ? sessionNameDraft : null} onSessionNameChange={setSessionNameDraft} saving={saving} saved={savedFeedback || !saving} takeCount={generatedCount} inSession={showSessionTitle} />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>

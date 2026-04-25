@@ -14,8 +14,11 @@ import { useModels } from '@/hooks/use-models';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { exportSessionAsZip } from '@/utils/export-session';
 import { contentToSSML } from '@/utils/ssml';
+import { DeleteSessionAlert } from './delete-session-alert';
 import { generationToTake } from './generation-to-take';
+import { ShareSessionDialog } from './share-session-dialog';
 import { StudioTopbar } from './studio-topbar';
 import { Take, type TakeData, type TakeTuning } from './take';
 import { BANK_DRAG_MIME, type BankEntry, TakeBank } from './take-bank';
@@ -113,6 +116,8 @@ export function StudioPage() {
   // Bank → document drag-and-drop state. Counter-based to handle nested dragenter/leave events
   // without the highlight flickering as the cursor moves over inner elements.
   const [bankDragDepth, setBankDragDepth] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Sync session name with the loaded session
   useEffect(() => {
@@ -474,7 +479,24 @@ export function StudioPage() {
   return (
     <div className="flex h-svh overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <StudioTopbar sessionName={showSessionTitle ? sessionNameDraft : null} onSessionNameChange={setSessionNameDraft} saving={saving} saved={savedFeedback || !saving} takeCount={generatedCount} inSession={showSessionTitle} />
+        <StudioTopbar
+          sessionName={showSessionTitle ? sessionNameDraft : null}
+          onSessionNameChange={setSessionNameDraft}
+          saving={saving}
+          saved={savedFeedback || !saving}
+          takeCount={generatedCount}
+          inSession={showSessionTitle}
+          isPublic={Boolean(activeSession?.public)}
+          onShare={activeSession ? () => setShareOpen(true) : undefined}
+          onExport={
+            activeSession
+              ? () => {
+                  exportSessionAsZip({ session: activeSession, generations: sessionGenerations, voices }).catch((err) => toast.error(err instanceof Error ? err.message : t('studio.exportFailed')));
+                }
+              : undefined
+          }
+          onDelete={activeSession ? () => setPendingDelete({ id: activeSession.id, name: activeSession.name?.trim().length ? activeSession.name : t('studio.untitledSession') }) : undefined}
+        />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>
@@ -529,6 +551,9 @@ export function StudioPage() {
       </div>
 
       {isDesktop && <TakeBank entries={bankEntries} />}
+
+      <ShareSessionDialog open={shareOpen} onOpenChange={setShareOpen} session={activeSession ?? null} />
+      <DeleteSessionAlert pendingId={pendingDelete?.id ?? null} pendingName={pendingDelete?.name ?? ''} onClose={() => setPendingDelete(null)} />
     </div>
   );
 }

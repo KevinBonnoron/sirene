@@ -1,7 +1,8 @@
-import { Check, ChevronRight, Download, MoreHorizontal, Share2 } from 'lucide-react';
+import { Check, ChevronRight, Download, Globe, MoreHorizontal, Pencil, Share2, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Props {
   sessionName: string | null;
@@ -12,9 +13,14 @@ interface Props {
   /** True once the user has committed to session mode — drives the breadcrumb + title editor.
    * Decoupled from takeCount because a fresh session can still be empty (just promoted from solo). */
   inSession: boolean;
+  /** Whether the current session is published — drives the green Globe pill next to Share. */
+  isPublic?: boolean;
+  onShare?: () => void;
+  onExport?: () => void;
+  onDelete?: () => void;
 }
 
-export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, saving = false, takeCount, inSession }: Props) {
+export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, saving = false, takeCount, inSession, isPublic, onShare, onExport, onDelete }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(sessionName ?? '');
@@ -37,14 +43,12 @@ export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, s
     setEditing(false);
   }
 
-  const hasSession = inSession;
-
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/70 px-3 backdrop-blur-sm sm:gap-3 sm:px-4">
       {/* Breadcrumb */}
       <nav className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
         <span>{t('studio.breadcrumbStudio')}</span>
-        {hasSession && (
+        {inSession && (
           <>
             <ChevronRight className="size-3" />
             <span className="hidden sm:inline">{t('studio.breadcrumbSession')}</span>
@@ -53,7 +57,7 @@ export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, s
       </nav>
 
       {/* Title (only visible once we have a session) */}
-      {hasSession && (
+      {inSession && (
         <>
           <span className="hidden shrink-0 text-muted-foreground sm:inline">·</span>
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -96,22 +100,49 @@ export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, s
       )}
 
       {/* Right actions */}
-      <div className={`flex shrink-0 items-center gap-1 ${hasSession ? '' : 'ml-auto'}`}>
-        {takeCount > 0 && (
+      <div className={`flex shrink-0 items-center gap-1 ${inSession ? '' : 'ml-auto'}`}>
+        {inSession && takeCount > 0 && (
           <>
-            <Button variant="ghost" size="sm" className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.share')}>
-              <Share2 className="size-3.5" />
+            <Button variant="ghost" size="sm" disabled={!onShare} onClick={onShare} className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.share')}>
+              {isPublic ? <Globe className="size-3.5 text-accent-amber" /> : <Share2 className="size-3.5" />}
               <span className="hidden sm:inline">{t('studio.share')}</span>
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.export')}>
+            <Button variant="ghost" size="sm" disabled={!onExport} onClick={onExport} className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.export')}>
               <Download className="size-3.5" />
               <span className="hidden sm:inline">{t('studio.export')}</span>
             </Button>
           </>
         )}
-        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
-          <MoreHorizontal className="size-4" />
-        </Button>
+        {inSession && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t('studio.moreActions')}>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => setEditing(true)}>
+                <Pencil className="size-3.5" />
+                {t('studio.rename')}
+              </DropdownMenuItem>
+              {onExport && takeCount > 0 && (
+                <DropdownMenuItem onSelect={onExport}>
+                  <Download className="size-3.5" />
+                  {t('studio.exportZip')}
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+                    <Trash2 className="size-3.5" />
+                    {t('common.delete')}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );

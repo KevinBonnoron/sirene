@@ -1,6 +1,6 @@
 import { getVoiceCapabilities } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import type { Editor, JSONContent } from '@tiptap/core';
 import { AudioLines, Plus, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { contentToSSML } from '@/utils/ssml';
 import { generationToTake } from './generation-to-take';
-import { SessionsDialog } from './sessions-dialog';
 import { StudioTopbar } from './studio-topbar';
 import { Take, type TakeData, type TakeTuning } from './take';
 import { BANK_DRAG_MIME, type BankEntry, TakeBank } from './take-bank';
@@ -68,7 +67,19 @@ export function StudioPage() {
   const { generate } = useGenerate();
   const { catalog } = useModels();
 
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  // Active session id is URL-driven (`?session=<id>`) so the AppSidebar's recent-sessions list
+  // can switch sessions just by linking. setActiveSessionId is a navigation helper that keeps
+  // the rest of the page logic readable.
+  const navigate = useNavigate({ from: '/' });
+  const search = useSearch({ from: '/_app/' });
+  const activeSessionId = search.session ?? null;
+  const setActiveSessionId = useCallback(
+    (id: string | null) => {
+      navigate({ search: (prev) => ({ ...prev, session: id ?? undefined }), replace: true });
+    },
+    [navigate],
+  );
+
   const [sessionNameDraft, setSessionNameDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(0);
@@ -102,7 +113,6 @@ export function StudioPage() {
   // Bank → document drag-and-drop state. Counter-based to handle nested dragenter/leave events
   // without the highlight flickering as the cursor moves over inner elements.
   const [bankDragDepth, setBankDragDepth] = useState(0);
-  const [sessionsOpen, setSessionsOpen] = useState(false);
 
   // Sync session name with the loaded session
   useEffect(() => {
@@ -219,7 +229,7 @@ export function StudioPage() {
     } finally {
       setBusyTakeId(null);
     }
-  }, [draft, busyTakeId, generate, activeSessionId, sessions, currentSoloId, user, t]);
+  }, [draft, busyTakeId, generate, activeSessionId, sessions, currentSoloId, user, t, setActiveSessionId]);
 
   const handleRegenerate = useCallback(
     async (take: TakeData, text: string, tuning: TakeTuning) => {
@@ -327,15 +337,8 @@ export function StudioPage() {
       setCurrentSoloId(generationId);
       setWantsDraft(false);
     },
-    [activeSessionId, sessions, currentSoloId, user],
+    [activeSessionId, sessions, currentSoloId, user, setActiveSessionId],
   );
-
-  const handleSwitchSession = useCallback((sessionId: string) => {
-    setActiveSessionId(sessionId);
-    setCurrentSoloId(null);
-    setWantsDraft(false);
-    setSessionsOpen(false);
-  }, []);
 
   // Drop-zone handlers. Use a depth counter (not a boolean) because dragenter/leave fire on every
   // child element the cursor crosses, and a naive boolean toggles to false the moment the cursor
@@ -525,9 +528,7 @@ export function StudioPage() {
         </main>
       </div>
 
-      {isDesktop && <TakeBank entries={bankEntries} onAllSessionsClick={() => setSessionsOpen(true)} />}
-
-      <SessionsDialog open={sessionsOpen} onOpenChange={setSessionsOpen} sessions={sessions ?? []} generations={generations ?? []} activeSessionId={activeSessionId} onSelect={handleSwitchSession} />
+      {isDesktop && <TakeBank entries={bankEntries} />}
     </div>
   );
 }

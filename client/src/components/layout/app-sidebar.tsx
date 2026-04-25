@@ -1,9 +1,16 @@
+import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, LogOut, Mic, Moon, Settings, Sun } from 'lucide-react';
+import { AudioLines, Box, Clock, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { generationCollection, sessionCollection } from '@/collections';
+import { SessionsDialog } from '@/components/studio/sessions-dialog';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
+
+/** How many recent sessions to show inline in the sidebar before falling back to the dialog. */
+const RECENT_SESSIONS_LIMIT = 5;
 
 function ThemeToggleButton() {
   const { t } = useTranslation();
@@ -32,6 +39,16 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const router = useRouterState();
   const currentPath = router.location.pathname;
+  // Active session id is in the URL search (`?session=<id>`). Read it loosely so we don't have to
+  // type-narrow on the route — the sidebar lives on every page.
+  const activeSessionId = (router.location.search as { session?: string } | undefined)?.session ?? null;
+
+  const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
+  const { data: generations } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
+  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
+
+  const recentSessions = (sessions ?? []).slice(0, RECENT_SESSIONS_LIMIT);
+  const hasMoreSessions = (sessions?.length ?? 0) > RECENT_SESSIONS_LIMIT;
 
   const navItems = [
     { label: t('nav.studio'), href: '/', icon: Mic },
@@ -64,7 +81,42 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Recent sessions — hidden when sidebar collapses to icons (no room for the list). */}
+        {recentSessions.length > 0 && (
+          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            <SidebarGroupLabel>{t('nav.sessions')}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {recentSessions.map((session) => {
+                  const isActive = currentPath === '/' && session.id === activeSessionId;
+                  const displayName = session.name?.trim().length ? session.name : t('studio.untitledSession');
+                  return (
+                    <SidebarMenuItem key={session.id}>
+                      <SidebarMenuButton asChild isActive={isActive} tooltip={displayName}>
+                        <Link to="/" search={{ session: session.id }}>
+                          <MessageSquareText className="size-4" />
+                          <span className={!session.name?.trim() ? 'italic text-dim' : undefined}>{displayName}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+                {hasMoreSessions && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setSessionsDialogOpen(true)} tooltip={t('studio.allSessions')} className="text-muted-foreground">
+                      <MoreHorizontal className="size-4" />
+                      <span>{t('studio.allSessions')}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
+
+      <SessionsDialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen} sessions={sessions ?? []} generations={generations ?? []} activeSessionId={activeSessionId} />
       <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>

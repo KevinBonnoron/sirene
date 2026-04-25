@@ -1,4 +1,5 @@
 import type { Generation, Session } from '@sirene/shared';
+import { useNavigate } from '@tanstack/react-router';
 import { Check, MessageSquareText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,7 +11,6 @@ interface Props {
   sessions: Session[];
   generations: Generation[];
   activeSessionId: string | null;
-  onSelect: (sessionId: string) => void;
 }
 
 function formatRelative(iso: string, now = new Date()): string {
@@ -41,8 +41,13 @@ function asStringArray(value: unknown): string[] {
   return [];
 }
 
-export function SessionsDialog({ open, onOpenChange, sessions, generations, activeSessionId, onSelect }: Props) {
+export function SessionsDialog({ open, onOpenChange, sessions, generations, activeSessionId }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const handleSelect = (sessionId: string) => {
+    navigate({ to: '/', search: { session: sessionId }, replace: true });
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,7 +68,7 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
               const displayName = session.name?.trim().length ? session.name : t('studio.untitledSession');
               return (
                 <li key={session.id}>
-                  <button type="button" onClick={() => onSelect(session.id)} className={cn('flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors', isActive ? 'bg-accent-amber/10' : 'hover:bg-card')}>
+                  <button type="button" onClick={() => handleSelect(session.id)} className={cn('flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors', isActive ? 'bg-accent-amber/10' : 'hover:bg-card')}>
                     <MessageSquareText className={cn('size-4 shrink-0', isActive ? 'text-accent-amber' : 'text-dim')} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

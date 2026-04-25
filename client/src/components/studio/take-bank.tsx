@@ -1,4 +1,4 @@
-import { ArrowRight, GripVertical, Pause, Play, Sparkles } from 'lucide-react';
+import { GripVertical, Pause, Play, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
@@ -22,7 +22,6 @@ export const BANK_DRAG_MIME = 'application/x-sirene-bank-id';
 
 interface Props {
   entries: BankEntry[];
-  onAllSessionsClick?: () => void;
 }
 
 function formatRelative(date: Date, now = new Date()): string {
@@ -43,7 +42,7 @@ function formatRelative(date: Date, now = new Date()): string {
   return date.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
 }
 
-export function TakeBank({ entries, onAllSessionsClick }: Props) {
+export function TakeBank({ entries }: Props) {
   const { t } = useTranslation();
 
   return (
@@ -67,13 +66,6 @@ export function TakeBank({ entries, onAllSessionsClick }: Props) {
           ))}
         </ul>
       )}
-
-      <footer className="shrink-0 border-t border-border-subtle p-3">
-        <button type="button" onClick={onAllSessionsClick} className={cn('flex w-full items-center justify-between rounded-md px-3 py-2 text-xs transition-colors', 'text-muted-foreground hover:bg-card hover:text-foreground')}>
-          <span>{t('studio.allSessions')}</span>
-          <ArrowRight className="size-3.5 shrink-0" />
-        </button>
-      </footer>
     </aside>
   );
 }

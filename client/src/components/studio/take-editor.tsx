@@ -17,12 +17,20 @@ export interface TakeEditorHandle {
   insertEffect: (effect: string, label?: string) => void;
 }
 
+/** Active SSML marks at the current cursor / selection. Drives toolbar toggle visuals. */
+export interface ActiveMarks {
+  slow: boolean;
+  fast: boolean;
+  emphasis: boolean;
+}
+
 interface Props {
   ref?: React.Ref<TakeEditorHandle>;
   initialContent?: JSONContent;
   placeholder?: string;
   editable?: boolean;
   onChange?: (editor: Editor) => void;
+  onActiveChange?: (active: ActiveMarks) => void;
   onSubmit?: () => void;
   className?: string;
 }
@@ -30,9 +38,11 @@ interface Props {
 // Editorial body styling per design handoff (`d6-ed`): Fraunces 19px / line-height 1.75.
 const EDITOR_CLASSES = '[&_.tiptap]:font-serif [&_.tiptap]:text-[19px] [&_.tiptap]:leading-[1.75] [&_.tiptap]:font-normal [&_.tiptap]:outline-none [&_.tiptap_p]:my-0';
 
-export function TakeEditor({ ref, initialContent, placeholder, editable = true, onChange, onSubmit, className }: Props) {
+export function TakeEditor({ ref, initialContent, placeholder, editable = true, onChange, onActiveChange, onSubmit, className }: Props) {
   const submitRef = useRef(onSubmit);
   submitRef.current = onSubmit;
+  const activeChangeRef = useRef(onActiveChange);
+  activeChangeRef.current = onActiveChange;
 
   const editor = useEditor({
     editable,
@@ -56,7 +66,14 @@ export function TakeEditor({ ref, initialContent, placeholder, editable = true, 
       EffectNode,
     ],
     content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
-    onTransaction: ({ editor }) => onChange?.(editor),
+    onTransaction: ({ editor }) => {
+      onChange?.(editor);
+      activeChangeRef.current?.({
+        slow: editor.isActive('speedMark', { rate: 0.75 }),
+        fast: editor.isActive('speedMark', { rate: 1.25 }),
+        emphasis: editor.isActive('toneMark', { tone: 'emphasis' }),
+      });
+    },
     editorProps: {
       attributes: { class: 'outline-none font-serif' },
       handleKeyDown: (_view, event) => {

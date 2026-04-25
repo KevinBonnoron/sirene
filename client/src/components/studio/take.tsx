@@ -10,10 +10,12 @@ import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { cn } from '@/lib/utils';
 import { countWords, estimateSpeechDuration } from '@/utils/ssml';
 import { type PitchPoint, ProsodyTimeline } from './prosody-timeline';
-import { TakeEditor, type TakeEditorHandle } from './take-editor';
+import { type ActiveMarks, TakeEditor, type TakeEditorHandle } from './take-editor';
 import { TakeQuickTuning } from './take-quick-tuning';
 import { TakeVoicePicker } from './take-voice-picker';
 import { TakeWaveform } from './take-waveform';
+
+const NO_ACTIVE_MARKS: ActiveMarks = { slow: false, fast: false, emphasis: false };
 
 export type TakeState = 'draft' | 'ready' | 'tuned';
 
@@ -77,6 +79,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   const [alignLoading, setAlignLoading] = useState(false);
   const { isPlaying, progress, toggle } = useAudioPlayback(take.audioUrl);
   const editorRef = useRef<TakeEditorHandle>(null);
+  const [activeMarks, setActiveMarks] = useState<ActiveMarks>(NO_ACTIVE_MARKS);
 
   // Local tuning draft — changes are uncommitted until regenerate. We reset only when the
   // underlying generation id swaps (i.e. a new row landed in this slot). Watching `take.tuning`
@@ -181,7 +184,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
 
       {/* Body */}
       <div className="px-4 pt-3 pb-2 sm:px-5">
-        <TakeEditor ref={editorRef} key={take.id} initialContent={take.content} editable={isDraft && !isGenerating} placeholder={isDraft ? t('studio.composerPlaceholder') : ''} onChange={onContentChange} onSubmit={onGenerate} className={isDraft ? 'min-h-[34px]' : ''} />
+        <TakeEditor ref={editorRef} key={take.id} initialContent={take.content} editable={isDraft && !isGenerating} placeholder={isDraft ? t('studio.composerPlaceholder') : ''} onChange={onContentChange} onActiveChange={setActiveMarks} onSubmit={onGenerate} className={isDraft ? 'min-h-[34px]' : ''} />
       </div>
 
       {/* Transport — play button + waveform + time (no top border, body flows into transport) */}
@@ -256,6 +259,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
             content={take.content}
             speedMultiplier={localTuning.speedMultiplier}
             isBusy={Boolean(isGenerating || disabled)}
+            activeMarks={activeMarks}
             onInsertEffect={(effect, label) => editorRef.current?.insertEffect(effect, label)}
             onToggleSpeed={(rate) => editorRef.current?.toggleSpeed(rate)}
             onToggleTone={(tone) => editorRef.current?.toggleTone(tone)}
@@ -281,19 +285,25 @@ interface DraftToolbarProps {
   content: JSONContent;
   speedMultiplier: number;
   isBusy: boolean;
+  activeMarks: ActiveMarks;
   onInsertEffect: (effect: string, label?: string) => void;
   onToggleSpeed: (rate: number) => void;
   onToggleTone: (tone: string) => void;
   onGenerate?: () => void;
 }
 
-function DraftToolbar({ content, speedMultiplier, isBusy, onInsertEffect, onToggleSpeed, onToggleTone, onGenerate }: DraftToolbarProps) {
+function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertEffect, onToggleSpeed, onToggleTone, onGenerate }: DraftToolbarProps) {
   const { t } = useTranslation();
   const wordCount = countWords(content);
   const estimated = estimateSpeechDuration(wordCount, speedMultiplier);
   const estimatedLabel = wordCount === 0 ? '' : `${wordCount} ${t(wordCount === 1 ? 'studio.wordCountSingular' : 'studio.wordCountPlural')} · ~${formatTime(estimated)}`;
 
   const ghostBtn = 'flex items-center gap-1.5 rounded px-2 py-1 text-[11px] transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50';
+  // Active styling: tinted background + ring in the button's accent colour, mirroring the chip
+  // colour the user sees in the editor. Keeps the relationship "this button = this chip" obvious.
+  const activeSky = 'bg-accent-sky/15 ring-1 ring-inset ring-accent-sky/40';
+  const activeRust = 'bg-accent-rust/15 ring-1 ring-inset ring-accent-rust/40';
+  const activeSage = 'bg-accent-sage/15 ring-1 ring-inset ring-accent-sage/40';
 
   // SSML mark buttons need to fire on mousedown (with preventDefault) so the editor doesn't
   // lose focus / collapse its selection before the mark is applied. onClick fires *after* the
@@ -315,33 +325,36 @@ function DraftToolbar({ content, speedMultiplier, isBusy, onInsertEffect, onTogg
       <button
         type="button"
         disabled={isBusy}
+        aria-pressed={activeMarks.slow}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleSpeed(0.75);
         }}
-        className={cn(ghostBtn, 'text-accent-sky')}
+        className={cn(ghostBtn, 'text-accent-sky', activeMarks.slow && activeSky)}
       >
         {t('studio.toolbarSlow')}
       </button>
       <button
         type="button"
         disabled={isBusy}
+        aria-pressed={activeMarks.fast}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleSpeed(1.25);
         }}
-        className={cn(ghostBtn, 'text-accent-rust')}
+        className={cn(ghostBtn, 'text-accent-rust', activeMarks.fast && activeRust)}
       >
         {t('studio.toolbarFast')}
       </button>
       <button
         type="button"
         disabled={isBusy}
+        aria-pressed={activeMarks.emphasis}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleTone('emphasis');
         }}
-        className={cn(ghostBtn, 'text-accent-sage')}
+        className={cn(ghostBtn, 'text-accent-sage', activeMarks.emphasis && activeSage)}
       >
         {t('studio.toolbarEmphasis')}
       </button>

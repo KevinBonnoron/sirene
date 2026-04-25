@@ -230,7 +230,10 @@
     "bankTitle": "Banque de prises",
     "bankEmpty": "Aucune prise pour l'instant",
     "bankEmptyHint": "Vos g\u00e9n\u00e9rations appara\u00eetront ici et pourront \u00eatre gliss\u00e9es vers le document.",
-    "allSessions": "Toutes les sessions"
+    "allSessions": "Toutes les sessions",
+    "noSessions": "Aucune session pour l'instant.",
+    "takeCountSingular": "{{count}} prise",
+    "takeCountPlural": "{{count}} prises"
   },
   "settings": {
     "title": "Param\u00e8tres",

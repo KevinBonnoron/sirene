@@ -230,7 +230,10 @@
     "bankTitle": "Take bank",
     "bankEmpty": "No takes yet",
     "bankEmptyHint": "Your generations will appear here and can be dragged into the document.",
-    "allSessions": "All sessions"
+    "allSessions": "All sessions",
+    "noSessions": "No sessions yet.",
+    "takeCountSingular": "{{count}} take",
+    "takeCountPlural": "{{count}} takes"
   },
   "settings": {
     "title": "Settings",

@@ -16,8 +16,13 @@ export interface BankEntry {
   audioUrl?: string;
 }
 
+/** Custom MIME type used for the bank → document drag-and-drop. Picked so a stray drag onto the
+ * editor (or vice versa) won't accidentally trigger our drop logic via `text/plain`. */
+export const BANK_DRAG_MIME = 'application/x-sirene-bank-id';
+
 interface Props {
   entries: BankEntry[];
+  onAllSessionsClick?: () => void;
 }
 
 function formatRelative(date: Date, now = new Date()): string {
@@ -38,7 +43,7 @@ function formatRelative(date: Date, now = new Date()): string {
   return date.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
 }
 
-export function TakeBank({ entries }: Props) {
+export function TakeBank({ entries, onAllSessionsClick }: Props) {
   const { t } = useTranslation();
 
   return (
@@ -64,7 +69,7 @@ export function TakeBank({ entries }: Props) {
       )}
 
       <footer className="shrink-0 border-t border-border-subtle p-3">
-        <button type="button" className={cn('flex w-full items-center justify-between rounded-md px-3 py-2 text-xs transition-colors', 'text-muted-foreground hover:bg-card hover:text-foreground')}>
+        <button type="button" onClick={onAllSessionsClick} className={cn('flex w-full items-center justify-between rounded-md px-3 py-2 text-xs transition-colors', 'text-muted-foreground hover:bg-card hover:text-foreground')}>
           <span>{t('studio.allSessions')}</span>
           <ArrowRight className="size-3.5 shrink-0" />
         </button>
@@ -76,8 +81,16 @@ export function TakeBank({ entries }: Props) {
 function BankCard({ entry, seed }: { entry: BankEntry; seed: number }) {
   const { isPlaying, progress, toggle } = useAudioPlayback(entry.audioUrl);
 
+  // Custom MIME carries the generation id; `text/plain` is set as a fallback so OS-level drop
+  // targets (terminals, text fields outside the app) get something legible if the user drops there.
+  const handleDragStart = (e: React.DragEvent<HTMLLIElement>) => {
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData(BANK_DRAG_MIME, entry.id);
+    e.dataTransfer.setData('text/plain', entry.text);
+  };
+
   return (
-    <li draggable className={cn('group flex w-full cursor-grab flex-col gap-2 overflow-hidden rounded-md border border-border-subtle bg-card p-2.5 transition-colors', 'hover:border-border hover:bg-card-elevated active:cursor-grabbing')}>
+    <li draggable onDragStart={handleDragStart} className={cn('group flex w-full cursor-grab flex-col gap-2 overflow-hidden rounded-md border border-border-subtle bg-card p-2.5 transition-colors', 'hover:border-border hover:bg-card-elevated active:cursor-grabbing')}>
       <div className="flex min-w-0 items-center gap-2">
         <GripVertical className="size-3 shrink-0 text-dim opacity-0 transition-opacity group-hover:opacity-100" />
         <Avatar className="size-5 shrink-0">

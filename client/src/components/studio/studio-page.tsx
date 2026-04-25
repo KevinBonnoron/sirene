@@ -12,12 +12,14 @@ import { useGenerate } from '@/hooks/use-generate';
 import { useIsDesktop, useIsMobile } from '@/hooks/use-mobile';
 import { useModels } from '@/hooks/use-models';
 import { pb } from '@/lib/pocketbase';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { contentToSSML } from '@/utils/ssml';
 import { generationToTake } from './generation-to-take';
+import { SessionsDialog } from './sessions-dialog';
 import { StudioTopbar } from './studio-topbar';
 import { Take, type TakeData, type TakeTuning } from './take';
-import { type BankEntry, TakeBank } from './take-bank';
+import { BANK_DRAG_MIME, type BankEntry, TakeBank } from './take-bank';
 
 interface DraftState {
   voiceId: string;
@@ -96,6 +98,11 @@ export function StudioPage() {
   // we hide the draft by default and show only the dashed "Ajouter une prise" prompt — clicking
   // the prompt brings the composer back. Avoids the take + empty composer + dashed zone redundancy.
   const [wantsDraft, setWantsDraft] = useState(true);
+
+  // Bank → document drag-and-drop state. Counter-based to handle nested dragenter/leave events
+  // without the highlight flickering as the cursor moves over inner elements.
+  const [bankDragDepth, setBankDragDepth] = useState(0);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
 
   // Sync session name with the loaded session
   useEffect(() => {
@@ -274,6 +281,98 @@ export function StudioPage() {
     [activeSessionId, sessions],
   );
 
+  // Append a generation from the bank to the document. Mirrors the three-state logic of
+  // `handleGenerate`: append in session mode, promote solo→session, or set as solo.
+  const handleDropFromBank = useCallback(
+    async (generationId: string) => {
+      // Defensive — bank already filters out generations in the active session, but a stale
+      // drag (snapshotted before a state update) could still try to add a duplicate.
+      if (activeSessionId) {
+        const session = sessions?.find((s) => s.id === activeSessionId);
+        if (!session) {
+          return;
+        }
+        const ids = asStringArray(session.generations);
+        if (ids.includes(generationId)) {
+          return;
+        }
+        try {
+          await sessionCollection.update(activeSessionId, (s) => {
+            s.generations = [...ids, generationId];
+          }).isPersisted.promise;
+          setWantsDraft(false);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to add take');
+        }
+        return;
+      }
+      if (currentSoloId === generationId) {
+        return;
+      }
+      if (currentSoloId && user) {
+        try {
+          const created = await pb.collection('sessions').create({
+            name: '',
+            user: user.id,
+            generations: [currentSoloId, generationId],
+          });
+          setActiveSessionId(created.id);
+          setWantsDraft(false);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to create session');
+        }
+        return;
+      }
+      // No solo, no session — make this the solo take.
+      setCurrentSoloId(generationId);
+      setWantsDraft(false);
+    },
+    [activeSessionId, sessions, currentSoloId, user],
+  );
+
+  const handleSwitchSession = useCallback((sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setCurrentSoloId(null);
+    setWantsDraft(false);
+    setSessionsOpen(false);
+  }, []);
+
+  // Drop-zone handlers. Use a depth counter (not a boolean) because dragenter/leave fire on every
+  // child element the cursor crosses, and a naive boolean toggles to false the moment the cursor
+  // moves over a Take card.
+  const isBankDrag = (e: React.DragEvent) => e.dataTransfer.types.includes(BANK_DRAG_MIME);
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!isBankDrag(e)) {
+      return;
+    }
+    e.preventDefault();
+    setBankDragDepth((d) => d + 1);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isBankDrag(e)) {
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!isBankDrag(e)) {
+      return;
+    }
+    setBankDragDepth((d) => Math.max(0, d - 1));
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    if (!isBankDrag(e)) {
+      return;
+    }
+    e.preventDefault();
+    setBankDragDepth(0);
+    const id = e.dataTransfer.getData(BANK_DRAG_MIME);
+    if (id) {
+      handleDropFromBank(id);
+    }
+  };
+
   async function handleAddTake() {
     // First and foremost: surface the draft composer.
     setWantsDraft(true);
@@ -374,8 +473,8 @@ export function StudioPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <StudioTopbar sessionName={showSessionTitle ? sessionNameDraft : null} onSessionNameChange={setSessionNameDraft} saving={saving} saved={savedFeedback || !saving} takeCount={generatedCount} />
 
-        <main className="custom-scrollbar flex-1 overflow-y-auto">
-          <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
+        <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+          <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>
             {showSessionTitle && <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">{sessionNameDraft ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</h1>}
 
             {!activeSession && mainTakes.length === 0 && <EmptyState />}
@@ -426,7 +525,9 @@ export function StudioPage() {
         </main>
       </div>
 
-      {isDesktop && <TakeBank entries={bankEntries} />}
+      {isDesktop && <TakeBank entries={bankEntries} onAllSessionsClick={() => setSessionsOpen(true)} />}
+
+      <SessionsDialog open={sessionsOpen} onOpenChange={setSessionsOpen} sessions={sessions ?? []} generations={generations ?? []} activeSessionId={activeSessionId} onSelect={handleSwitchSession} />
     </div>
   );
 }

@@ -77,8 +77,9 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
         {inSession && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t('studio.moreActions')}>
-                <MoreHorizontal className="size-4" />
+              <Button variant="ghost" size="sm" className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.moreActions')}>
+                <MoreHorizontal className="size-3.5" />
+                <span className="hidden sm:inline">{t('studio.more')}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">

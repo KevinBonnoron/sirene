@@ -251,6 +251,7 @@
     "exportStarted": "Export en cours",
     "exportFailed": "Échec de l'export",
     "moreActions": "Plus d'actions",
+    "more": "Plus",
     "publicSessionTitle": "Session publique",
     "publicSessionHint": "Vous consultez une session publique en lecture seule.",
     "publicSessionNotFound": "Cette session n'est pas disponible.",

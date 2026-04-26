@@ -15,22 +15,22 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Left panel — branding */}
-      <div className="relative hidden overflow-hidden bg-muted lg:flex lg:w-1/2">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-cyan-500/10" />
+      <div className="relative hidden overflow-hidden bg-bg-elevated lg:flex lg:w-1/2">
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-amber/10 via-transparent to-accent-violet/5" />
         <div className="relative z-10 flex flex-1 flex-col justify-between p-12">
           <div className="flex items-center gap-3">
             <img src="/sirene.svg" alt="" className="size-10 rounded-lg" />
-            <span className="text-lg font-semibold tracking-tight">{t('nav.appName')}</span>
+            <span className="font-serif text-lg tracking-tight">{t('nav.appName')}</span>
           </div>
 
           <div className="max-w-md space-y-6">
-            <h1 className="text-3xl font-bold leading-tight tracking-tight">{t('auth.heroTitle')}</h1>
+            <h1 className="font-serif text-3xl leading-tight tracking-tight">{t('auth.heroTitle')}</h1>
             <p className="text-muted-foreground">{t('auth.heroSubtitle')}</p>
             <div className="space-y-3 pt-2">
               {FEATURES.map((f) => (
                 <div key={f.labelKey} className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                    <f.icon className="size-4 text-primary" />
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-amber/10">
+                    <f.icon className="size-4 text-accent-amber" />
                   </div>
                   {t(f.labelKey)}
                 </div>
@@ -38,7 +38,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground/50">
+          <p className="font-mono text-[11px] text-dim">
             {t('nav.appName')} — {t('nav.appSubtitle')}
           </p>
         </div>
@@ -50,7 +50,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           {/* Mobile logo */}
           <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
             <img src="/sirene.svg" alt="" className="size-14 rounded-xl" />
-            <h2 className="text-xl font-bold">{t('nav.appName')}</h2>
+            <h2 className="font-serif text-xl tracking-tight">{t('nav.appName')}</h2>
           </div>
 
           <Card className="border-0 shadow-none sm:border sm:shadow-sm">

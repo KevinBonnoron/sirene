@@ -3,9 +3,11 @@ import { eq, useLiveQuery } from '@tanstack/react-db';
 import { useTranslation } from 'react-i18next';
 import { voiceCollection } from '@/collections';
 import { DeleteGenerationButton } from '@/components/generation/delete-generation-button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Waveform } from '@/components/voice/waveform';
 import { pb } from '@/lib/pocketbase';
+import { formatRelative } from '@/utils/format-relative';
 import { stripSSML } from '@/utils/ssml';
 
 interface Props {
@@ -21,26 +23,33 @@ export function GenerationCard({ generation, autoPlay }: Props) {
       .where(({ voices }) => eq(voices.id, generation.voice))
       .findOne(),
   );
+  const voiceName = voice?.name ?? t('voice.unknownVoice');
+  const avatarUrl = voice?.avatar ? pb.files.getURL(voice, voice.avatar) : undefined;
 
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-sm font-medium">{voice?.name ?? t('voice.unknownVoice')}</span>
-          <Badge variant="secondary" className="shrink-0 text-[10px]">
-            {generation.model}
-          </Badge>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
-            {generation.language}
-          </Badge>
+    <article className="rounded-lg border border-border bg-card transition-colors">
+      <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
+        <Avatar className="size-5 shrink-0">
+          <AvatarImage src={avatarUrl} alt={voiceName} />
+          <AvatarFallback className="text-[9px]">{voiceName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <span className="truncate text-xs font-medium">{voiceName}</span>
+        <span className="text-xs text-dim">·</span>
+        <span className="truncate text-xs text-muted-foreground">{generation.model}</span>
+        <Badge variant="outline" className="shrink-0 text-[10px]">
+          {generation.language}
+        </Badge>
+        <span className="ml-auto shrink-0 font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(generation.created, t)}</span>
+        <DeleteGenerationButton generationId={generation.id} />
+      </header>
+
+      {generation.text && <p className="px-4 pt-3 font-serif text-[15px] leading-snug text-foreground/90 sm:px-5">{stripSSML(generation.text)}</p>}
+
+      {generation.audio && (
+        <div className="px-3 pb-2.5 pt-2 sm:px-4">
+          <Waveform src={pb.files.getURL(generation, generation.audio)} autoPlay={autoPlay} />
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <span className="text-[10px] text-muted-foreground">{new Date(generation.created).toLocaleString()}</span>
-          <DeleteGenerationButton generationId={generation.id} />
-        </div>
-      </div>
-      {generation.audio && <Waveform src={pb.files.getURL(generation, generation.audio)} autoPlay={autoPlay} />}
-      {generation.text && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{stripSSML(generation.text)}</p>}
-    </div>
+      )}
+    </article>
   );
 }

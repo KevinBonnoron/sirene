@@ -600,7 +600,7 @@ function NoVoicesState() {
       </div>
       <h2 className="font-serif text-2xl tracking-tight">{t('studio.noVoicesTitle')}</h2>
       <p className="text-sm text-muted-foreground">{t('studio.noVoicesHint')}</p>
-      <Button asChild className="mt-2 gap-1.5 bg-accent-amber text-bg-elevated hover:bg-accent-amber/90">
+      <Button asChild className="mt-2 gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90">
         <Link to="/voices">
           <Plus className="size-4" />
           {t('studio.noVoicesCta')}

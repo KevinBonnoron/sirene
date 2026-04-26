@@ -362,7 +362,7 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
 
       <div className="ml-auto flex items-center gap-2">
         {estimatedLabel && <span className="hidden font-mono text-[10.5px] tabular-nums text-dim sm:inline">{estimatedLabel}</span>}
-        <Button size="sm" disabled={isBusy} className="gap-1.5 bg-accent-amber text-bg-elevated hover:bg-accent-amber/90" onClick={onGenerate}>
+        <Button size="sm" disabled={isBusy} className="gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90" onClick={onGenerate}>
           {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           {t('studio.generate')}
           <span className="ml-1 hidden font-mono text-[10px] opacity-70 sm:inline">⌘↵</span>

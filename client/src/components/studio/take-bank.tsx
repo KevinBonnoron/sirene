@@ -84,7 +84,7 @@ function BankCard({ entry, seed }: { entry: BankEntry; seed: number }) {
           type="button"
           onClick={toggle}
           disabled={!entry.audioUrl}
-          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-foreground transition-colors hover:bg-accent-amber hover:text-bg-elevated disabled:opacity-50"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-foreground transition-colors hover:bg-accent-amber hover:text-primary-foreground disabled:opacity-50"
           aria-label={isPlaying ? t('studio.pause') : t('studio.play')}
         >
           {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 translate-x-[0.5px]" />}

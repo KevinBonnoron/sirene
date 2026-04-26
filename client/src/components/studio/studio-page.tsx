@@ -18,6 +18,7 @@ import { exportSessionAsZip } from '@/utils/export-session';
 import { contentToSSML } from '@/utils/ssml';
 import { DeleteSessionAlert } from './delete-session-alert';
 import { generationToTake } from './generation-to-take';
+import { SessionTitle } from './session-title';
 import { ShareSessionDialog } from './share-session-dialog';
 import { StudioTopbar } from './studio-topbar';
 import { Take, type TakeData, type TakeTuning } from './take';
@@ -118,6 +119,17 @@ export function StudioPage() {
   const [bankDragDepth, setBankDragDepth] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  // Lifted so the 3-dot "Rename" menu (in the topbar) can flip the H1 (in the page body) into
+  // edit mode from far away. Reset whenever the active session changes so we don't dangle in
+  // editing mode after switching sessions.
+  const [editingName, setEditingName] = useState(false);
+
+  // Switching session resets the rename editor — otherwise we'd carry an open input over
+  // when the user picks a different session from the sidebar.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on session id only
+  useEffect(() => {
+    setEditingName(false);
+  }, [activeSession?.id]);
 
   // Sync session name with the loaded session
   useEffect(() => {
@@ -423,7 +435,7 @@ export function StudioPage() {
     return (
       <div className="flex h-svh overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <StudioTopbar sessionName={null} onSessionNameChange={() => {}} saved takeCount={0} inSession={false} />
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={false} />
           <main className="custom-scrollbar flex-1 overflow-y-auto">
             <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
               <NoVoicesState />
@@ -481,7 +493,6 @@ export function StudioPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <StudioTopbar
           sessionName={showSessionTitle ? sessionNameDraft : null}
-          onSessionNameChange={setSessionNameDraft}
           saving={saving}
           saved={savedFeedback || !saving}
           takeCount={generatedCount}
@@ -496,11 +507,12 @@ export function StudioPage() {
               : undefined
           }
           onDelete={activeSession ? () => setPendingDelete({ id: activeSession.id, name: activeSession.name?.trim().length ? activeSession.name : t('studio.untitledSession') }) : undefined}
+          onRename={activeSession ? () => setEditingName(true) : undefined}
         />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>
-            {showSessionTitle && <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">{sessionNameDraft ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</h1>}
+            {showSessionTitle && <SessionTitle name={sessionNameDraft} onChange={setSessionNameDraft} editing={editingName} onEditingChange={setEditingName} />}
 
             {!activeSession && mainTakes.length === 0 && <EmptyState />}
 

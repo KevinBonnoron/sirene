@@ -103,6 +103,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
     setAlignLoading(false);
   }, [take.id]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: alignLoading guards concurrent fetches; including it in deps would retry the fetch in a loop on every error
   useEffect(() => {
     if (affinageMode !== 'detailed' || alignment || alignLoading || isDraft) {
       return;
@@ -129,7 +130,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
     return () => {
       cancelled = true;
     };
-  }, [affinageMode, alignment, alignLoading, isDraft, take.id, t]);
+  }, [affinageMode, alignment, isDraft, take.id, t]);
 
   const handlePitchCurveChange = useCallback((prosodyCurve: PitchPoint[]) => {
     setLocalTuning((prev) => ({ ...prev, prosodyCurve }));
@@ -161,7 +162,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
       <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
         <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">#{String(take.orderIndex).padStart(2, '0')}</span>
 
-        <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? NOOP} disabled={!onVoiceChange} />
+        <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? NOOP} disabled={disabled || !onVoiceChange} />
 
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <span className={cn('flex items-center gap-1.5 text-[11px]', badge.textClass)}>
@@ -186,7 +187,17 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
       </header>
 
       <div className="px-4 pt-3 pb-2 sm:px-5">
-        <TakeEditor ref={editorRef} key={take.id} initialContent={take.content} editable={isDraft && !isGenerating} placeholder={isDraft ? t('studio.composerPlaceholder') : ''} onChange={onContentChange} onActiveChange={setActiveMarks} onSubmit={onGenerate} className={isDraft ? 'min-h-[34px]' : ''} />
+        <TakeEditor
+          ref={editorRef}
+          key={take.id}
+          initialContent={take.content}
+          editable={isDraft && !isGenerating && !disabled}
+          placeholder={isDraft ? t('studio.composerPlaceholder') : ''}
+          onChange={onContentChange}
+          onActiveChange={setActiveMarks}
+          onSubmit={disabled ? undefined : onGenerate}
+          className={isDraft ? 'min-h-[34px]' : ''}
+        />
       </div>
 
       {!isDraft && (
@@ -257,11 +268,11 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
           />
         ) : (
           <>
-            <Button size="sm" variant="outline" disabled={isGenerating || disabled} className="gap-1.5" onClick={handleRegenerateClick}>
+            <Button size="sm" variant="outline" disabled={isGenerating || disabled || !onRegenerate} className="gap-1.5" onClick={handleRegenerateClick}>
               {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
               <span className="hidden sm:inline">{t('studio.regenerate')}</span>
             </Button>
-            <Button size="sm" variant="ghost" disabled={disabled} className="ml-auto gap-1.5 text-muted-foreground hover:text-destructive" onClick={onDelete} aria-label={t('common.delete')}>
+            <Button size="sm" variant="ghost" disabled={disabled || !onDelete} className="ml-auto gap-1.5 text-muted-foreground hover:text-destructive" onClick={onDelete} aria-label={t('common.delete')}>
               <Trash2 className="size-3.5" />
             </Button>
           </>
@@ -331,7 +342,7 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
 
       <div className="ml-auto flex items-center gap-2">
         {estimatedLabel && <span className="hidden font-mono text-[10.5px] tabular-nums text-dim sm:inline">{estimatedLabel}</span>}
-        <Button size="sm" disabled={isBusy} className="gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90" onClick={onGenerate}>
+        <Button size="sm" disabled={isBusy || !onGenerate} className="gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90" onClick={onGenerate}>
           {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           {t('studio.generate')}
           <span className="ml-1 hidden font-mono text-[10px] opacity-70 sm:inline">⌘↵</span>

@@ -374,7 +374,7 @@ export function StudioPage() {
   const sessionLoading = inSession && (collectionsLoading || (activeSession && sessionGenerations.length < activeSessionGenerationIds.length));
   const sessionNotFound = inSession && !collectionsLoading && !activeSession;
 
-  if (!voices) {
+  if (!voices || voicesLoading) {
     return (
       <div className="flex h-svh items-center justify-center text-muted-foreground text-sm">
         <span>{t('common.loading')}</span>

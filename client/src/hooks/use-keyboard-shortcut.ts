@@ -1,11 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 interface ShortcutOptions {
-  /** Lower-case key, e.g. 'n', 'k'. Matches `event.key.toLowerCase()`. */
   key: string;
-  /** True when ⌘/Ctrl must be pressed. Defaults to true since most app shortcuts need it. */
   meta?: boolean;
-  /** Skip the handler when focus is in a text input — avoids hijacking the user's typing. */
   ignoreInTextInputs?: boolean;
 }
 
@@ -20,11 +17,6 @@ function isTextInputTarget(target: EventTarget | null): boolean {
   return target.isContentEditable;
 }
 
-/**
- * Register a global keyboard shortcut. The handler is held in a ref so callers don't need to
- * memoise it — the listener attaches once per (enabled, key, meta, ignoreInTextInputs) tuple.
- * Pass `enabled=false` to skip the listener entirely (e.g. while a modal already owns the kbd).
- */
 export function useKeyboardShortcut(handler: (event: KeyboardEvent) => void, { key, meta = true, ignoreInTextInputs = true }: ShortcutOptions, enabled = true) {
   const handlerRef = useRef(handler);
   handlerRef.current = handler;

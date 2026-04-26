@@ -8,16 +8,11 @@ interface Props {
   saved?: boolean;
   saving?: boolean;
   takeCount: number;
-  /** True once the user has committed to session mode — drives the breadcrumb + title editor.
-   * Decoupled from takeCount because a fresh session can still be empty (just promoted from solo). */
   inSession: boolean;
-  /** Whether the current session is published — drives the green Globe pill next to Share. */
   isPublic?: boolean;
   onShare?: () => void;
   onExport?: () => void;
   onDelete?: () => void;
-  /** Triggered when the user picks "Rename" in the 3-dot menu. The page-level H1 owns the
-   * actual editor — the topbar shows the name read-only as a scroll anchor. */
   onRename?: () => void;
 }
 
@@ -26,7 +21,6 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/70 px-3 backdrop-blur-sm sm:gap-3 sm:px-4">
-      {/* Breadcrumb */}
       <nav className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
         <span>{t('studio.breadcrumbStudio')}</span>
         {inSession && (
@@ -37,15 +31,12 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
         )}
       </nav>
 
-      {/* Title (read-only — the page H1 below is the canonical editor). Kept in the topbar so
-          that scrolling past the H1 doesn't leave the user without a session reference. */}
       {inSession && (
         <>
           <span className="hidden shrink-0 text-muted-foreground sm:inline">·</span>
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="min-w-0 truncate font-serif text-sm tracking-tight text-muted-foreground">{sessionName ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</span>
 
-            {/* Save state */}
             <span className="flex shrink-0 items-center gap-1 text-[11px] text-dim">
               {saving ? (
                 <span className="hidden sm:inline">{t('studio.saving')}</span>
@@ -60,7 +51,6 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
         </>
       )}
 
-      {/* Right actions */}
       <div className={`flex shrink-0 items-center gap-1 ${inSession ? '' : 'ml-auto'}`}>
         {inSession && takeCount > 0 && (
           <>

@@ -22,7 +22,6 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
   const isPublic = Boolean(session?.public);
   const shareUrl = useMemo(() => (session ? `${window.location.origin}/share/${session.id}` : ''), [session]);
 
-  // Reset the copy-confirmation after 2s so the button doesn't stay stuck on "Copied".
   useEffect(() => {
     if (!copied) {
       return;
@@ -38,7 +37,6 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
     setBusy(true);
     try {
       await sessionClient.setPublic(session.id, next);
-      // PB realtime push will land the new `public` value into the sessionCollection cache.
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('studio.shareFailed'));
     } finally {
@@ -63,7 +61,6 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
           <DialogDescription>{t('studio.shareDescription')}</DialogDescription>
         </DialogHeader>
 
-        {/* Visibility toggle — segmented Private / Public buttons */}
         <div className="grid grid-cols-2 gap-2 rounded-md border border-border-subtle bg-bg-elevated p-1">
           <button
             type="button"
@@ -85,7 +82,6 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
           </button>
         </div>
 
-        {/* URL row — only shown when public; private state shows a quiet hint instead. */}
         {isPublic ? (
           <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated px-3 py-2">
             <Globe className="size-3.5 shrink-0 text-accent-amber" />

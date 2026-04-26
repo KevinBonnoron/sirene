@@ -17,8 +17,6 @@ export interface BankEntry {
   audioUrl?: string;
 }
 
-/** Custom MIME type used for the bank → document drag-and-drop. Picked so a stray drag onto the
- * editor (or vice versa) won't accidentally trigger our drop logic via `text/plain`. */
 export const BANK_DRAG_MIME = 'application/x-sirene-bank-id';
 
 interface Props {
@@ -57,8 +55,6 @@ function BankCard({ entry, seed }: { entry: BankEntry; seed: number }) {
   const { t } = useTranslation();
   const { isPlaying, progress, toggle } = useAudioPlayback(entry.audioUrl);
 
-  // Custom MIME carries the generation id; `text/plain` is set as a fallback so OS-level drop
-  // targets (terminals, text fields outside the app) get something legible if the user drops there.
   const handleDragStart = (e: React.DragEvent<HTMLLIElement>) => {
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData(BANK_DRAG_MIME, entry.id);

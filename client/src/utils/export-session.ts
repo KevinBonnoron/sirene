@@ -23,7 +23,6 @@ interface Manifest {
   exportedAt: string;
 }
 
-/** Slugify a session name for the zip file root. Falls back to the session id when the name is empty. */
 function slugify(input: string): string {
   return (
     input
@@ -62,13 +61,6 @@ async function fetchAudio(url: string): Promise<{ data: Uint8Array; mime: string
   return { data: new Uint8Array(buf), mime: res.headers.get('content-type') };
 }
 
-/**
- * Build a ZIP of the session's audio files + a manifest JSON, then trigger a browser download.
- *
- * The manifest is the durable record — it captures order, voice, text, and per-file paths so the
- * archive is interpretable without context. Audio files keep their original encoding (whatever
- * the backend produced — typically wav for local backends, mp3 for ElevenLabs/OpenAI).
- */
 export async function exportSessionAsZip({ session, generations, voices }: SessionExportInput): Promise<void> {
   const orderedIds = Array.isArray(session.generations) ? session.generations : [];
   const ordered = orderedIds.map((id) => generations.find((g) => g.id === id)).filter((g): g is Generation => Boolean(g));
@@ -107,8 +99,6 @@ export async function exportSessionAsZip({ session, generations, voices }: Sessi
   files[`${slug}/manifest.json`] = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
 
   const zipped = zipSync(files, { level: 0 });
-  // fflate returns a Uint8Array view that may be backed by a SharedArrayBuffer-like buffer in some
-  // environments; copy into a fresh ArrayBuffer to keep Blob happy across browsers.
   const out = new Uint8Array(zipped);
   const blob = new Blob([out], { type: 'application/zip' });
   const dlUrl = URL.createObjectURL(blob);

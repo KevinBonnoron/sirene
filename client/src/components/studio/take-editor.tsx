@@ -9,15 +9,11 @@ export interface TakeEditorHandle {
   focus: () => void;
   clear: () => void;
   getJSON: () => JSONContent;
-  /** Toggle a speed mark on the current selection. Reapplying the same rate clears it. */
   toggleSpeed: (rate: number) => void;
-  /** Toggle a tone mark on the current selection. */
   toggleTone: (tone: string) => void;
-  /** Insert an inline effect node (pause / sound effect) at the current cursor. */
   insertEffect: (effect: string, label?: string) => void;
 }
 
-/** Active SSML marks at the current cursor / selection. Drives toolbar toggle visuals. */
 export interface ActiveMarks {
   slow: boolean;
   fast: boolean;
@@ -35,7 +31,6 @@ interface Props {
   className?: string;
 }
 
-// Editorial body styling per design handoff (`d6-ed`): Fraunces 19px / line-height 1.75.
 const EDITOR_CLASSES = '[&_.tiptap]:font-serif [&_.tiptap]:text-[19px] [&_.tiptap]:leading-[1.75] [&_.tiptap]:font-normal [&_.tiptap]:outline-none [&_.tiptap_p]:my-0';
 
 export function TakeEditor({ ref, initialContent, placeholder, editable = true, onChange, onActiveChange, onSubmit, className }: Props) {

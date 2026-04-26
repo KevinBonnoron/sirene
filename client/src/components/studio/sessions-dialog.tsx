@@ -12,7 +12,6 @@ interface Props {
   sessions: Session[];
   generations: Generation[];
   activeSessionId: string | null;
-  /** Triggered when the user clicks the trash icon. Parent owns the confirm dialog. */
   onRequestDelete: (sessionId: string, displayName: string) => void;
 }
 

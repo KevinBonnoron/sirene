@@ -42,9 +42,7 @@ interface Props {
   take: TakeData;
   isFocused?: boolean;
   isGenerating?: boolean;
-  /** Disables the generate/regenerate button even when this take isn't the one being generated (e.g. another generation is in flight). */
   disabled?: boolean;
-  /** Tuning capabilities for the take's current voice/model. Drives slider availability. */
   capabilities: VoiceCapabilities;
   onContentChange?: (editor: Editor) => void;
   onVoiceChange?: (voiceId: string) => void;
@@ -72,8 +70,6 @@ type AffinageMode = 'quick' | 'detailed';
 
 export function Take({ take, isFocused, isGenerating, disabled, capabilities, onContentChange, onVoiceChange, onGenerate, onRegenerate, onDelete }: Props) {
   const { t } = useTranslation();
-  // Single panel that toggles open/closed. Starts in "quick" (3 sliders); user can escalate
-  // to "detailed" (per-word timeline) via the Mot button inside QuickTuning.
   const [affinageMode, setAffinageMode] = useState<AffinageMode | null>(null);
   const [alignment, setAlignment] = useState<GenerationAlignment | null>(null);
   const [alignLoading, setAlignLoading] = useState(false);
@@ -81,10 +77,6 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   const editorRef = useRef<TakeEditorHandle>(null);
   const [activeMarks, setActiveMarks] = useState<ActiveMarks>(NO_ACTIVE_MARKS);
 
-  // Local tuning draft — changes are uncommitted until regenerate. We reset only when the
-  // underlying generation id swaps (i.e. a new row landed in this slot). Watching `take.tuning`
-  // reference would clobber slider edits on every parent re-render, since `generationToTake`
-  // returns a fresh object each time.
   const [localTuning, setLocalTuning] = useState<TakeTuning>(take.tuning);
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on take.id only
   useEffect(() => {
@@ -96,23 +88,18 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   const isPanelOpen = affinageMode !== null;
   const canEditPerWord = hasPerWordTuning(capabilities);
 
-  // If we're sitting on the detailed tab but the current voice no longer supports any per-word
-  // editing (e.g. user just swapped to a more limited backend), fall back to the global tab.
   useEffect(() => {
     if (affinageMode === 'detailed' && !canEditPerWord) {
       setAffinageMode('quick');
     }
   }, [affinageMode, canEditPerWord]);
 
-  // When the underlying generation is swapped (regenerate replaces the id at this slot),
-  // drop the cached alignment so the timeline re-fetches against the new audio.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on take.id changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on take.id only
   useEffect(() => {
     setAlignment(null);
     setAlignLoading(false);
   }, [take.id]);
 
-  // Lazy-load alignment when the detailed timeline opens
   useEffect(() => {
     if (affinageMode !== 'detailed' || alignment || alignLoading || isDraft) {
       return;
@@ -152,13 +139,11 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         affinageMode === 'detailed' && 'border-accent-violet/40 shadow-[0_0_0_1px_color-mix(in_oklch,var(--accent-violet)_30%,transparent)]',
       )}
     >
-      {/* Header */}
       <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
         <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">#{String(take.orderIndex).padStart(2, '0')}</span>
 
         <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? (() => {})} disabled={!onVoiceChange} />
 
-        {/* State + duration (inline, no border) */}
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <span className={cn('flex items-center gap-1.5 text-[11px]', badge.textClass)}>
             <span className={cn('size-1.5 rounded-full', badge.dotClass)} />
@@ -167,7 +152,6 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
           {!isDraft && totalDuration > 0 && <span className="font-mono text-[10.5px] text-dim tabular-nums">{formatTime(totalDuration)}</span>}
         </div>
 
-        {/* Affinage toggle — opens in 'quick' mode, can escalate to 'detailed' from inside the panel */}
         {!isDraft && (
           <button
             type="button"
@@ -182,26 +166,20 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         )}
       </header>
 
-      {/* Body */}
       <div className="px-4 pt-3 pb-2 sm:px-5">
         <TakeEditor ref={editorRef} key={take.id} initialContent={take.content} editable={isDraft && !isGenerating} placeholder={isDraft ? t('studio.composerPlaceholder') : ''} onChange={onContentChange} onActiveChange={setActiveMarks} onSubmit={onGenerate} className={isDraft ? 'min-h-[34px]' : ''} />
       </div>
 
-      {/* Transport — play button + waveform + time (no top border, body flows into transport).
-          When the take is regenerating, pulse the row to signal the audio about to be replaced. */}
       {!isDraft && (
         <div className={cn('flex items-center gap-3 px-4 pb-2.5 pt-1 sm:px-5', isGenerating && 'animate-pulse')}>
           <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-card-elevated" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
             {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
           </Button>
           <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} className="min-w-0 flex-1 overflow-hidden" />
-          {/* Always show "current / total" — preserves the pause position, resets to 0:00 once
-              the audio ends (handled by the audio playback hook). */}
           <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">{`${formatTime(playPosition)} / ${formatTime(totalDuration)}`}</span>
         </div>
       )}
 
-      {/* Affinage panel — segmented header (Global / Par mot) + active mode below */}
       {!isDraft && isPanelOpen && (
         <div className="border-t border-border-subtle bg-bg-elevated">
           <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2 sm:px-5">
@@ -253,7 +231,6 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         </div>
       )}
 
-      {/* Actions */}
       <footer className="flex flex-wrap items-center gap-2 border-t border-border-subtle px-3 py-2 sm:px-4">
         {isDraft ? (
           <DraftToolbar
@@ -300,15 +277,9 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
   const estimatedLabel = wordCount === 0 ? '' : `${wordCount} ${t(wordCount === 1 ? 'studio.wordCountSingular' : 'studio.wordCountPlural')} · ~${formatTime(estimated)}`;
 
   const ghostBtn = 'flex items-center gap-1.5 rounded px-2 py-1 text-[11px] transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50';
-  // Active styling: tinted background + ring in the button's accent colour, mirroring the chip
-  // colour the user sees in the editor. Keeps the relationship "this button = this chip" obvious.
   const activeSky = 'bg-accent-sky/15 ring-1 ring-inset ring-accent-sky/40';
   const activeRust = 'bg-accent-rust/15 ring-1 ring-inset ring-accent-rust/40';
   const activeSage = 'bg-accent-sage/15 ring-1 ring-inset ring-accent-sage/40';
-
-  // SSML mark buttons need to fire on mousedown (with preventDefault) so the editor doesn't
-  // lose focus / collapse its selection before the mark is applied. onClick fires *after* the
-  // blur, by which point the selection is gone and Tiptap silently no-ops.
   return (
     <>
       <button

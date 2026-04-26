@@ -20,7 +20,6 @@ const BAR_GAP = 2;
 
 export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 0, className }: Props) {
   const rand = seededRandom(seed);
-  // Speech-like distribution: mostly quiet, occasional peaks. Matches the design handoff.
   const data = Array.from({ length: bars }, () => {
     const base = 0.08 + rand() * 0.18;
     const peak = rand() > 0.72 ? rand() * 0.8 : 0;

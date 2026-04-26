@@ -18,10 +18,6 @@ interface Bundle {
   voices: Voice[];
 }
 
-/**
- * Read-only page for a session shared via `/share/<id>`. The PB rules let any client read sessions
- * and generations where `public = true`, so we hit PB directly — no dedicated server endpoint.
- */
 export function PublicSessionPage({ sessionId }: Props) {
   const { t } = useTranslation();
   const [bundle, setBundle] = useState<Bundle | null>(null);
@@ -36,9 +32,6 @@ export function PublicSessionPage({ sessionId }: Props) {
       try {
         const session = await pb.collection<Session>('sessions').getOne(sessionId);
         const ids = Array.isArray(session.generations) ? session.generations : [];
-        // Fetch generations one-by-one rather than via filter — `getFullList` with `id ?= "..." || ...`
-        // is fragile across PB filter dialects. Single getOnes are simple, parallelisable, and let
-        // us silently skip orphans.
         const gens = await Promise.all(
           ids.map((id) =>
             pb

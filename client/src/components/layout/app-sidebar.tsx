@@ -11,7 +11,6 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 
-/** How many recent sessions to show inline in the sidebar before falling back to the dialog. */
 const RECENT_SESSIONS_LIMIT = 5;
 
 function ThemeToggleButton() {
@@ -41,8 +40,6 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const router = useRouterState();
   const currentPath = router.location.pathname;
-  // Active session id is in the URL search (`?session=<id>`). Read it loosely so we don't have to
-  // type-narrow on the route — the sidebar lives on every page.
   const activeSessionId = (router.location.search as { session?: string } | undefined)?.session ?? null;
 
   const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
@@ -54,8 +51,6 @@ export function AppSidebar() {
   const recentSessions = allSessions.slice(0, RECENT_SESSIONS_LIMIT);
   const hasMoreSessions = allSessions.length > RECENT_SESSIONS_LIMIT;
 
-  // ⌘K — universal "all sessions" search. Disabled if there are no sessions yet, otherwise
-  // the dialog opens with empty state which is a confusing target for muscle memory.
   useKeyboardShortcut(() => setSessionsDialogOpen(true), { key: 'k' }, allSessions.length > 0);
 
   const navItems = [
@@ -90,7 +85,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Recent sessions — hidden when sidebar collapses to icons (no room for the list). */}
         {recentSessions.length > 0 && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>{t('nav.sessions')}</SidebarGroupLabel>
@@ -110,8 +104,6 @@ export function AppSidebar() {
                       <SidebarMenuAction
                         showOnHover
                         onClick={(e) => {
-                          // The action is positioned over the link — stop the click from bubbling
-                          // through into navigation.
                           e.preventDefault();
                           e.stopPropagation();
                           setPendingDelete({ id: session.id, name: displayName });

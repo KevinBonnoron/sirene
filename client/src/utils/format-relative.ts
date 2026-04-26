@@ -1,12 +1,5 @@
 import type { TFunction } from 'i18next';
 
-/**
- * Localised relative time string. The bands match what is useful in the recent-takes / sessions
- * lists: "just now" → "Xm" → "Xh" → "Xd" → absolute date once we cross a week.
- *
- * Takes the i18next `t` function rather than calling `useTranslation` so it stays a pure utility
- * and works inside `useMemo` / event handlers.
- */
 export function formatRelative(date: Date | string, t: TFunction, now = new Date()): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const diff = (now.getTime() - d.getTime()) / 1000;

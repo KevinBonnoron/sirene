@@ -4,18 +4,10 @@ import { useTranslation } from 'react-i18next';
 interface Props {
   name: string | null;
   onChange: (next: string | null) => void;
-  /** Controlled "is editing" — lets the 3-dot menu's "Rename" item trigger edit mode from afar. */
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
 }
 
-/**
- * Page-level H1 for the active session. Click-to-edit, enter/escape commit/cancel.
- *
- * The topbar shows the name read-only as a scroll anchor; this component is the canonical
- * place to rename. Editing state is lifted because the 3-dot menu in the topbar needs to
- * trigger edit mode from outside this component.
- */
 export function SessionTitle({ name, onChange, editing, onEditingChange }: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(name ?? '');

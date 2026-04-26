@@ -269,7 +269,10 @@
     "publicSessionTitle": "Session publique",
     "publicSessionHint": "Vous consultez une session publique en lecture seule.",
     "publicSessionNotFound": "Cette session n'est pas disponible.",
-    "openSirene": "Ouvrir Sirene"
+    "openSirene": "Ouvrir Sirene",
+    "sessionNotFoundTitle": "Session introuvable",
+    "sessionNotFoundHint": "Cette session n'existe pas ou a été supprimée.",
+    "backToStudio": "Retour au Studio"
   },
   "settings": {
     "title": "Param\u00e8tres",

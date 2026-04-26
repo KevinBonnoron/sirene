@@ -269,7 +269,10 @@
     "publicSessionTitle": "Public session",
     "publicSessionHint": "You're viewing a public session in read-only mode.",
     "publicSessionNotFound": "This session is not available.",
-    "openSirene": "Open Sirene"
+    "openSirene": "Open Sirene",
+    "sessionNotFoundTitle": "Session not found",
+    "sessionNotFoundHint": "This session doesn't exist or has been deleted.",
+    "backToStudio": "Back to Studio"
   },
   "settings": {
     "title": "Settings",

@@ -25,13 +25,8 @@ const LABEL_COL_WIDTH = 72;
 const MIN_RATE = 0.5;
 const MAX_RATE = 1.5;
 const MAX_PITCH_POINTS = 8;
-/** Horizontal inset (as a fraction of viewBox width) so the end points aren't clipped/touched against the lane border. */
 const PITCH_INSET = 0.04;
 
-/**
- * One control point per word (capped at 8). Single-word takes don't get a curve — there's no
- * temporal variation to shape, the user should use the global pitch slider instead.
- */
 function makeDefaultCurve(wordCount: number): PitchPoint[] {
   if (wordCount < 2) {
     return [];
@@ -172,7 +167,6 @@ export function ProsodyTimeline({ duration, words, pitchCurve, wordRates, capabi
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[560px]">
-        {/* Mots — display only, no interaction (per-word regen needs a real aligner + backend support) */}
         <Lane label={t('studio.laneWords')} accentVar="--foreground" height={WORD_LANE_HEIGHT}>
           {words.map((w) => {
             const left = (w.start / duration) * 100;
@@ -185,11 +179,9 @@ export function ProsodyTimeline({ duration, words, pitchCurve, wordRates, capabi
           })}
         </Lane>
 
-        {/* Pitch */}
         <Lane label={t('studio.lanePitch')} unit="Hz" accentVar="--accent-violet" height={PITCH_LANE_HEIGHT} disabled={!capabilities.pitch} disabledHint={unsupportedHint}>
           <svg ref={pitchRef} viewBox="0 0 1000 100" preserveAspectRatio="none" role="img" aria-label={t('studio.lanePitch')} className="absolute inset-x-3 top-0 h-full" style={{ width: 'calc(100% - 1.5rem)' }}>
             {curve.length === 0 ? (
-              // Single-word takes have no curve to shape — show a baseline so the lane doesn't read as broken.
               <line x1="0" y1="50" x2="1000" y2="50" stroke="var(--border)" strokeDasharray="4 4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             ) : (
               <>
@@ -203,8 +195,6 @@ export function ProsodyTimeline({ duration, words, pitchCurve, wordRates, capabi
           </svg>
         </Lane>
 
-        {/* Vitesse — per-word speed control. Driven by `capabilities.perWordSpeed`, which is
-             false for all backends today (no SSML rate / token-level rate support yet). */}
         <Lane label={t('studio.laneSpeed')} unit="×" accentVar="--accent-green" height={SPEED_LANE_HEIGHT} last disabled={!capabilities.perWordSpeed} disabledHint={unsupportedHint}>
           <div className="absolute inset-x-3 top-1/2 h-px -translate-y-px border-t border-dashed border-border" />
           {words.map((w) => {

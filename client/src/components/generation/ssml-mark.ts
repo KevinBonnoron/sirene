@@ -107,7 +107,7 @@ export const EffectNode = Node.create({
 
   renderHTML({ node }) {
     const label = typeof node.attrs.label === 'string' ? node.attrs.label.trim() : '';
-    const effect = typeof node.attrs.effect === 'string' ? node.attrs.effect.trim() : '';
+    const effect = typeof node.attrs.effect === 'string' ? node.attrs.effect.trim().toLowerCase().replace(/\s+/g, ' ') : '';
     const display = label || effect;
     return [
       'span',

@@ -31,15 +31,8 @@ migrate(
       app.save(sessions);
     }
   },
-  (app) => {
-    const sessions = findOrNull(app, 'sessions');
-    if (!sessions) {
-      return;
-    }
-    const field = sessions.fields.getByName('generations');
-    if (field) {
-      field.maxSelect = null;
-      app.save(sessions);
-    }
-  },
+  // No-op rollback: the parent snapshot now creates `sessions.generations` with maxSelect=999
+  // already, so reverting to maxSelect=null would reintroduce the single-select bug this fix
+  // was added to prevent. Keep the multi-select shape on rollback.
+  (_app) => {},
 );

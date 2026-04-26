@@ -18,6 +18,7 @@ import { TakeVoicePicker } from './take-voice-picker';
 import { TakeWaveform } from './take-waveform';
 
 const NO_ACTIVE_MARKS: ActiveMarks = { slow: false, fast: false, emphasis: false };
+const NOOP = () => {};
 
 export type TakeState = 'draft' | 'ready' | 'tuned';
 
@@ -160,7 +161,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
       <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
         <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">#{String(take.orderIndex).padStart(2, '0')}</span>
 
-        <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? (() => {})} disabled={!onVoiceChange} />
+        <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? NOOP} disabled={!onVoiceChange} />
 
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <span className={cn('flex items-center gap-1.5 text-[11px]', badge.textClass)}>

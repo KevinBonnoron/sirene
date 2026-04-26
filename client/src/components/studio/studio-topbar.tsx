@@ -1,5 +1,6 @@
 import { Check, ChevronRight, Download, Globe, MoreHorizontal, PanelRight, PanelRightClose, Pencil, Share2, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { NotificationBell } from '@/components/layout/notification-bell';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Toggle } from '@/components/ui/toggle';
@@ -107,6 +108,7 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
             {bankOpen ? <PanelRightClose className="size-3.5" /> : <PanelRight className="size-3.5" />}
           </Toggle>
         )}
+        <NotificationBell />
       </div>
     </div>
   );

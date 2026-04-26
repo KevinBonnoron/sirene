@@ -156,6 +156,15 @@
     "status_available": "Available",
     "noMatch": "No models match your filters."
   },
+  "notifications": {
+    "title": "Activity",
+    "empty": "No active jobs.",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "dismiss": "Dismiss",
+    "open": "Open notifications"
+  },
   "history": {
     "title": "History",
     "subtitle": "Browse all past generations.",

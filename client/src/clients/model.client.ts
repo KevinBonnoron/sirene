@@ -9,6 +9,7 @@ export const modelClient = universalClient(
     catalog: () => delegate.get<CatalogModel[]>('/models/catalog'),
     installed: () => delegate.get<Model[]>('/models/installed'),
     voices: (modelId: string) => delegate.get<PresetVoice[]>(`/models/${modelId}/voices`),
+    pull: (id: string) => delegate.post<{ jobId: string }>(`/models/${id}/pull`, {}),
     remove: (id: string) => delegate.delete<void>(`/models/${id}`),
     importPiper: (formData: FormData) => delegate.post<{ id: string; message: string }>('/models/piper/import', formData),
     exportPiper: async (id: string): Promise<Blob> => {

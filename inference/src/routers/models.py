@@ -92,10 +92,17 @@ async def pull_model(req: ModelPullRequest):
 
     async def event_generator():
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
+        failed = asyncio.Event()
 
         async def produce(gen):
-            async for event in gen:
-                await queue.put(event)
+            try:
+                async for event in gen:
+                    if failed.is_set():
+                        return
+                    await queue.put(event)
+            except Exception as exc:  # noqa: BLE001 — surface any producer failure as a structured event
+                failed.set()
+                await queue.put({"status": "error", "message": str(exc)})
 
         tasks = [
             asyncio.create_task(produce(download_model_files(
@@ -113,8 +120,10 @@ async def pull_model(req: ModelPullRequest):
             ))))
 
         async def drain():
-            await asyncio.gather(*tasks)
-            await queue.put(None)
+            try:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            finally:
+                await queue.put(None)
 
         asyncio.create_task(drain())
 

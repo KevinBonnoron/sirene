@@ -156,6 +156,15 @@
     "status_available": "Disponibles",
     "noMatch": "Aucun modèle ne correspond à vos filtres."
   },
+  "notifications": {
+    "title": "Activité",
+    "empty": "Aucun job en cours.",
+    "running": "En cours",
+    "completed": "Terminé",
+    "failed": "Échec",
+    "dismiss": "Ignorer",
+    "open": "Ouvrir les notifications"
+  },
   "history": {
     "title": "Historique",
     "subtitle": "Parcourez toutes les g\u00e9n\u00e9rations pass\u00e9es.",

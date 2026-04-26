@@ -1,5 +1,6 @@
 import type { CatalogModel, Model } from '@sirene/shared';
 import { deleteModel, getModels, pullModel } from '../lib/inference-client';
+import { jobStore, newJobId } from '../lib/jobs';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
 
@@ -10,27 +11,15 @@ const API_KEY_MAP: Record<string, string> = {
   openai: 'openai_api_key',
 };
 
-interface DownloadOptions {
-  catalog: CatalogModel;
-  onProgress: (progress: number) => void;
-  onComplete: () => void;
-  onError: (message: string) => void;
-}
-
 type Listener = () => void;
 
 class ModelService {
-  private readonly activeDownloads = new Map<string, { progress: number; error?: string }>();
   private readonly listeners = new Set<Listener>();
 
   public async scanCustomModels(): Promise<CatalogModel[]> {
     const catalogIds = new Set(modelsCatalog.map((m) => m.id));
     const { custom } = await getModels();
     return custom.filter((m) => !catalogIds.has(m.id));
-  }
-
-  public getDownloadState(modelId: string) {
-    return this.activeDownloads.get(modelId) ?? null;
   }
 
   public async isModelInstalled(catalog: CatalogModel): Promise<boolean> {
@@ -65,14 +54,9 @@ class ModelService {
     const models: Model[] = [];
 
     for (const catalog of catalogModels) {
-      const download = this.activeDownloads.get(catalog.id);
-      if (download) {
-        models.push({
-          id: catalog.id,
-          status: download.error ? 'error' : 'pulling',
-          progress: download.progress,
-          error: download.error,
-        });
+      const job = jobStore.findRunning('model_pull', catalog.id);
+      if (job) {
+        models.push({ id: catalog.id, status: 'pulling', progress: job.progress });
         continue;
       }
 
@@ -84,9 +68,20 @@ class ModelService {
     return models;
   }
 
-  public async downloadModel({ catalog, onProgress, onComplete, onError }: DownloadOptions) {
-    this.setDownloadState(catalog.id, { progress: 0 });
+  /** Returns the existing job if one is already running for this model, else starts one. */
+  public startModelDownload(catalog: CatalogModel): { jobId: string; alreadyRunning: boolean } {
+    const existing = jobStore.findRunning('model_pull', catalog.id);
+    if (existing) {
+      return { jobId: existing.id, alreadyRunning: true };
+    }
 
+    const jobId = newJobId();
+    jobStore.start({ id: jobId, type: 'model_pull', label: catalog.name, target: catalog.id });
+    void this.runDownload(jobId, catalog);
+    return { jobId, alreadyRunning: false };
+  }
+
+  private async runDownload(jobId: string, catalog: CatalogModel) {
     const hfToken = await getSetting('hf_token');
     const files = catalog.files.map((entry) => {
       const filePath = typeof entry === 'string' ? entry : entry.path;
@@ -103,21 +98,22 @@ class ModelService {
         totalSize: catalog.size,
         hfToken: hfToken ?? undefined,
       })) {
+        if (event.status === 'error') {
+          throw new Error(typeof event.message === 'string' ? event.message : 'Pull failed');
+        }
         if (event.status === 'downloading' || event.status === 'installing_deps') {
           const progress = typeof event.progress === 'number' ? Math.min(event.progress, 99) : 0;
-          this.setDownloadState(catalog.id, { progress });
-          onProgress(progress);
+          const label = event.status === 'installing_deps' ? `Installing ${catalog.backendDisplayName} dependencies` : catalog.name;
+          jobStore.progress(jobId, progress, label);
         }
       }
 
-      this.setDownloadState(catalog.id, null);
+      jobStore.complete(jobId);
       this.notifyListeners();
-      onComplete();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      this.setDownloadState(catalog.id, { progress: 0, error: message });
-      onError(message);
-      setTimeout(() => this.setDownloadState(catalog.id, null), 30_000);
+      jobStore.fail(jobId, message);
+      this.notifyListeners();
     }
   }
 
@@ -133,14 +129,6 @@ class ModelService {
 
   public startModelWatcher() {
     // Model files are managed by the inference server; no local watcher needed.
-  }
-
-  private setDownloadState(modelId: string, state: { progress: number; error?: string } | null) {
-    if (state === null) {
-      this.activeDownloads.delete(modelId);
-    } else {
-      this.activeDownloads.set(modelId, state);
-    }
   }
 
   private notifyListeners() {

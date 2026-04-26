@@ -1,8 +1,10 @@
 import type { Model } from '@sirene/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { modelClient } from '@/clients/model.client';
 import { config } from '@/lib/config';
+import { useJobs } from './use-jobs';
 
 // Singleton SSE connection shared across all useModels() consumers
 let sharedEs: EventSource | null = null;
@@ -35,6 +37,7 @@ function acquireModelEvents(listener: (installations: Model[]) => void) {
 
 export function useModels() {
   const queryClient = useQueryClient();
+  const { jobs } = useJobs();
 
   const catalogQuery = useQuery({
     queryKey: ['models', 'catalog'],
@@ -55,7 +58,18 @@ export function useModels() {
     });
   }, [queryClient]);
 
-  const installationsByName = new Map(installedQuery.data.map((i) => [i.id, i]) ?? []);
+  // Merge running pull jobs over the installed set so the UI shows live progress.
+  const installationsByName = new Map<string, Model>(installedQuery.data.map((i) => [i.id, i]));
+  for (const job of jobs) {
+    if (job.type !== 'model_pull' || !job.target) {
+      continue;
+    }
+    if (job.status === 'running') {
+      installationsByName.set(job.target, { id: job.target, status: 'pulling', progress: job.progress });
+    } else if (job.status === 'failed') {
+      installationsByName.set(job.target, { id: job.target, status: 'error', progress: 0, error: job.error });
+    }
+  }
 
   return {
     catalog: catalogQuery.data,
@@ -67,41 +81,41 @@ export function useModels() {
 
 export function usePullModel() {
   const queryClient = useQueryClient();
-  const [pulling, setPulling] = useState<Map<string, number>>(new Map());
+  const { jobs } = useJobs();
 
-  const pullModel = useCallback(
-    (modelId: string) => {
-      const es = new EventSource(`${config.server.url}/models/${modelId}/pull`);
+  // Refresh installed list once each finished job leaves the running state.
+  const seenTerminal = useRef(new Set<string>());
+  useEffect(() => {
+    let didChange = false;
+    for (const job of jobs) {
+      if (job.type !== 'model_pull') {
+        continue;
+      }
+      if (job.status === 'running') {
+        continue;
+      }
+      if (seenTerminal.current.has(job.id)) {
+        continue;
+      }
+      seenTerminal.current.add(job.id);
+      didChange = true;
+      if (job.status === 'failed' && job.error) {
+        toast.error(job.error);
+      }
+    }
+    if (didChange) {
+      queryClient.invalidateQueries({ queryKey: ['models', 'installed'] });
+    }
+  }, [jobs, queryClient]);
 
-      setPulling((prev) => new Map(prev).set(modelId, 0));
+  const pullModel = useCallback(async (modelId: string) => {
+    try {
+      await modelClient.pull(modelId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start download';
+      toast.error(message);
+    }
+  }, []);
 
-      es.addEventListener('progress', (event) => {
-        const { progress } = JSON.parse(event.data);
-        setPulling((prev) => new Map(prev).set(modelId, progress));
-      });
-
-      es.addEventListener('complete', () => {
-        es.close();
-        setPulling((prev) => {
-          const next = new Map(prev);
-          next.delete(modelId);
-          return next;
-        });
-        queryClient.invalidateQueries({ queryKey: ['models', 'installed'] });
-      });
-
-      es.addEventListener('error', () => {
-        es.close();
-        setPulling((prev) => {
-          const next = new Map(prev);
-          next.delete(modelId);
-          return next;
-        });
-        queryClient.invalidateQueries({ queryKey: ['models', 'installed'] });
-      });
-    },
-    [queryClient],
-  );
-
-  return { pullModel, pulling };
+  return { pullModel };
 }

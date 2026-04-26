@@ -4,6 +4,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport, importPiperModelToInference } from '../lib/inference-client';
+import { jobStore, newJobId } from '../lib/jobs';
 import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
@@ -12,60 +13,22 @@ import { modelService } from '../services';
 const idParamSchema = z.object({ id: z.string().min(1) });
 
 /** Public SSE routes — EventSource cannot send auth headers. */
-const modelSseRoutes = new Hono()
-  .get('/:id/pull', zValidator('param', idParamSchema), async (c) => {
-    const { id: modelId } = c.req.valid('param');
-
-    const fullCatalog = await modelService.getFullCatalog();
-    const catalog = fullCatalog.find((m) => m.id === modelId);
-    if (!catalog) {
-      return c.json({ message: 'Model not found in catalog' }, 404);
-    }
-
-    if (await modelService.isModelInstalled(catalog)) {
-      return c.json({ message: 'Model already installed' }, 400);
-    }
-
-    if (modelService.getDownloadState(modelId)) {
-      return c.json({ message: 'Model is already being pulled' }, 409);
-    }
-
-    return streamSSE(c, async (stream) => {
-      await new Promise<void>((resolve) => {
-        modelService.downloadModel({
-          catalog,
-          onProgress: (progress) => {
-            stream.writeSSE({ event: 'progress', data: JSON.stringify({ progress }) });
-          },
-          onComplete: () => {
-            stream.writeSSE({ event: 'complete', data: JSON.stringify({}) });
-            resolve();
-          },
-          onError: (message) => {
-            stream.writeSSE({ event: 'error', data: JSON.stringify({ message }) });
-            resolve();
-          },
-        });
-      });
+const modelSseRoutes = new Hono().get('/events', async (c) => {
+  return streamSSE(c, async (stream) => {
+    const removeListener = modelService.addModelChangeListener(async () => {
+      const catalog = await modelService.getFullCatalog();
+      const installations = await modelService.getInstallations(catalog);
+      await stream.writeSSE({ event: 'change', data: JSON.stringify(installations) });
     });
-  })
 
-  .get('/events', async (c) => {
-    return streamSSE(c, async (stream) => {
-      const removeListener = modelService.addModelChangeListener(async () => {
-        const catalog = await modelService.getFullCatalog();
-        const installations = await modelService.getInstallations(catalog);
-        await stream.writeSSE({ event: 'change', data: JSON.stringify(installations) });
-      });
-
-      await new Promise<void>((resolve) => {
-        c.req.raw.signal.addEventListener('abort', () => {
-          removeListener();
-          resolve();
-        });
+    await new Promise<void>((resolve) => {
+      c.req.raw.signal.addEventListener('abort', () => {
+        removeListener();
+        resolve();
       });
     });
   });
+});
 
 const modelProtectedRoutes = new Hono<AuthEnv>()
   .use(authMiddleware)
@@ -114,6 +77,24 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
     return c.body(null, 204);
   })
 
+  .post('/:id/pull', zValidator('param', idParamSchema), async (c) => {
+    const { id: modelId } = c.req.valid('param');
+    const userId = c.get('userId');
+
+    const fullCatalog = await modelService.getFullCatalog(userId);
+    const catalog = fullCatalog.find((m) => m.id === modelId);
+    if (!catalog) {
+      return c.json({ message: 'Model not found in catalog' }, 404);
+    }
+
+    if (await modelService.isModelInstalled(catalog)) {
+      return c.json({ message: 'Model already installed' }, 400);
+    }
+
+    const { jobId, alreadyRunning } = modelService.startModelDownload(catalog);
+    return c.json({ jobId }, alreadyRunning ? 200 : 202);
+  })
+
   .post('/piper/import', async (c) => {
     const formData = await c.req.formData();
     const configFile = formData.get('config') as File | null;
@@ -155,12 +136,17 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: `Name "${slug}" conflicts with an existing catalog model` }, 409);
     }
 
+    const jobId = newJobId();
+    jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name}`, target: slug });
     try {
       const result = await importPiperModelToInference(formData);
+      jobStore.complete(jobId);
       return c.json(result, 201);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed';
+      jobStore.fail(jobId, message);
       const status = (err as { status?: number }).status === 409 ? 409 : 400;
-      return c.json({ message: err instanceof Error ? err.message : 'Import failed' }, status);
+      return c.json({ message }, status);
     }
   })
 

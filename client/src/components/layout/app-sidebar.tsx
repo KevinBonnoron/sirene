@@ -7,6 +7,7 @@ import { generationCollection, sessionCollection } from '@/collections';
 import { DeleteSessionAlert } from '@/components/studio/delete-session-alert';
 import { SessionsDialog } from '@/components/studio/sessions-dialog';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 
@@ -52,6 +53,10 @@ export function AppSidebar() {
   const allSessions = sessions ?? [];
   const recentSessions = allSessions.slice(0, RECENT_SESSIONS_LIMIT);
   const hasMoreSessions = allSessions.length > RECENT_SESSIONS_LIMIT;
+
+  // ⌘K — universal "all sessions" search. Disabled if there are no sessions yet, otherwise
+  // the dialog opens with empty state which is a confusing target for muscle memory.
+  useKeyboardShortcut(() => setSessionsDialogOpen(true), { key: 'k' }, allSessions.length > 0);
 
   const navItems = [
     { label: t('nav.studio'), href: '/', icon: Mic },

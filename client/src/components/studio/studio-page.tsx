@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { generationCollection, sessionCollection, voiceCollection } from '@/collections';
 import { Button } from '@/components/ui/button';
 import { useGenerate } from '@/hooks/use-generate';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useIsDesktop, useIsMobile } from '@/hooks/use-mobile';
 import { useModels } from '@/hooks/use-models';
 import { pb } from '@/lib/pocketbase';
@@ -392,6 +393,10 @@ export function StudioPage() {
       handleDropFromBank(id);
     }
   };
+
+  // ⌘N — bring up the draft composer (and promote solo→session if needed). The handler closes
+  // over `handleAddTake` declared just below; passing it directly keeps the keymap declarative.
+  useKeyboardShortcut(() => handleAddTake(), { key: 'n' });
 
   async function handleAddTake() {
     // First and foremost: surface the draft composer.

@@ -187,10 +187,11 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         <TakeEditor ref={editorRef} key={take.id} initialContent={take.content} editable={isDraft && !isGenerating} placeholder={isDraft ? t('studio.composerPlaceholder') : ''} onChange={onContentChange} onActiveChange={setActiveMarks} onSubmit={onGenerate} className={isDraft ? 'min-h-[34px]' : ''} />
       </div>
 
-      {/* Transport — play button + waveform + time (no top border, body flows into transport) */}
+      {/* Transport — play button + waveform + time (no top border, body flows into transport).
+          When the take is regenerating, pulse the row to signal the audio about to be replaced. */}
       {!isDraft && (
-        <div className="flex items-center gap-3 px-4 pb-2.5 pt-1 sm:px-5">
-          <Button variant="ghost" size="icon" disabled={!take.audioUrl} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-card-elevated" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
+        <div className={cn('flex items-center gap-3 px-4 pb-2.5 pt-1 sm:px-5', isGenerating && 'animate-pulse')}>
+          <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-card-elevated" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
             {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
           </Button>
           <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} className="min-w-0 flex-1 overflow-hidden" />

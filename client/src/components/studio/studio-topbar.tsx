@@ -1,7 +1,8 @@
-import { Check, ChevronRight, Download, Globe, MoreHorizontal, Pencil, Share2, Trash2 } from 'lucide-react';
+import { Check, ChevronRight, Download, Globe, MoreHorizontal, PanelRight, PanelRightClose, Pencil, Share2, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Toggle } from '@/components/ui/toggle';
 
 interface Props {
   sessionName: string | null;
@@ -10,24 +11,28 @@ interface Props {
   takeCount: number;
   inSession: boolean;
   isPublic?: boolean;
+  bankOpen?: boolean;
+  onToggleBank?: () => void;
   onShare?: () => void;
   onExport?: () => void;
   onDelete?: () => void;
   onRename?: () => void;
 }
 
-export function StudioTopbar({ sessionName, saved = true, saving = false, takeCount, inSession, isPublic, onShare, onExport, onDelete, onRename }: Props) {
+export function StudioTopbar({ sessionName, saved = true, saving = false, takeCount, inSession, isPublic, bankOpen, onToggleBank, onShare, onExport, onDelete, onRename }: Props) {
   const { t } = useTranslation();
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle bg-background/70 px-3 backdrop-blur-sm sm:gap-3 sm:px-4">
-      <nav className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-        <span>{t('studio.breadcrumbStudio')}</span>
-        {inSession && (
+      <nav className="flex shrink-0 items-baseline gap-1.5">
+        <span className="font-serif text-sm tracking-tight text-foreground">{t('studio.breadcrumbStudio')}</span>
+        {inSession ? (
           <>
-            <ChevronRight className="size-3" />
-            <span className="hidden sm:inline">{t('studio.breadcrumbSession')}</span>
+            <ChevronRight className="size-3 self-center text-muted-foreground" />
+            <span className="hidden text-xs text-muted-foreground sm:inline">{t('studio.breadcrumbSession')}</span>
           </>
+        ) : (
+          <span className="hidden truncate text-xs text-muted-foreground md:inline">{t('studio.pageSubtitle')}</span>
         )}
       </nav>
 
@@ -96,6 +101,11 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {onToggleBank && (
+          <Toggle size="sm" pressed={bankOpen ?? false} onPressedChange={onToggleBank} aria-label={t('studio.toggleBank')} className="text-muted-foreground">
+            {bankOpen ? <PanelRightClose className="size-3.5" /> : <PanelRight className="size-3.5" />}
+          </Toggle>
         )}
       </div>
     </div>

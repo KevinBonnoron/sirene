@@ -181,6 +181,7 @@
   "studio": {
     "breadcrumbStudio": "Studio",
     "breadcrumbSession": "Session",
+    "pageSubtitle": "Write, voice, and tune your audio takes.",
     "untitledSession": "Untitled",
     "emptyTitle": "Your studio is ready",
     "emptyHint": "Write a line, pick a voice, and generate. Add takes to compose a dialogue.",
@@ -231,6 +232,7 @@
     "bankTitle": "Take bank",
     "bankEmpty": "No takes yet",
     "bankEmptyHint": "Your generations will appear here and can be dragged into the document.",
+    "bankAddHint": "Add to the current session",
     "allSessions": "All sessions",
     "noSessions": "No sessions yet.",
     "takeCountSingular": "{{count}} take",
@@ -252,6 +254,7 @@
     "exportFailed": "Export failed",
     "moreActions": "More actions",
     "more": "More",
+    "toggleBank": "Toggle take bank",
     "relativeJustNow": "just now",
     "relativeMinutes": "{{count}}m",
     "relativeHours": "{{count}}h",

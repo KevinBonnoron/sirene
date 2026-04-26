@@ -2,6 +2,7 @@ import type { Generation, Session } from '@sirene/shared';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, MessageSquareText, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/utils/format-relative';
@@ -51,24 +52,24 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
               const isActive = session.id === activeSessionId;
               const displayName = session.name?.trim().length ? session.name : t('studio.untitledSession');
               return (
-                <li key={session.id} className={cn('group/row relative flex items-stretch rounded-md transition-colors', isActive ? 'bg-accent-amber/10' : 'hover:bg-card')}>
-                  <button type="button" onClick={() => handleSelect(session.id)} className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2.5 text-left">
+                <li key={session.id} className={cn('group/row relative flex items-stretch rounded-md transition-colors', isActive && 'bg-accent-amber/10')}>
+                  <Button variant="ghost" onClick={() => handleSelect(session.id)} className={cn('h-auto min-w-0 flex-1 justify-start gap-3 px-3 py-2.5 text-left font-normal', isActive && 'hover:bg-accent-amber/15')}>
                     <MessageSquareText className={cn('size-4 shrink-0', isActive ? 'text-accent-amber' : 'text-dim')} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={cn('truncate font-serif text-sm', !session.name?.trim() && 'italic text-dim')}>{displayName}</span>
                         {isActive && <Check className="size-3.5 shrink-0 text-accent-amber" />}
                       </div>
-                      {preview && <p className="mt-0.5 truncate text-xs text-muted-foreground">{preview}</p>}
+                      {preview && <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{preview}</p>}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
                       <span className="font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(session.updated, t)}</span>
                       <span className="font-mono text-[10px] tabular-nums text-dim">{t(ids.length === 1 ? 'studio.takeCountSingular' : 'studio.takeCountPlural', { count: ids.length })}</span>
                     </div>
-                  </button>
-                  <button type="button" onClick={() => onRequestDelete(session.id, displayName)} aria-label={t('common.delete')} className="flex shrink-0 items-center justify-center rounded-md px-2.5 text-dim opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100 focus-visible:opacity-100">
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => onRequestDelete(session.id, displayName)} aria-label={t('common.delete')} className="shrink-0 self-center text-dim opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100 focus-visible:opacity-100">
                     <Trash2 className="size-3.5" />
-                  </button>
+                  </Button>
                 </li>
               );
             })}

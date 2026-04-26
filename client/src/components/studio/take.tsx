@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { generationClient } from '@/clients/generation.client';
 import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { cn } from '@/lib/utils';
 import { countWords, estimateSpeechDuration } from '@/utils/ssml';
@@ -153,16 +155,16 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         </div>
 
         {!isDraft && (
-          <button
-            type="button"
-            onClick={() => setAffinageMode((m) => (m ? null : 'quick'))}
+          <Toggle
+            size="sm"
+            pressed={isPanelOpen}
+            onPressedChange={(pressed) => setAffinageMode(pressed ? 'quick' : null)}
             aria-label={t('studio.tuning')}
-            aria-pressed={isPanelOpen}
-            className={cn('flex shrink-0 items-center gap-1.5 rounded transition-colors', isPanelOpen ? 'border border-accent-violet/40 bg-accent-violet/15 px-2 py-1 text-[11px] text-accent-violet' : 'size-7 justify-center text-muted-foreground hover:bg-muted/40 hover:text-foreground')}
+            className={cn('shrink-0 text-muted-foreground', isPanelOpen ? 'data-[state=on]:bg-accent-violet/15 data-[state=on]:text-accent-violet data-[state=on]:border data-[state=on]:border-accent-violet/40' : 'size-7 min-w-7 px-0')}
           >
             <AudioWaveform className="size-3.5" />
-            {isPanelOpen && <span className="hidden sm:inline">{t('studio.tuning')}</span>}
-          </button>
+            {isPanelOpen && <span className="hidden text-[11px] sm:inline">{t('studio.tuning')}</span>}
+          </Toggle>
         )}
       </header>
 
@@ -172,7 +174,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
 
       {!isDraft && (
         <div className={cn('flex items-center gap-3 px-4 pb-2.5 pt-1 sm:px-5', isGenerating && 'animate-pulse')}>
-          <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-card-elevated" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
+          <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-accent-amber hover:text-primary-foreground" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
             {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
           </Button>
           <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} className="min-w-0 flex-1 overflow-hidden" />
@@ -184,35 +186,28 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
         <div className="border-t border-border-subtle bg-bg-elevated">
           <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2 sm:px-5">
             <span className="text-xs text-muted-foreground">{t('studio.tuning')}</span>
-            <div role="tablist" aria-label={t('studio.tuning')} className="flex items-center rounded border border-border-subtle bg-card p-0.5 text-[10.5px]">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={affinageMode === 'quick'}
-                onClick={() => setAffinageMode('quick')}
-                className={cn('flex items-center gap-1.5 rounded-sm px-2 py-0.5 transition-colors', affinageMode === 'quick' ? 'bg-bg-elevated text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              >
+            <ToggleGroup
+              type="single"
+              value={affinageMode ?? ''}
+              onValueChange={(v: string) => {
+                if (v === 'quick' || v === 'detailed') {
+                  setAffinageMode(v);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              aria-label={t('studio.tuning')}
+              className="text-[10.5px]"
+            >
+              <ToggleGroupItem value="quick" aria-label={t('studio.tuningGlobal')}>
                 <SlidersHorizontal className="size-3" />
                 {t('studio.tuningGlobal')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={affinageMode === 'detailed'}
-                disabled={!canEditPerWord}
-                title={canEditPerWord ? undefined : t('studio.tuningUnsupported')}
-                onClick={() => setAffinageMode('detailed')}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-sm px-2 py-0.5 transition-colors',
-                  !canEditPerWord && 'cursor-not-allowed opacity-50',
-                  canEditPerWord && (affinageMode === 'detailed' ? 'bg-accent-violet/15 text-accent-violet' : 'text-muted-foreground hover:text-foreground'),
-                  !canEditPerWord && 'text-dim',
-                )}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="detailed" disabled={!canEditPerWord} title={canEditPerWord ? undefined : t('studio.tuningUnsupported')} aria-label={t('studio.tuningPerWord')} className="data-[state=on]:bg-accent-violet/15 data-[state=on]:text-accent-violet">
                 <AudioWaveform className="size-3" />
                 {t('studio.tuningPerWord')}
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
           {affinageMode === 'quick' ? (
             <TakeQuickTuning tuning={localTuning} capabilities={capabilities} onChange={setLocalTuning} />
@@ -276,60 +271,58 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
   const estimated = estimateSpeechDuration(wordCount, speedMultiplier);
   const estimatedLabel = wordCount === 0 ? '' : `${wordCount} ${t(wordCount === 1 ? 'studio.wordCountSingular' : 'studio.wordCountPlural')} · ~${formatTime(estimated)}`;
 
-  const ghostBtn = 'flex items-center gap-1.5 rounded px-2 py-1 text-[11px] transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50';
-  const activeSky = 'bg-accent-sky/15 ring-1 ring-inset ring-accent-sky/40';
-  const activeRust = 'bg-accent-rust/15 ring-1 ring-inset ring-accent-rust/40';
-  const activeSage = 'bg-accent-sage/15 ring-1 ring-inset ring-accent-sage/40';
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         disabled={isBusy}
         onMouseDown={(e) => {
           e.preventDefault();
           onInsertEffect('pause', t('generate.effectPause'));
         }}
-        className={cn(ghostBtn, 'text-muted-foreground hover:text-foreground')}
+        className="text-muted-foreground"
       >
         <Clock className="size-3" />
         {t('studio.toolbarPause')}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Toggle
+        size="sm"
+        pressed={activeMarks.slow}
         disabled={isBusy}
-        aria-pressed={activeMarks.slow}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleSpeed(0.75);
         }}
-        className={cn(ghostBtn, 'text-accent-sky', activeMarks.slow && activeSky)}
+        className="text-accent-sky hover:bg-accent-sky/10 hover:text-accent-sky data-[state=on]:bg-accent-sky/15 data-[state=on]:text-accent-sky data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-sky/40"
       >
         {t('studio.toolbarSlow')}
-      </button>
-      <button
-        type="button"
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={activeMarks.fast}
         disabled={isBusy}
-        aria-pressed={activeMarks.fast}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleSpeed(1.25);
         }}
-        className={cn(ghostBtn, 'text-accent-rust', activeMarks.fast && activeRust)}
+        className="text-accent-rust hover:bg-accent-rust/10 hover:text-accent-rust data-[state=on]:bg-accent-rust/15 data-[state=on]:text-accent-rust data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-rust/40"
       >
         {t('studio.toolbarFast')}
-      </button>
-      <button
-        type="button"
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={activeMarks.emphasis}
         disabled={isBusy}
-        aria-pressed={activeMarks.emphasis}
         onMouseDown={(e) => {
           e.preventDefault();
           onToggleTone('emphasis');
         }}
-        className={cn(ghostBtn, 'text-accent-sage', activeMarks.emphasis && activeSage)}
+        className="text-accent-sage hover:bg-accent-sage/10 hover:text-accent-sage data-[state=on]:bg-accent-sage/15 data-[state=on]:text-accent-sage data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-sage/40"
       >
         {t('studio.toolbarEmphasis')}
-      </button>
+      </Toggle>
 
       <div className="ml-auto flex items-center gap-2">
         {estimatedLabel && <span className="hidden font-mono text-[10.5px] tabular-nums text-dim sm:inline">{estimatedLabel}</span>}

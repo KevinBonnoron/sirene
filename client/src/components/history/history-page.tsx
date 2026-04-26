@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { generationCollection, voiceCollection } from '@/collections';
 import { DeleteAllGenerationsButton } from '@/components/history/delete-all-generations-button';
 import { GenerationCard } from '@/components/history/generation-card';
+import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 const chipClass = 'rounded-full border px-3 py-1 text-xs font-medium transition-colors';
@@ -13,6 +15,7 @@ const chipInactive = 'border-border bg-background text-muted-foreground hover:bg
 
 export function HistoryPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { data: generations, isLoading } = useLiveQuery((q) => q.from({ g: generationCollection }).orderBy(({ g }) => g.created, 'desc'));
 
   const [voiceFilter, setVoiceFilter] = useState<string | null>(null);
@@ -53,52 +56,50 @@ export function HistoryPage() {
   }, [generations, voiceFilter]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">{t('history.title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('history.subtitle')}</p>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-        </div>
-      ) : generations?.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('history.empty')}</p>
-      ) : (
-        <>
-          {/* Voice filter chips */}
-          {filterableVoices.length > 1 && (
-            <div className="flex min-h-9 flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setVoiceFilter(null)} className={cn(chipClass, !voiceFilter ? chipActive : chipInactive)}>
-                {t('voice.all')}
-              </button>
-              {filterableVoices.map((v) => (
-                <button key={v.id} type="button" onClick={() => setVoiceFilter(voiceFilter === v.id ? null : v.id)} className={cn(chipClass, voiceFilter === v.id ? chipActive : chipInactive)}>
-                  {v.name}
+    <div className="flex h-full flex-col">
+      <SectionTopbar label={t('nav.history')} subtitle={t('history.subtitle')} />
+      <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+          </div>
+        ) : generations?.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('history.empty')}</p>
+        ) : (
+          <>
+            {/* Voice filter chips */}
+            {filterableVoices.length > 1 && (
+              <div className="flex min-h-9 flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setVoiceFilter(null)} className={cn(chipClass, !voiceFilter ? chipActive : chipInactive)}>
+                  {t('voice.all')}
                 </button>
-              ))}
-              {voiceFilter && filteredGenerations.length > 0 && (
-                <div className="ml-auto">
-                  <DeleteAllGenerationsButton generationIds={filteredGenerations.map((g) => g.id)} voiceName={voiceMap.get(voiceFilter) ?? t('voice.unknownVoice')} onDeleted={() => setVoiceFilter(null)} />
-                </div>
-              )}
-            </div>
-          )}
+                {filterableVoices.map((v) => (
+                  <button key={v.id} type="button" onClick={() => setVoiceFilter(voiceFilter === v.id ? null : v.id)} className={cn(chipClass, voiceFilter === v.id ? chipActive : chipInactive)}>
+                    {v.name}
+                  </button>
+                ))}
+                {voiceFilter && filteredGenerations.length > 0 && (
+                  <div className="ml-auto">
+                    <DeleteAllGenerationsButton generationIds={filteredGenerations.map((g) => g.id)} voiceName={voiceMap.get(voiceFilter) ?? t('voice.unknownVoice')} onDeleted={() => setVoiceFilter(null)} />
+                  </div>
+                )}
+              </div>
+            )}
 
-          {filteredGenerations.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t('history.noMatch')}</p>
-          ) : (
-            <div className="space-y-4">
-              {filteredGenerations.map((gen) => (
-                <GenerationCard key={gen.id} generation={gen} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+            {filteredGenerations.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t('history.noMatch')}</p>
+            ) : (
+              <div className="space-y-4">
+                {filteredGenerations.map((gen) => (
+                  <GenerationCard key={gen.id} generation={gen} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 }

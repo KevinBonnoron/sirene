@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { sessionClient } from '@/clients/session.client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface Props {
   open: boolean;
@@ -61,32 +62,32 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
           <DialogDescription>{t('studio.shareDescription')}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-2 rounded-md border border-border-subtle bg-bg-elevated p-1">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => handleToggle(false)}
-            className={cn('flex items-center justify-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50', !isPublic ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-          >
+        <ToggleGroup
+          type="single"
+          value={isPublic ? 'public' : 'private'}
+          onValueChange={(v) => {
+            if (v === 'private' || v === 'public') {
+              handleToggle(v === 'public');
+            }
+          }}
+          variant="outline"
+          className="w-full *:flex-1"
+          disabled={busy}
+        >
+          <ToggleGroupItem value="private" aria-label={t('studio.sharePrivate')}>
             <Lock className="size-3.5" />
             {t('studio.sharePrivate')}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => handleToggle(true)}
-            className={cn('flex items-center justify-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50', isPublic ? 'bg-accent-amber/15 text-accent-amber shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-          >
+          </ToggleGroupItem>
+          <ToggleGroupItem value="public" aria-label={t('studio.sharePublic')} className="data-[state=on]:bg-accent-amber/15 data-[state=on]:text-accent-amber">
             {busy && isPublic ? <Loader2 className="size-3.5 animate-spin" /> : <Globe className="size-3.5" />}
             {t('studio.sharePublic')}
-          </button>
-        </div>
+          </ToggleGroupItem>
+        </ToggleGroup>
 
         {isPublic ? (
-          <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated px-3 py-2">
-            <Globe className="size-3.5 shrink-0 text-accent-amber" />
-            <input value={shareUrl} readOnly className="min-w-0 flex-1 bg-transparent font-mono text-xs outline-none" onFocus={(e) => e.currentTarget.select()} />
-            <Button size="sm" variant="ghost" onClick={handleCopy} className="shrink-0 gap-1.5">
+          <div className="flex items-center gap-2">
+            <Input value={shareUrl} readOnly className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+            <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5">
               {copied ? <Check className="size-3.5 text-accent-sage" /> : <Copy className="size-3.5" />}
               <span>{copied ? t('studio.copied') : t('studio.copy')}</span>
             </Button>

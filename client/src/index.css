@@ -197,3 +197,13 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--dim);
 }
+
+/* The Button ghost variant injects `dark:hover:bg-accent/50` which wins over our custom
+   `hover:bg-accent-amber` / `hover:text-primary-foreground` utilities in dark mode. Re-emit
+   them here, later in the cascade, so the custom amber hover lands on dark too. */
+.dark .hover\:bg-accent-amber:hover {
+  background-color: var(--accent-amber);
+}
+.dark .hover\:text-primary-foreground:hover {
+  color: var(--primary-foreground);
+}

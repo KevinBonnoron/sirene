@@ -4,11 +4,13 @@ import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { type SettingEntry, settingsClient } from '@/clients/settings.client';
+import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const KEYS = [
   { key: 'openai_api_key', labelKey: 'settings.openAIKey', placeholder: 'sk-...' },
@@ -136,33 +138,32 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsClient.getAll(),
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('settings.subtitle')}</p>
-      </div>
-
-      {isLoading ? (
-        <Skeleton className="h-48" />
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('settings.apiKeys')}</CardTitle>
-            <CardDescription>{t('settings.apiKeysDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {KEYS.map((keyDef) => (
-              <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
-            ))}
-          </CardContent>
-        </Card>
-      )}
+    <div className="flex h-full flex-col">
+      <SectionTopbar label={t('nav.settings')} subtitle={t('settings.subtitle')} />
+      <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
+        {isLoading ? (
+          <Skeleton className="h-48" />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.apiKeys')}</CardTitle>
+              <CardDescription>{t('settings.apiKeysDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {KEYS.map((keyDef) => (
+                <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </main>
     </div>
   );
 }

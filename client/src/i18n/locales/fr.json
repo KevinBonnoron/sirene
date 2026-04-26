@@ -181,6 +181,7 @@
   "studio": {
     "breadcrumbStudio": "Studio",
     "breadcrumbSession": "Session",
+    "pageSubtitle": "Écrivez, donnez voix et affinez vos prises audio.",
     "untitledSession": "Sans titre",
     "emptyTitle": "Votre studio est pr\u00eat",
     "emptyHint": "\u00c9crivez une phrase, choisissez une voix et g\u00e9n\u00e9rez. Ajoutez des prises pour composer un dialogue.",
@@ -231,6 +232,7 @@
     "bankTitle": "Banque de prises",
     "bankEmpty": "Aucune prise pour l'instant",
     "bankEmptyHint": "Vos g\u00e9n\u00e9rations appara\u00eetront ici et pourront \u00eatre gliss\u00e9es vers le document.",
+    "bankAddHint": "Ajouter \u00e0 la session en cours",
     "allSessions": "Toutes les sessions",
     "noSessions": "Aucune session pour l'instant.",
     "takeCountSingular": "{{count}} prise",
@@ -252,6 +254,7 @@
     "exportFailed": "Échec de l'export",
     "moreActions": "Plus d'actions",
     "more": "Plus",
+    "toggleBank": "Afficher/masquer la banque",
     "relativeJustNow": "à l'instant",
     "relativeMinutes": "{{count}} min",
     "relativeHours": "{{count}} h",

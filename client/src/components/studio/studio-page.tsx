@@ -97,6 +97,21 @@ export function StudioPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   const [editingName, setEditingName] = useState(false);
+  const [bankOpen, setBankOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || window.innerWidth < 1280) {
+      return false;
+    }
+    return localStorage.getItem('sirene-bank-open') !== '0';
+  });
+  const toggleBank = useCallback(() => {
+    setBankOpen((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined' && window.innerWidth >= 1280) {
+        localStorage.setItem('sirene-bank-open', next ? '1' : '0');
+      }
+      return next;
+    });
+  }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on session id only
   useEffect(() => {
@@ -378,7 +393,7 @@ export function StudioPage() {
     return (
       <div className="flex h-svh overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} />
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} bankOpen={bankOpen} onToggleBank={toggleBank} />
           <main className="flex flex-1 items-center justify-center">
             <Loader2 className="size-5 animate-spin text-dim" />
           </main>
@@ -391,7 +406,7 @@ export function StudioPage() {
     return (
       <div className="flex h-svh overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <StudioTopbar sessionName={null} saved takeCount={0} inSession={false} />
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={false} bankOpen={bankOpen} onToggleBank={toggleBank} />
           <main className="custom-scrollbar flex-1 overflow-y-auto">
             <div className={`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`}>
               <NoVoicesState />
@@ -406,7 +421,7 @@ export function StudioPage() {
     return (
       <div className="flex h-svh overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} />
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} bankOpen={bankOpen} onToggleBank={toggleBank} />
           <main className="flex flex-1 items-center justify-center">
             <Loader2 className="size-5 animate-spin text-dim" />
           </main>
@@ -462,6 +477,8 @@ export function StudioPage() {
           }
           onDelete={activeSession ? () => setPendingDelete({ id: activeSession.id, name: activeSession.name?.trim().length ? activeSession.name : t('studio.untitledSession') }) : undefined}
           onRename={activeSession ? () => setEditingName(true) : undefined}
+          bankOpen={bankOpen}
+          onToggleBank={toggleBank}
         />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
@@ -522,7 +539,24 @@ export function StudioPage() {
         </main>
       </div>
 
-      {isDesktop && <TakeBank entries={bankEntries} />}
+      {isDesktop ? (
+        <div className={cn('shrink-0 overflow-hidden transition-[width] duration-200 ease-out', bankOpen ? 'w-[320px]' : 'w-0')} aria-hidden={!bankOpen}>
+          <TakeBank entries={bankEntries} onAdd={handleDropFromBank} />
+        </div>
+      ) : (
+        <>
+          {bankOpen && <button type="button" aria-label="Close" onClick={toggleBank} className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" />}
+          <div className={cn('fixed inset-y-0 right-0 z-50 transition-transform duration-200 ease-out', bankOpen ? 'translate-x-0' : 'translate-x-full')} aria-hidden={!bankOpen}>
+            <TakeBank
+              entries={bankEntries}
+              onAdd={(id) => {
+                handleDropFromBank(id);
+                setBankOpen(false);
+              }}
+            />
+          </div>
+        </>
+      )}
 
       <ShareSessionDialog open={shareOpen} onOpenChange={setShareOpen} session={activeSession ?? null} />
       <DeleteSessionAlert pendingId={pendingDelete?.id ?? null} pendingName={pendingDelete?.name ?? ''} onClose={() => setPendingDelete(null)} />

@@ -1,15 +1,22 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun, Trash2 } from 'lucide-react';
+import { AudioLines, Box, Check, Clock, Languages, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, sessionCollection } from '@/collections';
 import { DeleteSessionAlert } from '@/components/studio/delete-session-alert';
 import { SessionsDialog } from '@/components/studio/sessions-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { SUPPORTED_LANGUAGES, type SupportedLanguage, setLanguage } from '@/i18n';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
+
+const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
+  en: 'English',
+  fr: 'Français',
+};
 
 const RECENT_SESSIONS_LIMIT = 5;
 
@@ -33,6 +40,29 @@ function LogoutButton() {
       <LogOut className="size-4" />
       <span>{t('auth.logout')}</span>
     </SidebarMenuButton>
+  );
+}
+
+function LanguageToggleButton() {
+  const { t, i18n } = useTranslation();
+  const current = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language) ? (i18n.language as SupportedLanguage) : 'en';
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SidebarMenuButton tooltip={t('nav.language')}>
+          <Languages className="size-4" />
+          <span>{LANGUAGE_LABELS[current]}</span>
+        </SidebarMenuButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side="right">
+        {SUPPORTED_LANGUAGES.map((lang) => (
+          <DropdownMenuItem key={lang} onSelect={() => setLanguage(lang)}>
+            {current === lang ? <Check className="size-3.5 text-accent-amber" /> : <span className="size-3.5" />}
+            {LANGUAGE_LABELS[lang]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -136,6 +166,9 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <ThemeToggleButton />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <LanguageToggleButton />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={currentPath === '/settings'} tooltip={t('nav.settings')}>

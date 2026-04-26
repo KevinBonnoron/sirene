@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { cn } from '@/lib/utils';
+import { formatRelative } from '@/utils/format-relative';
 import { TakeWaveform } from './take-waveform';
 
 export interface BankEntry {
@@ -22,24 +23,6 @@ export const BANK_DRAG_MIME = 'application/x-sirene-bank-id';
 
 interface Props {
   entries: BankEntry[];
-}
-
-function formatRelative(date: Date, now = new Date()): string {
-  const diff = (now.getTime() - date.getTime()) / 1000;
-  if (diff < 60) {
-    return "à l'instant";
-  }
-  if (diff < 3600) {
-    return `${Math.floor(diff / 60)} min`;
-  }
-  if (diff < 86400) {
-    return `${Math.floor(diff / 3600)} h`;
-  }
-  const days = Math.floor(diff / 86400);
-  if (days < 7) {
-    return `${days} j`;
-  }
-  return date.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
 }
 
 export function TakeBank({ entries }: Props) {
@@ -71,6 +54,7 @@ export function TakeBank({ entries }: Props) {
 }
 
 function BankCard({ entry, seed }: { entry: BankEntry; seed: number }) {
+  const { t } = useTranslation();
   const { isPlaying, progress, toggle } = useAudioPlayback(entry.audioUrl);
 
   // Custom MIME carries the generation id; `text/plain` is set as a fallback so OS-level drop
@@ -96,13 +80,19 @@ function BankCard({ entry, seed }: { entry: BankEntry; seed: number }) {
       <p className="line-clamp-2 min-w-0 font-serif text-[13px] leading-snug text-foreground/90">{entry.text}</p>
 
       <div className="flex min-w-0 items-center gap-2">
-        <button type="button" onClick={toggle} disabled={!entry.audioUrl} className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-foreground transition-colors hover:bg-accent-amber hover:text-bg-elevated disabled:opacity-50" aria-label={isPlaying ? 'Pause' : 'Play'}>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={!entry.audioUrl}
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-foreground transition-colors hover:bg-accent-amber hover:text-bg-elevated disabled:opacity-50"
+          aria-label={isPlaying ? t('studio.pause') : t('studio.play')}
+        >
           {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 translate-x-[0.5px]" />}
         </button>
         <div className="min-w-0 flex-1 overflow-hidden">
           <TakeWaveform seed={seed * 11 + 3} bars={32} active={isPlaying} progress={progress} className="h-6" />
         </div>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-dim">{formatRelative(entry.createdAt)}</span>
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-dim">{formatRelative(entry.createdAt, t)}</span>
       </div>
     </li>
   );

@@ -4,6 +4,7 @@ import { Check, MessageSquareText, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { formatRelative } from '@/utils/format-relative';
 
 interface Props {
   open: boolean;
@@ -13,24 +14,6 @@ interface Props {
   activeSessionId: string | null;
   /** Triggered when the user clicks the trash icon. Parent owns the confirm dialog. */
   onRequestDelete: (sessionId: string, displayName: string) => void;
-}
-
-function formatRelative(iso: string, now = new Date()): string {
-  const diff = (now.getTime() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) {
-    return "à l'instant";
-  }
-  if (diff < 3600) {
-    return `${Math.floor(diff / 60)} min`;
-  }
-  if (diff < 86400) {
-    return `${Math.floor(diff / 3600)} h`;
-  }
-  const days = Math.floor(diff / 86400);
-  if (days < 7) {
-    return `${days} j`;
-  }
-  return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
 }
 
 function asStringArray(value: unknown): string[] {
@@ -80,7 +63,7 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
                       {preview && <p className="mt-0.5 truncate text-xs text-muted-foreground">{preview}</p>}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(session.updated)}</span>
+                      <span className="font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(session.updated, t)}</span>
                       <span className="font-mono text-[10px] tabular-nums text-dim">{t(ids.length === 1 ? 'studio.takeCountSingular' : 'studio.takeCountPlural', { count: ids.length })}</span>
                     </div>
                   </button>

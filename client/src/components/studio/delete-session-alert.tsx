@@ -37,7 +37,7 @@ export function DeleteSessionAlert({ pendingId, pendingName, onClose }: Props) {
         navigate({ to: '/', search: {}, replace: true });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete session');
+      toast.error(err instanceof Error ? err.message : t('studio.failedToDeleteSession'));
     } finally {
       onClose();
     }

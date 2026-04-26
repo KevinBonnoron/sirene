@@ -141,6 +141,7 @@ interface PublicTakeProps {
 }
 
 function PublicTake({ index, generation, voice }: PublicTakeProps) {
+  const { t } = useTranslation();
   const audioUrl = generation.audio ? pb.files.getURL(generation, generation.audio) : undefined;
   const { isPlaying, toggle } = useAudioPlayback(audioUrl);
   const voiceName = voice?.name ?? '—';
@@ -165,7 +166,7 @@ function PublicTake({ index, generation, voice }: PublicTakeProps) {
         <Button variant="ghost" size="icon" disabled={!audioUrl} onClick={toggle} className="size-8 rounded-full bg-bg-elevated hover:bg-card-elevated">
           {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
         </Button>
-        <span className="text-xs text-muted-foreground">{isPlaying ? 'Playing…' : audioUrl ? 'Tap to play' : 'No audio'}</span>
+        <span className="text-xs text-muted-foreground">{isPlaying ? t('studio.playing') : audioUrl ? t('studio.tapToPlay') : t('studio.noAudio')}</span>
       </div>
     </article>
   );

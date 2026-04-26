@@ -170,7 +170,7 @@ export function StudioPage() {
         }).isPersisted.promise;
         setSavedAt(Date.now());
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to save session');
+        toast.error(err instanceof Error ? err.message : t('studio.failedToSaveSession'));
       } finally {
         setSaving(false);
       }
@@ -180,7 +180,7 @@ export function StudioPage() {
         clearTimeout(saveTimerRef.current);
       }
     };
-  }, [sessionNameDraft, activeSession]);
+  }, [sessionNameDraft, activeSession, t]);
 
   const handleDraftContentChange = useCallback((editor: Editor) => {
     setDraft((d) => (d ? { ...d, content: editor.getJSON() } : d));
@@ -303,10 +303,10 @@ export function StudioPage() {
           s.generations = nextGenerations;
         }).isPersisted.promise;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to delete take');
+        toast.error(err instanceof Error ? err.message : t('studio.failedToDeleteTake'));
       }
     },
-    [activeSessionId, sessions],
+    [activeSessionId, sessions, t],
   );
 
   // Append a generation from the bank to the document. Mirrors the three-state logic of
@@ -330,7 +330,7 @@ export function StudioPage() {
           }).isPersisted.promise;
           setWantsDraft(false);
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Failed to add take');
+          toast.error(err instanceof Error ? err.message : t('studio.failedToAddTake'));
         }
         return;
       }
@@ -347,7 +347,7 @@ export function StudioPage() {
           setActiveSessionId(created.id);
           setWantsDraft(false);
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Failed to create session');
+          toast.error(err instanceof Error ? err.message : t('studio.failedToCreateSession'));
         }
         return;
       }
@@ -355,7 +355,7 @@ export function StudioPage() {
       setCurrentSoloId(generationId);
       setWantsDraft(false);
     },
-    [activeSessionId, sessions, currentSoloId, user, setActiveSessionId],
+    [activeSessionId, sessions, currentSoloId, user, setActiveSessionId, t],
   );
 
   // Drop-zone handlers. Use a depth counter (not a boolean) because dragenter/leave fire on every
@@ -409,7 +409,7 @@ export function StudioPage() {
       return;
     }
     if (!user) {
-      toast.error('Not authenticated');
+      toast.error(t('studio.notAuthenticated'));
       return;
     }
     // Promote the solo take into a fresh session so the next generation appends instead of
@@ -423,7 +423,7 @@ export function StudioPage() {
       setActiveSessionId(created.id);
       setCurrentSoloId(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create session');
+      toast.error(err instanceof Error ? err.message : t('studio.failedToCreateSession'));
     }
   }
 

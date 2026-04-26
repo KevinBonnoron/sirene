@@ -121,9 +121,9 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
     generationClient
       .align(take.id)
       .then((res) => setAlignment(res))
-      .catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load alignment'))
+      .catch((err) => toast.error(err instanceof Error ? err.message : t('studio.failedToLoadAlignment')))
       .finally(() => setAlignLoading(false));
-  }, [affinageMode, alignment, alignLoading, isDraft, take.id]);
+  }, [affinageMode, alignment, alignLoading, isDraft, take.id, t]);
 
   const handlePitchCurveChange = useCallback((prosodyCurve: PitchPoint[]) => {
     setLocalTuning((prev) => ({ ...prev, prosodyCurve }));

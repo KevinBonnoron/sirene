@@ -9,6 +9,9 @@
 migrate(
   (app) => {
     const sessions = app.findCollectionByNameOrId('sessions');
+    if (!sessions) {
+      return;
+    }
     const field = sessions.fields.getByName('generations');
     if (field) {
       field.maxSelect = 999;

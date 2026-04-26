@@ -141,6 +141,7 @@ def _generate_ssml(req: GenerateRequest, model_path: str) -> TTSResult:
                     instruct_text=req.instruct_text,
                     instruct_gender=req.instruct_gender,
                     speed=req.speed,
+                    noise_scale=req.noise_scale,
                     language=req.language,
                 )
                 result = model_manager.generate(req.backend, model_path, params)
@@ -161,6 +162,7 @@ def _generate_ssml(req: GenerateRequest, model_path: str) -> TTSResult:
             instruct_text=resolve_tone(seg.tone) if seg.tone else req.instruct_text,
             instruct_gender=req.instruct_gender,
             speed=seg.rate,
+            noise_scale=req.noise_scale,
             language=req.language,
         )
         result = model_manager.generate(req.backend, model_path, params)

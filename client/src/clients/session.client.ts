@@ -7,7 +7,7 @@ export const sessionClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
     setPublic(id: string, isPublic: boolean): Promise<Session> {
-      return delegate.patch<Session>(`/sessions/${id}/share`, { public: isPublic });
+      return delegate.patch<Session>(`/sessions/${encodeURIComponent(id)}/share`, { public: isPublic });
     },
   })),
 );

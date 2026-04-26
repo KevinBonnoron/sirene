@@ -195,7 +195,7 @@
     "addTake": "Ajouter une prise",
     "addTakeHint": "enchaîner une suite",
     "changeVoice": "Changer de voix",
-    "draftHint": "\u2318\u21b5 pour g\u00e9n\u00e9rer",
+    "draftHint": "Ctrl/Cmd + Entr\u00e9e pour g\u00e9n\u00e9rer",
     "play": "Lecture",
     "pause": "Pause",
     "tuning": "Affinage",

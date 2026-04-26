@@ -5,8 +5,11 @@ import './ssml-chip.css';
 // SpeedMark — wraps text, controls rate (slow / fast / xfast)
 // ---------------------------------------------------------------------------
 
-function speedClass(rate: number): string {
-  if (rate < 1) {
+function speedClass(rate: number | null | undefined): string {
+  if (!Number.isFinite(rate)) {
+    return 'ssml-chip';
+  }
+  if ((rate as number) < 1) {
     return 'ssml-chip ssml-chip-slow';
   }
   return 'ssml-chip ssml-chip-fast';

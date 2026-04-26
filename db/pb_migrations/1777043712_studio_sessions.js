@@ -57,7 +57,7 @@ migrate(
       name: 'sessions',
       type: 'base',
       system: false,
-      createRule: "@request.auth.id != ''",
+      createRule: "@request.auth.id != '' && @request.body.user = @request.auth.id",
       listRule: 'user = @request.auth.id',
       viewRule: 'user = @request.auth.id',
       updateRule: 'user = @request.auth.id',

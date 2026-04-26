@@ -63,8 +63,11 @@ const WORDS_PER_SECOND = 3;
 
 /** Rough seconds estimate from a word count, used for the draft "~0:03" hint. */
 export function estimateSpeechDuration(wordCount: number, speedMultiplier = 1): number {
-  if (!wordCount) {
+  if (!Number.isFinite(wordCount) || wordCount <= 0) {
     return 0;
+  }
+  if (!Number.isFinite(speedMultiplier) || speedMultiplier <= 0) {
+    return wordCount / WORDS_PER_SECOND;
   }
   return wordCount / (WORDS_PER_SECOND * speedMultiplier);
 }

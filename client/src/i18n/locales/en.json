@@ -195,7 +195,7 @@
     "addTake": "Add a take",
     "addTakeHint": "chain a follow-up",
     "changeVoice": "Change voice",
-    "draftHint": "⌘↵ to generate",
+    "draftHint": "Ctrl/Cmd + Enter to generate",
     "play": "Play",
     "pause": "Pause",
     "tuning": "Tuning",

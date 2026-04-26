@@ -47,11 +47,17 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
         setProgress(audio.currentTime / audio.duration);
       }
     };
+    const onError = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      release(audio);
+    };
 
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('error', onError);
     audioRef.current = audio;
 
     return () => {
@@ -59,6 +65,7 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('error', onError);
       audio.pause();
       release(audio);
       audioRef.current = null;

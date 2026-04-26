@@ -20,13 +20,14 @@ function isTextInputTarget(target: EventTarget | null): boolean {
 export function useKeyboardShortcut(handler: (event: KeyboardEvent) => void, { key, meta = true, ignoreInTextInputs = true }: ShortcutOptions, enabled = true) {
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
+  const normalizedKey = key.toLowerCase();
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() !== key) {
+      if (e.key.toLowerCase() !== normalizedKey) {
         return;
       }
       if (meta && !(e.metaKey || e.ctrlKey)) {
@@ -43,5 +44,5 @@ export function useKeyboardShortcut(handler: (event: KeyboardEvent) => void, { k
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [enabled, key, meta, ignoreInTextInputs]);
+  }, [enabled, normalizedKey, meta, ignoreInTextInputs]);
 }

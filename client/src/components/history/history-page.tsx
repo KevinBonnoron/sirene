@@ -72,11 +72,11 @@ export function HistoryPage() {
             {/* Voice filter chips */}
             {filterableVoices.length > 1 && (
               <div className="flex min-h-9 flex-wrap items-center gap-2">
-                <button type="button" onClick={() => setVoiceFilter(null)} className={cn(chipClass, !voiceFilter ? chipActive : chipInactive)}>
+                <button type="button" aria-pressed={!voiceFilter} onClick={() => setVoiceFilter(null)} className={cn(chipClass, !voiceFilter ? chipActive : chipInactive)}>
                   {t('voice.all')}
                 </button>
                 {filterableVoices.map((v) => (
-                  <button key={v.id} type="button" onClick={() => setVoiceFilter(voiceFilter === v.id ? null : v.id)} className={cn(chipClass, voiceFilter === v.id ? chipActive : chipInactive)}>
+                  <button key={v.id} type="button" aria-pressed={voiceFilter === v.id} onClick={() => setVoiceFilter(voiceFilter === v.id ? null : v.id)} className={cn(chipClass, voiceFilter === v.id ? chipActive : chipInactive)}>
                     {v.name}
                   </button>
                 ))}

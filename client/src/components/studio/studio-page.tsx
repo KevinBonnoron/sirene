@@ -551,7 +551,10 @@ export function StudioPage() {
               })}
             </ol>
 
-            {generatedCount >= 1 && (
+            {/* The dashed "Add take" zone and the draft composer are mutually exclusive — the
+                composer already invites the user to enter the next take, so there's no need to
+                stack a separate prompt below it. */}
+            {generatedCount >= 1 && !showDraft && (
               <button type="button" onClick={handleAddTake} className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent-amber/60 hover:bg-card/40 hover:text-foreground">
                 <span className="flex min-w-0 items-center gap-2">
                   <Plus className="size-4 shrink-0" />

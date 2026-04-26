@@ -148,12 +148,25 @@ migrate(
   },
   (app) => {
     // ---- Down migration ---------------------------------------------------
-    const sessions = app.findCollectionByNameOrId('sessions');
+    // PB JSVM `findCollectionByNameOrId` throws when not found instead of returning null,
+    // so we wrap each lookup so a missing collection skips its block instead of aborting.
+    const findOrNull = (nameOrId) => {
+      try {
+        return app.findCollectionByNameOrId(nameOrId);
+      } catch (e) {
+        if (String(e).toLowerCase().includes('no rows')) {
+          return null;
+        }
+        throw e;
+      }
+    };
+
+    const sessions = findOrNull('sessions');
     if (sessions) {
       app.delete(sessions);
     }
 
-    const generations = app.findCollectionByNameOrId('generations');
+    const generations = findOrNull('generations');
     if (generations) {
       for (const fieldName of ['state', 'tuning', 'ssml_json']) {
         const field = generations.fields.getByName(fieldName);

@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+type AudioWithHandlers = HTMLAudioElement & {
+  _onPlay?: () => void;
+  _onPause?: () => void;
+  _onEnded?: () => void;
+  _onTimeUpdate?: () => void;
+  _onError?: () => void;
+};
 
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -15,6 +23,26 @@ function release(audio: HTMLAudioElement) {
   }
 }
 
+function detachAudio(audio: AudioWithHandlers) {
+  audio.pause();
+  release(audio);
+  if (audio._onPlay) {
+    audio.removeEventListener('play', audio._onPlay);
+  }
+  if (audio._onPause) {
+    audio.removeEventListener('pause', audio._onPause);
+  }
+  if (audio._onEnded) {
+    audio.removeEventListener('ended', audio._onEnded);
+  }
+  if (audio._onTimeUpdate) {
+    audio.removeEventListener('timeupdate', audio._onTimeUpdate);
+  }
+  if (audio._onError) {
+    audio.removeEventListener('error', audio._onError);
+  }
+}
+
 export interface UseAudioPlaybackResult {
   isPlaying: boolean;
   progress: number; // 0..1
@@ -22,66 +50,70 @@ export interface UseAudioPlaybackResult {
   stop: () => void;
 }
 
+// Audio elements are allocated lazily on first toggle so a session with dozens of takes/bank
+// entries doesn't create + preload one media element per row at mount time.
 export function useAudioPlayback(url: string | null | undefined): UseAudioPlaybackResult {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<AudioWithHandlers | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on url; teardown reads audioRef
   useEffect(() => {
     setIsPlaying(false);
     setProgress(0);
-
-    if (!url) {
-      const previous = audioRef.current;
-      if (previous) {
-        previous.pause();
-        release(previous);
-      }
+    const previous = audioRef.current;
+    if (previous) {
+      detachAudio(previous);
       audioRef.current = null;
-      return;
     }
-    const audio = new Audio(url);
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        detachAudio(audio);
+        audioRef.current = null;
+      }
+    };
+  }, [url]);
+
+  const ensureAudio = useCallback(() => {
+    if (!url) {
+      return null;
+    }
+    if (audioRef.current) {
+      return audioRef.current;
+    }
+    const audio = new Audio(url) as AudioWithHandlers;
     audio.preload = 'metadata';
 
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onEnded = () => {
+    audio._onPlay = () => setIsPlaying(true);
+    audio._onPause = () => setIsPlaying(false);
+    audio._onEnded = () => {
       setIsPlaying(false);
       setProgress(0);
       release(audio);
     };
-    const onTimeUpdate = () => {
+    audio._onTimeUpdate = () => {
       if (audio.duration && Number.isFinite(audio.duration)) {
         setProgress(audio.currentTime / audio.duration);
       }
     };
-    const onError = () => {
+    audio._onError = () => {
       setIsPlaying(false);
       setProgress(0);
       release(audio);
     };
 
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('error', onError);
+    audio.addEventListener('play', audio._onPlay);
+    audio.addEventListener('pause', audio._onPause);
+    audio.addEventListener('ended', audio._onEnded);
+    audio.addEventListener('timeupdate', audio._onTimeUpdate);
+    audio.addEventListener('error', audio._onError);
     audioRef.current = audio;
-
-    return () => {
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('error', onError);
-      audio.pause();
-      release(audio);
-      audioRef.current = null;
-    };
+    return audio;
   }, [url]);
 
   function toggle() {
-    const audio = audioRef.current;
+    const audio = ensureAudio();
     if (!audio) {
       return;
     }

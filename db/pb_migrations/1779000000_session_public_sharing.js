@@ -48,7 +48,20 @@ migrate(
     app.save(generations);
   },
   (app) => {
-    const sessions = app.findCollectionByNameOrId('sessions');
+    // PB JSVM `findCollectionByNameOrId` throws when not found instead of returning null;
+    // wrap so a missing collection skips the block rather than aborting the rollback.
+    const findOrNull = (nameOrId) => {
+      try {
+        return app.findCollectionByNameOrId(nameOrId);
+      } catch (e) {
+        if (String(e).toLowerCase().includes('no rows')) {
+          return null;
+        }
+        throw e;
+      }
+    };
+
+    const sessions = findOrNull('sessions');
     if (sessions) {
       const f = sessions.fields.getByName('public');
       if (f) {
@@ -58,7 +71,7 @@ migrate(
       app.save(sessions);
     }
 
-    const generations = app.findCollectionByNameOrId('generations');
+    const generations = findOrNull('generations');
     if (generations) {
       const f = generations.fields.getByName('public');
       if (f) {

@@ -106,12 +106,28 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
     if (affinageMode !== 'detailed' || alignment || alignLoading || isDraft) {
       return;
     }
+    let cancelled = false;
     setAlignLoading(true);
     generationClient
       .align(take.id)
-      .then((res) => setAlignment(res))
-      .catch((err) => toast.error(err instanceof Error ? err.message : t('studio.failedToLoadAlignment')))
-      .finally(() => setAlignLoading(false));
+      .then((res) => {
+        if (!cancelled) {
+          setAlignment(res);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : t('studio.failedToLoadAlignment'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAlignLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [affinageMode, alignment, alignLoading, isDraft, take.id, t]);
 
   const handlePitchCurveChange = useCallback((prosodyCurve: PitchPoint[]) => {
@@ -271,19 +287,13 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
   const estimated = estimateSpeechDuration(wordCount, speedMultiplier);
   const estimatedLabel = wordCount === 0 ? '' : `${wordCount} ${t(wordCount === 1 ? 'studio.wordCountSingular' : 'studio.wordCountPlural')} · ~${formatTime(estimated)}`;
 
+  // Keep the editor's selection alive while clicking — the click handler runs after, with the
+  // selection still active, so setMark / insertContent target the right range.
+  const preventEditorBlur = (e: React.MouseEvent) => e.preventDefault();
+
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        disabled={isBusy}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onInsertEffect('pause', t('generate.effectPause'));
-        }}
-        className="text-muted-foreground"
-      >
+      <Button type="button" size="sm" variant="ghost" disabled={isBusy} onMouseDown={preventEditorBlur} onClick={() => onInsertEffect('pause', t('generate.effectPause'))} className="text-muted-foreground">
         <Clock className="size-3" />
         {t('studio.toolbarPause')}
       </Button>
@@ -291,10 +301,8 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
         size="sm"
         pressed={activeMarks.slow}
         disabled={isBusy}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onToggleSpeed(0.75);
-        }}
+        onMouseDown={preventEditorBlur}
+        onPressedChange={() => onToggleSpeed(0.75)}
         className="text-accent-sky hover:bg-accent-sky/10 hover:text-accent-sky data-[state=on]:bg-accent-sky/15 data-[state=on]:text-accent-sky data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-sky/40"
       >
         {t('studio.toolbarSlow')}
@@ -303,10 +311,8 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
         size="sm"
         pressed={activeMarks.fast}
         disabled={isBusy}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onToggleSpeed(1.25);
-        }}
+        onMouseDown={preventEditorBlur}
+        onPressedChange={() => onToggleSpeed(1.25)}
         className="text-accent-rust hover:bg-accent-rust/10 hover:text-accent-rust data-[state=on]:bg-accent-rust/15 data-[state=on]:text-accent-rust data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-rust/40"
       >
         {t('studio.toolbarFast')}
@@ -315,10 +321,8 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
         size="sm"
         pressed={activeMarks.emphasis}
         disabled={isBusy}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onToggleTone('emphasis');
-        }}
+        onMouseDown={preventEditorBlur}
+        onPressedChange={() => onToggleTone('emphasis')}
         className="text-accent-sage hover:bg-accent-sage/10 hover:text-accent-sage data-[state=on]:bg-accent-sage/15 data-[state=on]:text-accent-sage data-[state=on]:ring-1 data-[state=on]:ring-inset data-[state=on]:ring-accent-sage/40"
       >
         {t('studio.toolbarEmphasis')}

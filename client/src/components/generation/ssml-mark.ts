@@ -112,10 +112,10 @@ export const EffectNode = Node.create({
     return [
       'span',
       {
-        'data-effect': node.attrs.effect,
-        'data-label': node.attrs.label,
+        'data-effect': effect,
+        'data-label': label,
         contenteditable: 'false',
-        class: effectClass(node.attrs.effect as string),
+        class: effectClass(effect),
       },
       display,
     ];

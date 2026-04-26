@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as ShareSessionIdRouteImport } from './routes/share.$sessionId'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppVoicesRouteImport } from './routes/_app/voices'
@@ -31,6 +32,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const ShareSessionIdRoute = ShareSessionIdRouteImport.update({
+  id: '/share/$sessionId',
+  path: '/share/$sessionId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/register',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/voices': typeof AppVoicesRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/voices': typeof AppVoicesRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_app/voices': typeof AppVoicesRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
+  '/share/$sessionId': typeof ShareSessionIdRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/voices'
     | '/login'
     | '/register'
+    | '/share/$sessionId'
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/voices'
     | '/login'
     | '/register'
+    | '/share/$sessionId'
     | '/'
   id:
     | '__root__'
@@ -122,12 +133,14 @@ export interface FileRouteTypes {
     | '/_app/voices'
     | '/_auth/login'
     | '/_auth/register'
+    | '/share/$sessionId'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ShareSessionIdRoute: typeof ShareSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/share/$sessionId': {
+      id: '/share/$sessionId'
+      path: '/share/$sessionId'
+      fullPath: '/share/$sessionId'
+      preLoaderRoute: typeof ShareSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_auth/register': {
       id: '/_auth/register'
@@ -231,6 +251,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ShareSessionIdRoute: ShareSessionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

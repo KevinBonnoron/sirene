@@ -30,6 +30,7 @@ class GenerateParams:
     instruct_text: str | None = None
     instruct_gender: str | None = None
     speed: float = 1.0
+    noise_scale: float | None = None
     language: str = "en"
 
     @property

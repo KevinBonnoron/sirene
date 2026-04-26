@@ -1,5 +1,15 @@
 import type { PocketBaseRecord } from './base.type';
 
+export type GenerationState = 'draft' | 'ready' | 'tuned';
+
+export interface GenerationTuning {
+  pitchShift: number;
+  speedMultiplier: number;
+  variationSeed: number;
+  prosodyCurve?: Array<[number, number]>;
+  wordRates?: Record<string, number>;
+}
+
 export interface Generation extends PocketBaseRecord {
   voice: string;
   model: string;
@@ -9,4 +19,9 @@ export interface Generation extends PocketBaseRecord {
   duration: number;
   speed: number;
   user: string;
+  state?: GenerationState;
+  tuning?: GenerationTuning;
+  ssml_json?: object;
+  /** Denormalised from the parent session — flips when the session is shared/unshared. */
+  public?: boolean;
 }

@@ -1,4 +1,4 @@
-import type { GenerateRequest } from '@sirene/shared';
+import type { GenerateRequest, GenerationAlignment } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
 import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
@@ -34,10 +34,15 @@ function buildWav(pcmChunks: Uint8Array[], totalBytes: number, sampleRate: numbe
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
+export interface GenerateResult {
+  audio: Blob;
+  generationId: string | null;
+}
+
 export const generationClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
-    async generate(request: GenerateRequest): Promise<Blob> {
+    async generate(request: GenerateRequest): Promise<GenerateResult> {
       const response = await delegate.post<Response>('/generate/stream', request, { format: 'raw' });
 
       if (!response.ok) {
@@ -45,10 +50,13 @@ export const generationClient = universalClient(
         throw new Error(error.message || `Generation failed (${response.status})`);
       }
 
-      // PCM stream is identified by the X-Sample-Rate header; other responses are returned as-is
+      const generationId = response.headers.get('X-Generation-Id');
       const sampleRateHeader = response.headers.get('X-Sample-Rate');
+
+      // Non-PCM response (ElevenLabs / OpenAI): return blob directly
       if (!sampleRateHeader) {
-        return response.blob();
+        const audio = await response.blob();
+        return { audio, generationId };
       }
 
       // PCM stream: accumulate chunks and build WAV
@@ -70,7 +78,11 @@ export const generationClient = universalClient(
         totalBytes += value.length;
       }
 
-      return buildWav(chunks, totalBytes, sampleRate);
+      return { audio: buildWav(chunks, totalBytes, sampleRate), generationId };
+    },
+
+    align(id: string): Promise<GenerationAlignment> {
+      return delegate.get<GenerationAlignment>(`/generations/${id}/align`);
     },
   })),
 );

@@ -49,3 +49,51 @@ export function contentToSSML(doc: JSONContent): string {
 export function stripSSML(text: string): string {
   return text.replace(/<[^>]+>/g, '').replace(/\[[^\]]+\]/g, '');
 }
+
+// Tiptap text nodes split when marks change. A single word "hello" wrapped in a mark gets
+// emitted as two adjacent text nodes ("hel" + "lo") that we must NOT separate with a space —
+// otherwise countWords doubles the count. Track block (paragraph) boundaries explicitly and
+// only insert a separator between blocks.
+const TIPTAP_BLOCK_TYPES = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem']);
+
+/** Count words in a Tiptap document, ignoring effect nodes / SSML markers. */
+export function countWords(doc: JSONContent): number {
+  const blocks: string[] = [];
+  let buffer = '';
+  const walk = (node?: JSONContent): void => {
+    if (!node || node.type === 'effectNode') {
+      return;
+    }
+    if (node.type === 'text' && typeof node.text === 'string') {
+      buffer += node.text;
+      return;
+    }
+    const isBlock = node.type ? TIPTAP_BLOCK_TYPES.has(node.type) : false;
+    for (const child of node.content ?? []) {
+      walk(child);
+    }
+    if (isBlock && buffer.length > 0) {
+      blocks.push(buffer);
+      buffer = '';
+    }
+  };
+  walk(doc);
+  if (buffer.length > 0) {
+    blocks.push(buffer);
+  }
+  const plain = blocks.join(' ').trim();
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+}
+
+const WORDS_PER_SECOND = 3;
+
+/** Rough seconds estimate from a word count, used for the draft "~0:03" hint. */
+export function estimateSpeechDuration(wordCount: number, speedMultiplier = 1): number {
+  if (!Number.isFinite(wordCount) || wordCount <= 0) {
+    return 0;
+  }
+  if (!Number.isFinite(speedMultiplier) || speedMultiplier <= 0) {
+    return wordCount / WORDS_PER_SECOND;
+  }
+  return wordCount / (WORDS_PER_SECOND * speedMultiplier);
+}

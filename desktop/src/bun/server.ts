@@ -1,5 +1,5 @@
-import { app } from '@sirene/server';
 import { join } from 'node:path';
+import { app } from '@sirene/server';
 
 const PORT = Number(process.env.SIRENE_PORT);
 const CLIENT_DIR = process.env.SIRENE_CLIENT_DIR!;

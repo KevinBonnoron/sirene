@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, LayoutDashboard, Settings } from 'lucide-react';
+import { AudioLines, Box, Clock, Mic, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,7 @@ export function BottomNav() {
   const navItems = [
     { label: t('nav.voices'), href: '/voices', icon: AudioLines, primary: false },
     { label: t('nav.history'), href: '/history', icon: Clock, primary: false },
-    { label: t('nav.dashboard'), href: '/', icon: LayoutDashboard, primary: true },
+    { label: t('nav.studio'), href: '/', icon: Mic, primary: true },
     { label: t('nav.models'), href: '/models', icon: Box, primary: false },
     { label: t('nav.settings'), href: '/settings', icon: Settings, primary: false },
   ];

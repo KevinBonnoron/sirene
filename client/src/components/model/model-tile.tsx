@@ -39,19 +39,19 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-lg border p-3', isApi ? 'border-cyan-500/40 bg-cyan-500/5' : status === 'installed' && 'border-emerald-500/40 bg-emerald-500/5')}>
+    <div className={cn('flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-colors', isApi ? 'border-accent-sky/40 bg-accent-sky/5' : status === 'installed' && 'border-accent-sage/40 bg-accent-sage/5')}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium" title={catalog.name}>
+          <p className="truncate font-serif text-sm tracking-tight" title={catalog.name}>
             {catalog.name}
           </p>
           {isApi ? (
-            <span className="inline-flex items-center gap-0.5 rounded bg-cyan-500/10 px-1 py-px text-[10px] font-medium text-cyan-600 dark:text-cyan-400">
+            <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-[10px] font-medium text-accent-sky">
               <Cloud className="size-2.5" />
               {t('model.cloudApi')}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground">{formatFileSize(catalog.size)}</span>
+            <span className="font-mono text-xs text-dim">{formatFileSize(catalog.size)}</span>
           )}
         </div>
         {!isApi && (
@@ -83,31 +83,31 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
       {status === 'error' && installation?.error && <p className="truncate text-xs text-destructive">{installation.error}</p>}
       <div className="flex flex-wrap items-center gap-1">
         {catalog.types.includes('preset') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/10 px-1 py-px text-[10px] font-medium text-blue-600 dark:text-blue-400">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-[10px] font-medium text-accent-sky">
             <AudioLines className="size-2.5" />
             {t('voice.preset')}
           </span>
         )}
         {catalog.types.includes('cloning') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-purple-500/10 px-1 py-px text-[10px] font-medium text-purple-600 dark:text-purple-400">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-violet/15 px-1 py-px text-[10px] font-medium text-accent-violet">
             <Mic className="size-2.5" />
             {t('voice.cloning')}
           </span>
         )}
         {catalog.types.includes('transcription') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-green-500/10 px-1 py-px text-[10px] font-medium text-green-600 dark:text-green-400">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-green/15 px-1 py-px text-[10px] font-medium text-accent-green">
             <FileAudio className="size-2.5" />
             {t('model.stt')}
           </span>
         )}
         {catalog.types.includes('design') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1 py-px text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-amber/15 px-1 py-px text-[10px] font-medium text-accent-amber">
             <Sparkles className="size-2.5" />
             {t('voice.voiceDesign')}
           </span>
         )}
         {catalog.gated && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 px-1 py-px text-[10px] font-medium text-rose-600 dark:text-rose-400" title={t('model.hfTokenTooltip')}>
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-rust/15 px-1 py-px text-[10px] font-medium text-accent-rust" title={t('model.hfTokenTooltip')}>
             <KeyRound className="size-2.5" />
             {t('model.hfToken')}
           </span>

@@ -57,7 +57,14 @@ export function RegisterForm() {
 
       {serverError && <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{serverError}</div>}
 
-      <form noValidate className="space-y-5" onSubmit={(e) => { e.preventDefault(); form.handleSubmit(); }}>
+      <form
+        noValidate
+        className="space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+      >
         <form.AppField name="name">{(field) => <field.InputField label={t('register.name')} placeholder={t('register.namePlaceholder')} autoComplete="name" />}</form.AppField>
 
         <form.AppField name="email">{(field) => <field.EmailField label={t('register.email')} placeholder={t('register.emailPlaceholder')} autoComplete="email" />}</form.AppField>

@@ -38,7 +38,7 @@ function BubbleVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props,
   return (
     <>
       <button type="button" onClick={handleClick} className="flex flex-col items-center gap-1">
-        <Avatar className={cn('size-12 transition-all', selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+        <Avatar className={cn('size-12 transition-all', selected && 'ring-2 ring-accent-amber ring-offset-2 ring-offset-background')}>
           <AvatarImage src={avatarUrl} alt={voice.name} />
           <AvatarFallback className="text-sm">{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
@@ -59,7 +59,7 @@ function CompactVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props
   const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
 
   return (
-    <div className={cn('group relative flex w-full items-center rounded-lg border transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}>
+    <div className={cn('group relative flex w-full items-center rounded-lg border border-border transition-colors hover:bg-card-elevated', selected && 'border-accent-amber/60 bg-accent-amber/10')}>
       <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 p-2 text-left" onClick={handleClick}>
         <Avatar className="size-8 shrink-0">
           <AvatarImage src={avatarUrl} alt={voice.name} />
@@ -149,7 +149,7 @@ function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, '
   return (
     <>
       <Card
-        className={cn('cursor-pointer py-3 transition-colors hover:bg-accent/50', selected && 'border-primary bg-primary/5 ring-1 ring-primary/50')}
+        className={cn('cursor-pointer border-border py-3 transition-colors hover:bg-card-elevated', selected && 'border-accent-amber/60 bg-accent-amber/10')}
         role="button"
         tabIndex={0}
         onClick={handleClick}
@@ -166,7 +166,7 @@ function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, '
             <AvatarFallback>{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <CardTitle className="text-base">{voice.name}</CardTitle>
+            <CardTitle className="font-serif text-base tracking-tight">{voice.name}</CardTitle>
             {voice.description && <p className="line-clamp-1 text-xs text-muted-foreground">{voice.description}</p>}
           </div>
           <CardAction className="flex gap-1">

@@ -376,8 +376,13 @@ export function StudioPage() {
 
   if (!voices || voicesLoading) {
     return (
-      <div className="flex h-svh items-center justify-center text-muted-foreground text-sm">
-        <span>{t('common.loading')}</span>
+      <div className="flex h-svh overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} />
+          <main className="flex flex-1 items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-dim" />
+          </main>
+        </div>
       </div>
     );
   }
@@ -399,8 +404,13 @@ export function StudioPage() {
 
   if (!draft && voices.length > 0) {
     return (
-      <div className="flex h-svh items-center justify-center text-muted-foreground text-sm">
-        <span>{t('common.loading')}</span>
+      <div className="flex h-svh overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <StudioTopbar sessionName={null} saved takeCount={0} inSession={inSession} />
+          <main className="flex flex-1 items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-dim" />
+          </main>
+        </div>
       </div>
     );
   }

@@ -17,11 +17,7 @@ function AppLayoutRoute() {
     }
   }, [user, isLoading, navigate]);
 
-  if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  }
-
-  if (!user) {
+  if (!isLoading && !user) {
     return null;
   }
 

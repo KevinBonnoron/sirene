@@ -1,6 +1,6 @@
 import type { Session } from '@sirene/shared';
 import { Check, Copy, Globe, Loader2, Lock } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { sessionClient } from '@/clients/session.client';
@@ -21,7 +21,7 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
   const [copied, setCopied] = useState(false);
 
   const isPublic = Boolean(session?.public);
-  const shareUrl = useMemo(() => (session ? `${window.location.origin}/share/${session.id}` : ''), [session]);
+  const shareUrl = session ? `${window.location.origin}/share/${session.id}` : '';
 
   useEffect(() => {
     if (!copied) {

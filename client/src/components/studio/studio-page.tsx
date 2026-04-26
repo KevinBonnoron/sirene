@@ -491,7 +491,7 @@ export function StudioPage() {
               <SessionNotFoundState />
             ) : (
               <>
-                {showSessionTitle && <SessionTitle name={sessionNameDraft} onChange={setSessionNameDraft} editing={editingName} onEditingChange={setEditingName} />}
+                {showSessionTitle && <SessionTitle key={activeSession?.id ?? 'solo'} name={sessionNameDraft} onChange={setSessionNameDraft} editing={editingName} onEditingChange={setEditingName} />}
 
                 {!activeSession && mainTakes.length === 0 && voices.length > 0 && <EmptyState />}
                 {voices.length === 0 && !activeSession && <NoVoicesState />}

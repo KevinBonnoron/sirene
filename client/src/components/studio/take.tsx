@@ -177,7 +177,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
           <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-accent-amber hover:text-primary-foreground" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
             {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
           </Button>
-          <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} className="min-w-0 flex-1 overflow-hidden" />
+          <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} ariaLabel={t('studio.waveformAriaLabel')} className="min-w-0 flex-1 overflow-hidden" />
           <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">{`${formatTime(playPosition)} / ${formatTime(totalDuration)}`}</span>
         </div>
       )}

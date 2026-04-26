@@ -106,7 +106,9 @@ export const EffectNode = Node.create({
   },
 
   renderHTML({ node }) {
-    const display = (node.attrs.label ?? node.attrs.effect ?? '') as string;
+    const label = typeof node.attrs.label === 'string' ? node.attrs.label.trim() : '';
+    const effect = typeof node.attrs.effect === 'string' ? node.attrs.effect.trim() : '';
+    const display = label || effect;
     return [
       'span',
       {

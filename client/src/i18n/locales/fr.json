@@ -255,6 +255,7 @@
     "moreActions": "Plus d'actions",
     "more": "Plus",
     "toggleBank": "Afficher/masquer la banque",
+    "waveformAriaLabel": "Forme d'onde audio",
     "relativeJustNow": "à l'instant",
     "relativeMinutes": "{{count}} min",
     "relativeHours": "{{count}} h",

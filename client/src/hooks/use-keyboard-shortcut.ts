@@ -6,13 +6,18 @@ interface ShortcutOptions {
   ignoreInTextInputs?: boolean;
 }
 
+const NON_TEXT_INPUT_TYPES = new Set(['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit']);
+
 function isTextInputTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
   const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+  if (tag === 'TEXTAREA' || tag === 'SELECT') {
     return true;
+  }
+  if (tag === 'INPUT') {
+    return !NON_TEXT_INPUT_TYPES.has((target as HTMLInputElement).type);
   }
   return target.isContentEditable;
 }

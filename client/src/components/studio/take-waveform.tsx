@@ -3,11 +3,16 @@ interface Props {
   bars?: number;
   active?: boolean;
   progress?: number; // 0..1
+  ariaLabel?: string;
   className?: string;
 }
 
 function seededRandom(seed: number) {
-  let state = seed || 1;
+  let state = Number.isFinite(seed) ? Math.trunc(seed) : 1;
+  state %= 233280;
+  if (state < 0) {
+    state += 233280;
+  }
   return () => {
     state = (state * 9301 + 49297) % 233280;
     return state / 233280;
@@ -18,7 +23,7 @@ const VIEWBOX_WIDTH = 600;
 const VIEWBOX_HEIGHT = 40;
 const BAR_GAP = 2;
 
-export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 0, className }: Props) {
+export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 0, ariaLabel, className }: Props) {
   const safeBars = Math.max(1, Math.floor(bars));
   const safeProgress = Math.min(1, Math.max(0, progress));
   const rand = seededRandom(seed);
@@ -33,7 +38,7 @@ export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 
   const idleColor = 'var(--dim)';
 
   return (
-    <svg viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label="waveform" className={`block h-10 w-full ${className ?? ''}`}>
+    <svg viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel} aria-hidden={ariaLabel ? undefined : true} className={`block h-10 w-full ${className ?? ''}`}>
       {data.map((amp, i) => {
         const h = Math.max(1.5, amp * VIEWBOX_HEIGHT);
         const x = i * (barW + BAR_GAP);

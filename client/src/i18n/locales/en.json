@@ -255,6 +255,7 @@
     "moreActions": "More actions",
     "more": "More",
     "toggleBank": "Toggle take bank",
+    "waveformAriaLabel": "Audio waveform",
     "relativeJustNow": "just now",
     "relativeMinutes": "{{count}}m",
     "relativeHours": "{{count}}h",

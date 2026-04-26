@@ -28,7 +28,15 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+
     if (!url) {
+      const previous = audioRef.current;
+      if (previous) {
+        previous.pause();
+        release(previous);
+      }
       audioRef.current = null;
       return;
     }

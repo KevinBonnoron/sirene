@@ -52,11 +52,21 @@ export function stripSSML(text: string): string {
 
 /** Count words in a Tiptap document, ignoring effect nodes / SSML markers. */
 export function countWords(doc: JSONContent): number {
-  const plain = stripSSML(contentToSSML(doc)).trim();
-  if (!plain) {
-    return 0;
-  }
-  return plain.split(/\s+/).filter(Boolean).length;
+  const chunks: string[] = [];
+  const walk = (node?: JSONContent): void => {
+    if (!node || node.type === 'effectNode') {
+      return;
+    }
+    if (node.type === 'text' && typeof node.text === 'string') {
+      chunks.push(node.text);
+    }
+    for (const child of node.content ?? []) {
+      walk(child);
+    }
+  };
+  walk(doc);
+  const plain = chunks.join(' ').trim();
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
 }
 
 const WORDS_PER_SECOND = 3;

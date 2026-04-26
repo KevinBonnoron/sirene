@@ -87,7 +87,7 @@ function BankCard({ entry, seed, onAdd }: { entry: BankEntry; seed: number; onAd
           {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 translate-x-[0.5px]" />}
         </Button>
         <div className="min-w-0 flex-1 overflow-hidden">
-          <TakeWaveform seed={seed * 11 + 3} bars={32} active={isPlaying} progress={progress} className="h-6" />
+          <TakeWaveform seed={seed * 11 + 3} bars={32} active={isPlaying} progress={progress} ariaLabel={t('studio.waveformAriaLabel')} className="h-6" />
         </div>
         <span className="shrink-0 font-mono text-[10px] tabular-nums text-dim">{formatRelative(entry.createdAt, t)}</span>
       </div>

@@ -2,7 +2,7 @@ import { getVoiceCapabilities } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import type { Editor, JSONContent } from '@tiptap/core';
-import { AudioLines, Plus, Sparkles } from 'lucide-react';
+import { AudioLines, Loader2, Plus, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -470,7 +470,14 @@ export function StudioPage() {
   const showDraft = mainTakes.length === 0 || wantsDraft;
   const displayTakes = showDraft ? [...mainTakes, draftTake] : mainTakes;
   const generatedCount = mainTakes.length;
-  const showSessionTitle = Boolean(activeSession);
+  // Treat the URL as the source of truth for session mode: show the breadcrumb + title slot
+  // even while the session payload is still loading. Otherwise the page renders the empty/solo
+  // state for a frame and "blinks" into the session view once the cache catches up.
+  const inSession = activeSessionId !== null;
+  const showSessionTitle = inSession;
+  // The session is loading when the URL points at one but the session record + every generation
+  // it references haven't all landed in the local cache yet.
+  const sessionLoading = inSession && (!activeSession || sessionGenerations.length < activeSessionGenerationIds.length);
 
   // Bank: recent non-draft generations (skip ones already shown in the main column)
   const mainGenerationIds = new Set(mainGenerations.map((g) => g.id));
@@ -517,44 +524,52 @@ export function StudioPage() {
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>
-            {showSessionTitle && <SessionTitle name={sessionNameDraft} onChange={setSessionNameDraft} editing={editingName} onEditingChange={setEditingName} />}
+            {sessionLoading ? (
+              <div className="flex min-h-[40vh] items-center justify-center">
+                <Loader2 className="size-5 animate-spin text-dim" />
+              </div>
+            ) : (
+              <>
+                {showSessionTitle && <SessionTitle name={sessionNameDraft} onChange={setSessionNameDraft} editing={editingName} onEditingChange={setEditingName} />}
 
-            {!activeSession && mainTakes.length === 0 && <EmptyState />}
+                {!activeSession && mainTakes.length === 0 && <EmptyState />}
 
-            <ol className="space-y-4">
-              {displayTakes.map((take) => {
-                const isCurrentDraft = take.state === 'draft';
-                const original = !isCurrentDraft ? generations?.find((g) => g.id === take.id) : undefined;
-                // Resolve voice → model → backend → tuning capabilities so we can disable
-                // sliders that wouldn't have any audible effect for the selected voice.
-                const voice = voices.find((v) => v.id === take.voiceId);
-                const modelEntry = voice ? catalog.find((m) => m.id === voice.model) : undefined;
-                const capabilities = getVoiceCapabilities(modelEntry?.backend);
-                return (
-                  // Stable key by slot (not by generation id) so the Take instance survives a
-                  // regeneration — internal state like the open/close of the tuning + timeline
-                  // panels stays put while the underlying generation is swapped.
-                  <li key={isCurrentDraft ? `draft-${draftVersion}` : `slot-${take.orderIndex}`}>
-                    <Take
-                      take={take}
-                      isGenerating={busyTakeId === (isCurrentDraft ? 'draft' : take.id)}
-                      disabled={busyTakeId !== null && busyTakeId !== (isCurrentDraft ? 'draft' : take.id)}
-                      capabilities={capabilities}
-                      onContentChange={isCurrentDraft ? handleDraftContentChange : undefined}
-                      onVoiceChange={isCurrentDraft ? handleDraftVoiceChange : undefined}
-                      onGenerate={isCurrentDraft ? handleGenerate : undefined}
-                      onRegenerate={!isCurrentDraft && original ? (tuning) => handleRegenerate(take, original.text, tuning) : undefined}
-                      onDelete={!isCurrentDraft && activeSession ? () => handleDeleteTake(take.id) : undefined}
-                    />
-                  </li>
-                );
-              })}
-            </ol>
+                <ol className="space-y-4">
+                  {displayTakes.map((take) => {
+                    const isCurrentDraft = take.state === 'draft';
+                    const original = !isCurrentDraft ? generations?.find((g) => g.id === take.id) : undefined;
+                    // Resolve voice → model → backend → tuning capabilities so we can disable
+                    // sliders that wouldn't have any audible effect for the selected voice.
+                    const voice = voices.find((v) => v.id === take.voiceId);
+                    const modelEntry = voice ? catalog.find((m) => m.id === voice.model) : undefined;
+                    const capabilities = getVoiceCapabilities(modelEntry?.backend);
+                    return (
+                      // Stable key by slot (not by generation id) so the Take instance survives a
+                      // regeneration — internal state like the open/close of the tuning + timeline
+                      // panels stays put while the underlying generation is swapped.
+                      <li key={isCurrentDraft ? `draft-${draftVersion}` : `slot-${take.orderIndex}`}>
+                        <Take
+                          take={take}
+                          isGenerating={busyTakeId === (isCurrentDraft ? 'draft' : take.id)}
+                          disabled={busyTakeId !== null && busyTakeId !== (isCurrentDraft ? 'draft' : take.id)}
+                          capabilities={capabilities}
+                          onContentChange={isCurrentDraft ? handleDraftContentChange : undefined}
+                          onVoiceChange={isCurrentDraft ? handleDraftVoiceChange : undefined}
+                          onGenerate={isCurrentDraft ? handleGenerate : undefined}
+                          onRegenerate={!isCurrentDraft && original ? (tuning) => handleRegenerate(take, original.text, tuning) : undefined}
+                          onDelete={!isCurrentDraft && activeSession ? () => handleDeleteTake(take.id) : undefined}
+                        />
+                      </li>
+                    );
+                  })}
+                </ol>
+              </>
+            )}
 
             {/* The dashed "Add take" zone and the draft composer are mutually exclusive — the
                 composer already invites the user to enter the next take, so there's no need to
                 stack a separate prompt below it. */}
-            {generatedCount >= 1 && !showDraft && (
+            {!sessionLoading && generatedCount >= 1 && !showDraft && (
               <button type="button" onClick={handleAddTake} className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent-amber/60 hover:bg-card/40 hover:text-foreground">
                 <span className="flex min-w-0 items-center gap-2">
                   <Plus className="size-4 shrink-0" />

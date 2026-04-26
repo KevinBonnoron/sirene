@@ -76,7 +76,7 @@ export function StudioTopbar({ sessionName, onSessionNameChange, saved = true, s
                   }
                 }}
                 placeholder={t('studio.untitledSession')}
-                className="min-w-0 flex-1 bg-transparent font-serif text-sm italic tracking-tight outline-none placeholder:text-dim"
+                className="min-w-0 max-w-full bg-transparent font-serif text-sm italic tracking-tight outline-none field-sizing-content placeholder:text-dim"
               />
             ) : (
               <button type="button" onClick={() => setEditing(true)} className="min-w-0 truncate text-left font-serif text-sm tracking-tight transition-colors hover:text-accent-amber">

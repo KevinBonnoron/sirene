@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { config } from '../lib/config';
+import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
 import { modelService } from '../services';
 
 export const transcribeRoutes = new Hono().post('/', async (c) => {
@@ -8,6 +8,16 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
 
   if (!audioFile) {
     return c.json({ error: 'audio file is required' }, 400);
+  }
+
+  let baseUrl: string;
+  try {
+    baseUrl = await pickServerUrl();
+  } catch (err) {
+    if (err instanceof NoInferenceServerError) {
+      return c.json({ error: err.message }, 503);
+    }
+    throw err;
   }
 
   // Resolve the best installed Whisper model (catalog order: smallest → largest)
@@ -29,7 +39,7 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
   inferenceForm.append('audio', audioFile);
   inferenceForm.append('model_path', modelPath);
 
-  const response = await fetch(`${config.inferenceUrl}/transcribe`, {
+  const response = await fetch(`${baseUrl}/transcribe`, {
     method: 'POST',
     body: inferenceForm,
   });

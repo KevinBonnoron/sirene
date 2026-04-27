@@ -4,6 +4,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport, importPiperModelToInference } from '../lib/inference-client';
+import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
 import { jobStore, newJobId } from '../lib/jobs';
 import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
@@ -136,10 +137,20 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: `Name "${slug}" conflicts with an existing catalog model` }, 409);
     }
 
+    let baseUrl: string;
+    try {
+      baseUrl = await pickServerUrl();
+    } catch (err) {
+      if (err instanceof NoInferenceServerError) {
+        return c.json({ message: err.message }, 503);
+      }
+      throw err;
+    }
+
     const jobId = newJobId();
     jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name}`, target: slug });
     try {
-      const result = await importPiperModelToInference(formData);
+      const result = await importPiperModelToInference(baseUrl, formData);
       jobStore.complete(jobId);
       return c.json(result, 201);
     } catch (err) {
@@ -158,7 +169,17 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: 'Custom model not found' }, 404);
     }
 
-    const inferenceResponse = await fetchModelExport(modelId);
+    let baseUrl: string;
+    try {
+      baseUrl = await pickServerUrl();
+    } catch (err) {
+      if (err instanceof NoInferenceServerError) {
+        return c.json({ message: err.message }, 503);
+      }
+      throw err;
+    }
+
+    const inferenceResponse = await fetchModelExport(baseUrl, modelId);
     if (!inferenceResponse.ok) {
       return c.json({ message: 'Export failed' }, 502);
     }

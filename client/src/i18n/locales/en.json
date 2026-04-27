@@ -301,6 +301,29 @@
     "removeFailed": "Failed to remove",
     "saveFailed": "Failed to save"
   },
+  "inferenceServers": {
+    "title": "Inference servers",
+    "description": "Configure where TTS generations and model downloads run. Multiple servers act as failover; the highest-priority online server is used.",
+    "name": "Name",
+    "namePlaceholder": "e.g. Local",
+    "url": "URL",
+    "urlPlaceholder": "http://localhost:8000",
+    "priority": "Priority",
+    "priorityHint": "Higher number is preferred",
+    "addServer": "Add server",
+    "enabled": "Enabled",
+    "test": "Test",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "statusUnknown": "Checking...",
+    "lastChecked": "Checked {{when}}",
+    "neverChecked": "Not checked yet",
+    "empty": "No inference server configured. Add one to start generating.",
+    "deleteTitle": "Remove server?",
+    "deleteDescription": "\"{{name}}\" will be removed from the registry. Models installed on it will no longer be reachable.",
+    "saveFailed": "Failed to save server",
+    "removeFailed": "Failed to remove server"
+  },
   "deleteGeneration": {
     "title": "Delete generation?",
     "description": "This action cannot be undone. The audio file will be permanently deleted."

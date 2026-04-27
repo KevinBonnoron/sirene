@@ -1,5 +1,6 @@
 import type { CatalogModel, Model } from '@sirene/shared';
 import { deleteModel, getModels, pullModel } from '../lib/inference-client';
+import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
 import { jobStore, newJobId } from '../lib/jobs';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
@@ -13,12 +14,27 @@ const API_KEY_MAP: Record<string, string> = {
 
 type Listener = () => void;
 
+async function safePickServerUrl(): Promise<string | null> {
+  try {
+    return await pickServerUrl();
+  } catch (err) {
+    if (err instanceof NoInferenceServerError) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 class ModelService {
   private readonly listeners = new Set<Listener>();
 
   public async scanCustomModels(): Promise<CatalogModel[]> {
+    const baseUrl = await safePickServerUrl();
+    if (!baseUrl) {
+      return [];
+    }
     const catalogIds = new Set(modelsCatalog.map((m) => m.id));
-    const { custom } = await getModels();
+    const { custom } = await getModels(baseUrl);
     return custom.filter((m) => !catalogIds.has(m.id));
   }
 
@@ -26,7 +42,11 @@ class ModelService {
     if (catalog.types.includes('api')) {
       return true;
     }
-    const { installed } = await getModels();
+    const baseUrl = await safePickServerUrl();
+    if (!baseUrl) {
+      return false;
+    }
+    const { installed } = await getModels(baseUrl);
     return installed.includes(catalog.id);
   }
 
@@ -49,8 +69,8 @@ class ModelService {
   }
 
   public async getInstallations(catalogModels: CatalogModel[]): Promise<Model[]> {
-    const { installed } = await getModels();
-    const installedIds = new Set(installed);
+    const baseUrl = await safePickServerUrl();
+    const installedIds = new Set(baseUrl ? (await getModels(baseUrl)).installed : []);
     const models: Model[] = [];
 
     for (const catalog of catalogModels) {
@@ -91,7 +111,8 @@ class ModelService {
     });
 
     try {
-      for await (const event of pullModel({
+      const baseUrl = await pickServerUrl();
+      for await (const event of pullModel(baseUrl, {
         backend: catalog.backend,
         modelId: catalog.id,
         files,
@@ -118,7 +139,8 @@ class ModelService {
   }
 
   public async removeModelFiles(modelId: string) {
-    await deleteModel(modelId);
+    const baseUrl = await pickServerUrl();
+    await deleteModel(baseUrl, modelId);
     this.notifyListeners();
   }
 

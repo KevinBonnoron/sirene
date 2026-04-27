@@ -2,6 +2,7 @@ export { authRoutes } from './auth.routes';
 export { generateRoutes } from './generate.routes';
 export { generationRoutes } from './generation.routes';
 export { healthRoutes, versionRoutes } from './health.routes';
+export { inferenceServerRoutes } from './inference-server.routes';
 export { jobRoutes } from './job.routes';
 export { modelRoutes } from './model.routes';
 export { sessionRoutes } from './session.routes';

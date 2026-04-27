@@ -1,5 +1,4 @@
 import type { CatalogModel } from '@sirene/shared';
-import { config } from './config';
 
 export interface InferenceRequest {
   backend: string;
@@ -48,9 +47,9 @@ function buildInferenceBody(request: InferenceRequest) {
   };
 }
 
-export async function installBackendDeps(backend: string): Promise<void> {
+export async function installBackendDeps(baseUrl: string, backend: string): Promise<void> {
   try {
-    const response = await fetch(`${config.inferenceUrl}/backends/${backend}/install`, {
+    const response = await fetch(`${baseUrl}/backends/${backend}/install`, {
       method: 'POST',
       signal: AbortSignal.timeout(30 * 60 * 1000), // 30 min — torch can be slow
     });
@@ -64,9 +63,9 @@ export async function installBackendDeps(backend: string): Promise<void> {
   }
 }
 
-export async function getModels(): Promise<{ installed: string[]; custom: CatalogModel[] }> {
+export async function getModels(baseUrl: string): Promise<{ installed: string[]; custom: CatalogModel[] }> {
   try {
-    const response = await fetch(`${config.inferenceUrl}/models`, {
+    const response = await fetch(`${baseUrl}/models`, {
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
@@ -78,8 +77,8 @@ export async function getModels(): Promise<{ installed: string[]; custom: Catalo
   }
 }
 
-export async function deleteModel(modelId: string): Promise<void> {
-  const response = await fetch(`${config.inferenceUrl}/models/${encodeURIComponent(modelId)}`, {
+export async function deleteModel(baseUrl: string, modelId: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/models/${encodeURIComponent(modelId)}`, {
     method: 'DELETE',
     signal: AbortSignal.timeout(10_000),
   });
@@ -97,8 +96,8 @@ export interface PullModelOptions {
   hfToken?: string;
 }
 
-export async function* pullModel(options: PullModelOptions): AsyncGenerator<Record<string, unknown>> {
-  const response = await fetch(`${config.inferenceUrl}/models/pull`, {
+export async function* pullModel(baseUrl: string, options: PullModelOptions): AsyncGenerator<Record<string, unknown>> {
+  const response = await fetch(`${baseUrl}/models/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -140,8 +139,8 @@ export async function* pullModel(options: PullModelOptions): AsyncGenerator<Reco
   }
 }
 
-export async function importPiperModelToInference(formData: FormData): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${config.inferenceUrl}/models/piper/import`, {
+export async function importPiperModelToInference(baseUrl: string, formData: FormData): Promise<{ id: string; message: string }> {
+  const response = await fetch(`${baseUrl}/models/piper/import`, {
     method: 'POST',
     body: formData,
     signal: AbortSignal.timeout(30_000),
@@ -154,14 +153,14 @@ export async function importPiperModelToInference(formData: FormData): Promise<{
   return response.json() as Promise<{ id: string; message: string }>;
 }
 
-export async function fetchModelExport(modelId: string): Promise<Response> {
-  return fetch(`${config.inferenceUrl}/models/${encodeURIComponent(modelId)}/export`, {
+export async function fetchModelExport(baseUrl: string, modelId: string): Promise<Response> {
+  return fetch(`${baseUrl}/models/${encodeURIComponent(modelId)}/export`, {
     signal: AbortSignal.timeout(60_000),
   });
 }
 
-export async function generateAudio(request: InferenceRequest): Promise<Buffer> {
-  const response = await fetch(`${config.inferenceUrl}/generate`, {
+export async function generateAudio(baseUrl: string, request: InferenceRequest): Promise<Buffer> {
+  const response = await fetch(`${baseUrl}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(buildInferenceBody(request)),
@@ -180,8 +179,8 @@ export async function generateAudio(request: InferenceRequest): Promise<Buffer> 
   return Buffer.from(arrayBuffer);
 }
 
-export async function generateAudioStream(request: InferenceRequest): Promise<StreamingAudioResponse> {
-  const response = await fetch(`${config.inferenceUrl}/generate/stream`, {
+export async function generateAudioStream(baseUrl: string, request: InferenceRequest): Promise<StreamingAudioResponse> {
+  const response = await fetch(`${baseUrl}/generate/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(buildInferenceBody(request)),

@@ -2,6 +2,7 @@ export * from './alignment.type';
 export * from './base.type';
 export * from './generate.type';
 export * from './generation.type';
+export * from './inference-server.type';
 export * from './job.type';
 export * from './model.type';
 export * from './session.type';

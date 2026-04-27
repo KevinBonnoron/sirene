@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { type AuthEnv, authMiddleware } from '../middleware';
-import { inferenceServerService } from '../services';
+import { inferenceServerService, serverModelsService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -14,5 +14,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>().use(authMiddleware).pos
   if (!server) {
     return c.json({ message: 'Server not found' }, 404);
   }
+  // A manual test is also a good moment to refresh which models live on this server.
+  serverModelsService.invalidate(id);
   return c.json(server);
 });

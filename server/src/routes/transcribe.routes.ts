@@ -10,16 +10,6 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
     return c.json({ error: 'audio file is required' }, 400);
   }
 
-  let baseUrl: string;
-  try {
-    baseUrl = await pickServerUrl();
-  } catch (err) {
-    if (err instanceof NoInferenceServerError) {
-      return c.json({ error: err.message }, 503);
-    }
-    throw err;
-  }
-
   // Resolve the best installed Whisper model (catalog order: smallest → largest)
   const catalog = await modelService.getFullCatalog();
   const whisperModels = catalog.filter((m) => m.backend === 'whisper');
@@ -33,6 +23,16 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
 
   if (!modelPath) {
     return c.json({ error: 'No Whisper model installed. Please install one from the Models page.' }, 400);
+  }
+
+  let baseUrl: string;
+  try {
+    baseUrl = await pickServerUrl({ requireModel: modelPath });
+  } catch (err) {
+    if (err instanceof NoInferenceServerError) {
+      return c.json({ error: err.message }, 503);
+    }
+    throw err;
   }
 
   const inferenceForm = new FormData();

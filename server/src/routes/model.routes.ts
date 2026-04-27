@@ -74,13 +74,20 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
   .delete('/:id', zValidator('param', idParamSchema), async (c) => {
     const { id: modelId } = c.req.valid('param');
-    await modelService.removeModelFiles(modelId);
-    return c.body(null, 204);
+    const serverId = c.req.query('serverId');
+    try {
+      await modelService.removeModelFiles(modelId, serverId);
+      return c.body(null, 204);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove';
+      return c.json({ message }, 502);
+    }
   })
 
-  .post('/:id/pull', zValidator('param', idParamSchema), async (c) => {
+  .post('/:id/pull', zValidator('param', idParamSchema), zValidator('json', z.object({ serverIds: z.array(z.string().min(1)).optional() })), async (c) => {
     const { id: modelId } = c.req.valid('param');
     const userId = c.get('userId');
+    const body = c.req.valid('json');
 
     const fullCatalog = await modelService.getFullCatalog(userId);
     const catalog = fullCatalog.find((m) => m.id === modelId);
@@ -88,12 +95,13 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: 'Model not found in catalog' }, 404);
     }
 
-    if (await modelService.isModelInstalled(catalog)) {
-      return c.json({ message: 'Model already installed' }, 400);
+    try {
+      const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, body?.serverIds);
+      return c.json({ jobIds }, alreadyRunning ? 200 : 202);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start download';
+      return c.json({ message }, 503);
     }
-
-    const { jobId, alreadyRunning } = modelService.startModelDownload(catalog);
-    return c.json({ jobId }, alreadyRunning ? 200 : 202);
   })
 
   .post('/piper/import', async (c) => {
@@ -171,7 +179,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
     let baseUrl: string;
     try {
-      baseUrl = await pickServerUrl();
+      baseUrl = await pickServerUrl({ requireModel: modelId });
     } catch (err) {
       if (err instanceof NoInferenceServerError) {
         return c.json({ message: err.message }, 503);

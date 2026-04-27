@@ -59,16 +59,37 @@ export function useModels() {
   }, [queryClient]);
 
   // Merge running pull jobs over the installed set so the UI shows live progress.
+  // Job targets are encoded as `modelId::serverId`; aggregate per modelId so a model that
+  // is pulling on multiple servers shows a single averaged progress.
   const installationsByName = new Map<string, Model>(installedQuery.data.map((i) => [i.id, i]));
+  const runningByModel = new Map<string, number[]>();
+  const failedByModel = new Map<string, string>();
   for (const job of jobs) {
     if (job.type !== 'model_pull' || !job.target) {
       continue;
     }
-    if (job.status === 'running') {
-      installationsByName.set(job.target, { id: job.target, status: 'pulling', progress: job.progress });
-    } else if (job.status === 'failed') {
-      installationsByName.set(job.target, { id: job.target, status: 'error', progress: 0, error: job.error });
+    const modelId = job.target.split('::')[0];
+    if (!modelId) {
+      continue;
     }
+    if (job.status === 'running') {
+      const arr = runningByModel.get(modelId) ?? [];
+      arr.push(job.progress);
+      runningByModel.set(modelId, arr);
+    } else if (job.status === 'failed' && job.error) {
+      failedByModel.set(modelId, job.error);
+    }
+  }
+  for (const [modelId, progresses] of runningByModel) {
+    const avg = Math.floor(progresses.reduce((acc, p) => acc + p, 0) / progresses.length);
+    const existing = installationsByName.get(modelId);
+    installationsByName.set(modelId, { id: modelId, status: 'pulling', progress: avg, serverIds: existing?.serverIds ?? [] });
+  }
+  for (const [modelId, error] of failedByModel) {
+    if (runningByModel.has(modelId) || installationsByName.get(modelId)?.status === 'installed') {
+      continue;
+    }
+    installationsByName.set(modelId, { id: modelId, status: 'error', progress: 0, error, serverIds: [] });
   }
 
   return {
@@ -108,9 +129,9 @@ export function usePullModel() {
     }
   }, [jobs, queryClient]);
 
-  const pullModel = useCallback(async (modelId: string) => {
+  const pullModel = useCallback(async (modelId: string, serverIds?: string[]) => {
     try {
-      await modelClient.pull(modelId);
+      await modelClient.pull(modelId, serverIds);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start download';
       toast.error(message);

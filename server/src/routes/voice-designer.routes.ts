@@ -31,7 +31,7 @@ export const voiceDesignerRoutes = new Hono<AuthEnv>()
     const modelPath = catalog.id;
 
     try {
-      const baseUrl = await pickServerUrl();
+      const baseUrl = await pickServerUrl({ requireModel: modelPath });
       const audioBuffer = await generateAudio(baseUrl, {
         backend: catalog.backend,
         text,

@@ -154,6 +154,12 @@
     "allBackends": "All backends",
     "status_installed": "Installed",
     "status_available": "Available",
+    "installedOn": "Installed on {{count}}/{{total}} servers",
+    "manage": "Manage on servers",
+    "perServer": "Per server",
+    "installOnAll": "Install on all {{count}} servers",
+    "installOnAllMissing": "Install on the {{count}} remaining servers",
+    "removeFromAll": "Remove from all servers",
     "noMatch": "No models match your filters."
   },
   "notifications": {

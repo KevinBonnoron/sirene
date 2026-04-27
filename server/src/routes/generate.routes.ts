@@ -303,7 +303,7 @@ export const generateRoutes = new Hono<AuthEnv>()
 
     let baseUrl: string;
     try {
-      baseUrl = await pickServerUrl();
+      baseUrl = await pickServerUrl({ requireModel: resolved.inferenceRequest.modelPath });
     } catch (err) {
       await cleanupFailedGeneration(generationId);
       if (err instanceof NoInferenceServerError) {
@@ -364,7 +364,7 @@ export const generateRoutes = new Hono<AuthEnv>()
 
     let streamBaseUrl: string;
     try {
-      streamBaseUrl = await pickServerUrl();
+      streamBaseUrl = await pickServerUrl({ requireModel: resolved.inferenceRequest.modelPath });
     } catch (err) {
       await cleanupFailedGeneration(generationId);
       if (err instanceof NoInferenceServerError) {

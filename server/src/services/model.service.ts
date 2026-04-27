@@ -1,9 +1,10 @@
-import type { CatalogModel, Model } from '@sirene/shared';
-import { deleteModel, getModels, pullModel } from '../lib/inference-client';
-import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
+import type { CatalogModel, InferenceServer, Model } from '@sirene/shared';
+import { deleteModel, pullModel } from '../lib/inference-client';
 import { jobStore, newJobId } from '../lib/jobs';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
+import { inferenceServerService } from './inference-server.service';
+import { serverModelsService } from './server-models.service';
 
 const HF_BASE = 'https://huggingface.co';
 
@@ -14,27 +15,16 @@ const API_KEY_MAP: Record<string, string> = {
 
 type Listener = () => void;
 
-async function safePickServerUrl(): Promise<string | null> {
-  try {
-    return await pickServerUrl();
-  } catch (err) {
-    if (err instanceof NoInferenceServerError) {
-      return null;
-    }
-    throw err;
-  }
+function pullJobTarget(modelId: string, serverId: string): string {
+  return `${modelId}::${serverId}`;
 }
 
 class ModelService {
   private readonly listeners = new Set<Listener>();
 
   public async scanCustomModels(): Promise<CatalogModel[]> {
-    const baseUrl = await safePickServerUrl();
-    if (!baseUrl) {
-      return [];
-    }
     const catalogIds = new Set(modelsCatalog.map((m) => m.id));
-    const { custom } = await getModels(baseUrl);
+    const custom = await serverModelsService.aggregatedCustom();
     return custom.filter((m) => !catalogIds.has(m.id));
   }
 
@@ -42,12 +32,8 @@ class ModelService {
     if (catalog.types.includes('api')) {
       return true;
     }
-    const baseUrl = await safePickServerUrl();
-    if (!baseUrl) {
-      return false;
-    }
-    const { installed } = await getModels(baseUrl);
-    return installed.includes(catalog.id);
+    const servers = await serverModelsService.serversWithModel(catalog.id);
+    return servers.length > 0;
   }
 
   public async getFullCatalog(userId?: string): Promise<CatalogModel[]> {
@@ -69,39 +55,73 @@ class ModelService {
   }
 
   public async getInstallations(catalogModels: CatalogModel[]): Promise<Model[]> {
-    const baseUrl = await safePickServerUrl();
-    const installedIds = new Set(baseUrl ? (await getModels(baseUrl)).installed : []);
+    const byServer = await serverModelsService.getInstalledByServer();
     const models: Model[] = [];
 
     for (const catalog of catalogModels) {
-      const job = jobStore.findRunning('model_pull', catalog.id);
-      if (job) {
-        models.push({ id: catalog.id, status: 'pulling', progress: job.progress });
+      const serverIds: string[] = [];
+      for (const [serverId, installed] of byServer) {
+        if (installed.has(catalog.id)) {
+          serverIds.push(serverId);
+        }
+      }
+
+      const pullingJobs = jobStore.list().filter((j) => j.type === 'model_pull' && j.status === 'running' && j.target?.startsWith(`${catalog.id}::`));
+      if (pullingJobs.length > 0) {
+        const avg = Math.floor(pullingJobs.reduce((acc, j) => acc + j.progress, 0) / pullingJobs.length);
+        models.push({ id: catalog.id, status: 'pulling', progress: avg, serverIds });
         continue;
       }
 
-      if (catalog.types.includes('api') || installedIds.has(catalog.id)) {
-        models.push({ id: catalog.id, status: 'installed', progress: 100 });
+      if (catalog.types.includes('api') || serverIds.length > 0) {
+        models.push({ id: catalog.id, status: 'installed', progress: 100, serverIds });
       }
     }
 
     return models;
   }
 
-  /** Returns the existing job if one is already running for this model, else starts one. */
-  public startModelDownload(catalog: CatalogModel): { jobId: string; alreadyRunning: boolean } {
-    const existing = jobStore.findRunning('model_pull', catalog.id);
-    if (existing) {
-      return { jobId: existing.id, alreadyRunning: true };
+  /** Start a pull on the given servers (or all online servers if `serverIds` is omitted).
+   *  Skips servers where the model is already installed. Returns one jobId per kicked-off
+   *  pull, plus alreadyRunning=true if at least one matching pull was already in flight. */
+  public async startModelDownload(catalog: CatalogModel, serverIds?: string[]): Promise<{ jobIds: string[]; alreadyRunning: boolean }> {
+    const servers = await inferenceServerService.listEnabled();
+    const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
+    if (onlineServers.length === 0) {
+      throw new Error('No online inference server available to pull this model.');
     }
 
-    const jobId = newJobId();
-    jobStore.start({ id: jobId, type: 'model_pull', label: catalog.name, target: catalog.id });
-    void this.runDownload(jobId, catalog);
-    return { jobId, alreadyRunning: false };
+    const requested = serverIds ? onlineServers.filter((s) => serverIds.includes(s.id)) : onlineServers;
+    if (serverIds && requested.length !== serverIds.length) {
+      const missing = serverIds.filter((id) => !onlineServers.some((s) => s.id === id));
+      throw new Error(`Servers not online or not found: ${missing.join(', ')}`);
+    }
+
+    const byServer = await serverModelsService.getInstalledByServer();
+    const targets = requested.filter((s) => !byServer.get(s.id)?.has(catalog.id));
+    if (targets.length === 0) {
+      throw new Error('Model is already installed on every selected server.');
+    }
+
+    const jobIds: string[] = [];
+    let alreadyRunning = false;
+    for (const server of targets) {
+      const target = pullJobTarget(catalog.id, server.id);
+      const existing = jobStore.findRunning('model_pull', target);
+      if (existing) {
+        jobIds.push(existing.id);
+        alreadyRunning = true;
+        continue;
+      }
+      const jobId = newJobId();
+      jobStore.start({ id: jobId, type: 'model_pull', label: `${catalog.name} → ${server.name}`, target });
+      void this.runDownload(jobId, catalog, server);
+      jobIds.push(jobId);
+    }
+    return { jobIds, alreadyRunning };
   }
 
-  private async runDownload(jobId: string, catalog: CatalogModel) {
+  private async runDownload(jobId: string, catalog: CatalogModel, server: InferenceServer) {
     const hfToken = await getSetting('hf_token');
     const files = catalog.files.map((entry) => {
       const filePath = typeof entry === 'string' ? entry : entry.path;
@@ -111,8 +131,7 @@ class ModelService {
     });
 
     try {
-      const baseUrl = await pickServerUrl();
-      for await (const event of pullModel(baseUrl, {
+      for await (const event of pullModel(server.url, {
         backend: catalog.backend,
         modelId: catalog.id,
         files,
@@ -124,24 +143,50 @@ class ModelService {
         }
         if (event.status === 'downloading' || event.status === 'installing_deps') {
           const progress = typeof event.progress === 'number' ? Math.min(event.progress, 99) : 0;
-          const label = event.status === 'installing_deps' ? `Installing ${catalog.backendDisplayName} dependencies` : catalog.name;
+          const label = event.status === 'installing_deps' ? `Installing ${catalog.backendDisplayName} deps → ${server.name}` : `${catalog.name} → ${server.name}`;
           jobStore.progress(jobId, progress, label);
         }
       }
 
       jobStore.complete(jobId);
+      serverModelsService.invalidate(server.id);
       this.notifyListeners();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       jobStore.fail(jobId, message);
+      serverModelsService.invalidate(server.id);
       this.notifyListeners();
     }
   }
 
-  public async removeModelFiles(modelId: string) {
-    const baseUrl = await pickServerUrl();
-    await deleteModel(baseUrl, modelId);
+  /** Delete the model from one server (when `serverId` is given) or every server that has it.
+   *  Failures are aggregated so a single unreachable server doesn't block deletes elsewhere. */
+  public async removeModelFiles(modelId: string, serverId?: string) {
+    const byServer = await serverModelsService.getInstalledByServer();
+    const servers = await inferenceServerService.listEnabled();
+    let targets = servers.filter((s) => byServer.get(s.id)?.has(modelId));
+    if (serverId) {
+      targets = targets.filter((s) => s.id === serverId);
+      if (targets.length === 0) {
+        throw new Error(`Model is not installed on server "${serverId}".`);
+      }
+    }
+
+    const errors: string[] = [];
+    await Promise.all(
+      targets.map(async (server) => {
+        try {
+          await deleteModel(server.url, modelId);
+          serverModelsService.invalidate(server.id);
+        } catch (err) {
+          errors.push(`${server.name}: ${err instanceof Error ? err.message : 'delete failed'}`);
+        }
+      }),
+    );
     this.notifyListeners();
+    if (errors.length > 0) {
+      throw new Error(`Failed to delete on ${errors.length} server(s): ${errors.join('; ')}`);
+    }
   }
 
   public addModelChangeListener(listener: Listener): () => void {

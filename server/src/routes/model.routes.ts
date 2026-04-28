@@ -3,9 +3,8 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { listElevenLabsVoices } from '../lib/elevenlabs-client';
-import { fetchModelExport, importPiperModelToInference } from '../lib/inference-client';
-import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
-import { jobStore, newJobId } from '../lib/jobs';
+import { fetchModelExport } from '../lib/inference-client';
+import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
 import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
@@ -106,14 +105,27 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
   .post('/piper/import', async (c) => {
     const formData = await c.req.formData();
+    const onnxFile = formData.get('onnx') as File | null;
     const configFile = formData.get('config') as File | null;
     const name = (formData.get('name') as string)?.trim();
+    // serverIds is sent as a JSON array string from the dialog; absent = all online.
+    const serverIdsRaw = formData.get('serverIds');
+    let serverIds: string[] | undefined;
+    if (typeof serverIdsRaw === 'string' && serverIdsRaw.length > 0) {
+      try {
+        const parsed = JSON.parse(serverIdsRaw);
+        if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')) {
+          serverIds = parsed;
+        }
+      } catch {
+        return c.json({ message: 'serverIds must be a JSON array of strings' }, 400);
+      }
+    }
 
-    if (!formData.get('onnx') || !configFile || !name) {
+    if (!onnxFile || !configFile || !name) {
       return c.json({ message: 'Fields "onnx", "config", and "name" are required' }, 400);
     }
 
-    // Check catalog conflict before hitting inference
     const configText = await configFile.text();
     let configData: Record<string, unknown>;
     try {
@@ -145,26 +157,27 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: `Name "${slug}" conflicts with an existing catalog model` }, 409);
     }
 
-    let baseUrl: string;
-    try {
-      baseUrl = await pickServerUrl();
-    } catch (err) {
-      if (err instanceof NoInferenceServerError) {
-        return c.json({ message: err.message }, 503);
-      }
-      throw err;
-    }
+    // Read the file bytes once on Hono so we can fan out to multiple inference servers
+    // without re-reading from the user's upload (which is a one-shot stream).
+    const onnxBytes = await onnxFile.arrayBuffer();
+    const configBytes = new TextEncoder().encode(configText).buffer as ArrayBuffer;
 
-    const jobId = newJobId();
-    jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name}`, target: slug });
     try {
-      const result = await importPiperModelToInference(baseUrl, formData);
-      jobStore.complete(jobId);
-      return c.json(result, 201);
+      const { jobIds } = await modelService.startPiperImport({
+        slug,
+        name,
+        onnxBytes,
+        onnxName: onnxFile.name || `${speakerSlug}.onnx`,
+        onnxType: onnxFile.type || 'application/octet-stream',
+        configBytes,
+        configName: configFile.name || `${speakerSlug}.onnx.json`,
+        configType: configFile.type || 'application/json',
+        serverIds,
+      });
+      return c.json({ id: slug, jobIds }, 202);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Import failed';
-      jobStore.fail(jobId, message);
-      const status = (err as { status?: number }).status === 409 ? 409 : 400;
+      const status = err instanceof NoInferenceServerError ? 503 : 400;
       return c.json({ message }, status);
     }
   })
@@ -177,9 +190,9 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json({ message: 'Custom model not found' }, 404);
     }
 
-    let baseUrl: string;
+    let exportTarget: { url: string; authToken?: string };
     try {
-      baseUrl = await pickServerUrl({ requireModel: modelId });
+      exportTarget = await pickTarget({ requireModel: modelId });
     } catch (err) {
       if (err instanceof NoInferenceServerError) {
         return c.json({ message: err.message }, 503);
@@ -187,7 +200,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       throw err;
     }
 
-    const inferenceResponse = await fetchModelExport(baseUrl, modelId);
+    const inferenceResponse = await fetchModelExport(exportTarget, modelId);
     if (!inferenceResponse.ok) {
       return c.json({ message: 'Export failed' }, 502);
     }

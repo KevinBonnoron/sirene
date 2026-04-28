@@ -12,4 +12,7 @@ export interface InferenceServer extends PocketBaseRecord {
   /** Empty string is treated as 'unknown'. */
   last_health_status: InferenceServerHealthStatus | '';
   last_health_error: string;
+  /** Outbound auth token used by the API to authenticate against the remote inference server.
+   *  PB-hidden — only admin reads return it; the client never sees this field. */
+  auth_token?: string;
 }

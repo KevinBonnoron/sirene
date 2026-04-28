@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { NoInferenceServerError, pickServerUrl } from '../lib/inference-router';
+import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
 import { modelService } from '../services';
 
 export const transcribeRoutes = new Hono().post('/', async (c) => {
@@ -25,9 +25,9 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
     return c.json({ error: 'No Whisper model installed. Please install one from the Models page.' }, 400);
   }
 
-  let baseUrl: string;
+  let target: { url: string; authToken?: string };
   try {
-    baseUrl = await pickServerUrl({ requireModel: modelPath });
+    target = await pickTarget({ requireModel: modelPath });
   } catch (err) {
     if (err instanceof NoInferenceServerError) {
       return c.json({ error: err.message }, 503);
@@ -39,8 +39,9 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
   inferenceForm.append('audio', audioFile);
   inferenceForm.append('model_path', modelPath);
 
-  const response = await fetch(`${baseUrl}/transcribe`, {
+  const response = await fetch(`${target.url}/transcribe`, {
     method: 'POST',
+    headers: target.authToken ? { Authorization: `Bearer ${target.authToken}` } : {},
     body: inferenceForm,
   });
 

@@ -150,6 +150,8 @@
     "configFile": "Config file (.onnx.json)",
     "dropConfig": "Drop .onnx.json config here",
     "speakers": "{{count}} speakers",
+    "installOn": "Install on",
+    "alreadyInstalled": "Already installed",
     "importPiperSuccess": "Piper model \"{{id}}\" imported",
     "allBackends": "All backends",
     "status_installed": "Installed",
@@ -328,7 +330,16 @@
     "deleteTitle": "Remove server?",
     "deleteDescription": "\"{{name}}\" will be removed from the registry. Models installed on it will no longer be reachable.",
     "saveFailed": "Failed to save server",
-    "removeFailed": "Failed to remove server"
+    "removeFailed": "Failed to remove server",
+    "authToken": "Auth token",
+    "authTokenPlaceholder": "Paste the token printed by the install script",
+    "authTokenHint": "Optional. Required if you started the inference server with INFERENCE_AUTH_TOKEN set.",
+    "addDialog": {
+      "title": "Add an inference server",
+      "description": "Point Sirene at an inference server. If you don't have one yet, run the install command below on a Linux machine — it prints a URL and auth token at the end.",
+      "installLabel": "Quick install",
+      "installHint": "Runs on Ubuntu/Debian. Detects NVIDIA GPU automatically. Prints the URL and auth token at the end."
+    }
   },
   "deleteGeneration": {
     "title": "Delete generation?",

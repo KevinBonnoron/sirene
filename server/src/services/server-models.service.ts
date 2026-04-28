@@ -1,4 +1,4 @@
-import type { CatalogModel } from '@sirene/shared';
+import type { CatalogModel, InferenceServer } from '@sirene/shared';
 import { getModels } from '../lib/inference-client';
 import { inferenceServerService } from './inference-server.service';
 
@@ -24,7 +24,7 @@ class ServerModelsService {
         if (server.last_health_status === 'offline') {
           return;
         }
-        const entry = await this.getEntry(server.id, server.url);
+        const entry = await this.getEntry(server);
         result.set(server.id, entry.installed);
       }),
     );
@@ -52,7 +52,7 @@ class ServerModelsService {
         if (server.last_health_status === 'offline') {
           return;
         }
-        const entry = await this.getEntry(server.id, server.url);
+        const entry = await this.getEntry(server);
         for (const model of entry.custom) {
           if (!seen.has(model.id)) {
             seen.set(model.id, model);
@@ -72,14 +72,14 @@ class ServerModelsService {
     this.cache.clear();
   }
 
-  private async getEntry(serverId: string, url: string): Promise<CacheEntry> {
-    const cached = this.cache.get(serverId);
+  private async getEntry(server: InferenceServer): Promise<CacheEntry> {
+    const cached = this.cache.get(server.id);
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached;
     }
-    const { installed, custom } = await getModels(url);
+    const { installed, custom } = await getModels({ url: server.url, authToken: server.auth_token });
     const entry: CacheEntry = { installed: new Set(installed), custom, fetchedAt: Date.now() };
-    this.cache.set(serverId, entry);
+    this.cache.set(server.id, entry);
     return entry;
   }
 }

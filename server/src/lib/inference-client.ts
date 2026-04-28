@@ -1,5 +1,10 @@
 import type { CatalogModel } from '@sirene/shared';
 
+export interface InferenceTarget {
+  url: string;
+  authToken?: string;
+}
+
 export interface InferenceRequest {
   backend: string;
   text: string;
@@ -29,6 +34,10 @@ export interface StreamingAudioResponse {
   sampleRate: number;
 }
 
+function authHeaders(target: InferenceTarget): Record<string, string> {
+  return target.authToken ? { Authorization: `Bearer ${target.authToken}` } : {};
+}
+
 function buildInferenceBody(request: InferenceRequest) {
   return {
     backend: request.backend,
@@ -47,10 +56,11 @@ function buildInferenceBody(request: InferenceRequest) {
   };
 }
 
-export async function installBackendDeps(baseUrl: string, backend: string): Promise<void> {
+export async function installBackendDeps(target: InferenceTarget, backend: string): Promise<void> {
   try {
-    const response = await fetch(`${baseUrl}/backends/${backend}/install`, {
+    const response = await fetch(`${target.url}/backends/${backend}/install`, {
       method: 'POST',
+      headers: authHeaders(target),
       signal: AbortSignal.timeout(30 * 60 * 1000), // 30 min — torch can be slow
     });
     if (!response.ok) {
@@ -63,9 +73,10 @@ export async function installBackendDeps(baseUrl: string, backend: string): Prom
   }
 }
 
-export async function getModels(baseUrl: string): Promise<{ installed: string[]; custom: CatalogModel[] }> {
+export async function getModels(target: InferenceTarget): Promise<{ installed: string[]; custom: CatalogModel[] }> {
   try {
-    const response = await fetch(`${baseUrl}/models`, {
+    const response = await fetch(`${target.url}/models`, {
+      headers: authHeaders(target),
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
@@ -77,9 +88,10 @@ export async function getModels(baseUrl: string): Promise<{ installed: string[];
   }
 }
 
-export async function deleteModel(baseUrl: string, modelId: string): Promise<void> {
-  const response = await fetch(`${baseUrl}/models/${encodeURIComponent(modelId)}`, {
+export async function deleteModel(target: InferenceTarget, modelId: string): Promise<void> {
+  const response = await fetch(`${target.url}/models/${encodeURIComponent(modelId)}`, {
     method: 'DELETE',
+    headers: authHeaders(target),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
@@ -96,10 +108,10 @@ export interface PullModelOptions {
   hfToken?: string;
 }
 
-export async function* pullModel(baseUrl: string, options: PullModelOptions): AsyncGenerator<Record<string, unknown>> {
-  const response = await fetch(`${baseUrl}/models/pull`, {
+export async function* pullModel(target: InferenceTarget, options: PullModelOptions): AsyncGenerator<Record<string, unknown>> {
+  const response = await fetch(`${target.url}/models/pull`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(target) },
     body: JSON.stringify({
       backend: options.backend,
       model_id: options.modelId,
@@ -139,9 +151,10 @@ export async function* pullModel(baseUrl: string, options: PullModelOptions): As
   }
 }
 
-export async function importPiperModelToInference(baseUrl: string, formData: FormData): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${baseUrl}/models/piper/import`, {
+export async function importPiperModelToInference(target: InferenceTarget, formData: FormData): Promise<{ id: string; message: string }> {
+  const response = await fetch(`${target.url}/models/piper/import`, {
     method: 'POST',
+    headers: authHeaders(target),
     body: formData,
     signal: AbortSignal.timeout(30_000),
   });
@@ -153,16 +166,17 @@ export async function importPiperModelToInference(baseUrl: string, formData: For
   return response.json() as Promise<{ id: string; message: string }>;
 }
 
-export async function fetchModelExport(baseUrl: string, modelId: string): Promise<Response> {
-  return fetch(`${baseUrl}/models/${encodeURIComponent(modelId)}/export`, {
+export async function fetchModelExport(target: InferenceTarget, modelId: string): Promise<Response> {
+  return fetch(`${target.url}/models/${encodeURIComponent(modelId)}/export`, {
+    headers: authHeaders(target),
     signal: AbortSignal.timeout(60_000),
   });
 }
 
-export async function generateAudio(baseUrl: string, request: InferenceRequest): Promise<Buffer> {
-  const response = await fetch(`${baseUrl}/generate`, {
+export async function generateAudio(target: InferenceTarget, request: InferenceRequest): Promise<Buffer> {
+  const response = await fetch(`${target.url}/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(target) },
     body: JSON.stringify(buildInferenceBody(request)),
   });
 
@@ -179,10 +193,10 @@ export async function generateAudio(baseUrl: string, request: InferenceRequest):
   return Buffer.from(arrayBuffer);
 }
 
-export async function generateAudioStream(baseUrl: string, request: InferenceRequest): Promise<StreamingAudioResponse> {
-  const response = await fetch(`${baseUrl}/generate/stream`, {
+export async function generateAudioStream(target: InferenceTarget, request: InferenceRequest): Promise<StreamingAudioResponse> {
+  const response = await fetch(`${target.url}/generate/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(target) },
     body: JSON.stringify(buildInferenceBody(request)),
   });
 

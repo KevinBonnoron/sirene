@@ -82,11 +82,7 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
                 <Download className="size-3.5" />
               </Button>
             )}
-            {isMultiServer ? (
-              <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} />
-            ) : (
-              <SingleServerActions status={status} isCustom={isCustom} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />
-            )}
+            {isMultiServer ? <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} /> : <SingleServerActions status={status} isCustom={isCustom} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />}
           </div>
         )}
       </div>

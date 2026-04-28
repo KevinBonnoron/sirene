@@ -150,6 +150,8 @@
     "configFile": "Fichier de config (.onnx.json)",
     "dropConfig": "D\u00e9posez le fichier .onnx.json ici",
     "speakers": "{{count}} locuteurs",
+    "installOn": "Installer sur",
+    "alreadyInstalled": "Déjà installé",
     "importPiperSuccess": "Modèle Piper « {{id}} » importé",
     "allBackends": "Tous les backends",
     "status_installed": "Installés",
@@ -315,7 +317,16 @@
     "deleteTitle": "Supprimer le serveur ?",
     "deleteDescription": "\u00ab {{name}} \u00bb sera supprim\u00e9 du registre. Les mod\u00e8les install\u00e9s dessus ne seront plus accessibles.",
     "saveFailed": "\u00c9chec de l'enregistrement",
-    "removeFailed": "\u00c9chec de la suppression"
+    "removeFailed": "\u00c9chec de la suppression",
+    "authToken": "Token d'auth",
+    "authTokenPlaceholder": "Collez le token affich\u00e9 par le script d'installation",
+    "authTokenHint": "Optionnel. Requis si vous avez d\u00e9marr\u00e9 le serveur d'inf\u00e9rence avec INFERENCE_AUTH_TOKEN.",
+    "addDialog": {
+      "title": "Ajouter un serveur d'inf\u00e9rence",
+      "description": "Pointez Sirene vers un serveur d'inf\u00e9rence. Si vous n'en avez pas encore, lancez la commande ci-dessous sur une machine Linux \u2014 elle affiche l'URL et le token d'auth \u00e0 la fin.",
+      "installLabel": "Installation rapide",
+      "installHint": "Tourne sur Ubuntu/Debian. D\u00e9tecte le GPU NVIDIA automatiquement. Affiche l'URL et le token d'auth \u00e0 la fin."
+    }
   },
   "settings": {
     "title": "Param\u00e8tres",

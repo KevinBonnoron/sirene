@@ -1,5 +1,5 @@
 import type { CatalogModel, InferenceServer, Model } from '@sirene/shared';
-import { deleteModel, pullModel } from '../lib/inference-client';
+import { deleteModel, importPiperModelToInference, pullModel } from '../lib/inference-client';
 import { jobStore, newJobId } from '../lib/jobs';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
@@ -131,13 +131,16 @@ class ModelService {
     });
 
     try {
-      for await (const event of pullModel(server.url, {
-        backend: catalog.backend,
-        modelId: catalog.id,
-        files,
-        totalSize: catalog.size,
-        hfToken: hfToken ?? undefined,
-      })) {
+      for await (const event of pullModel(
+        { url: server.url, authToken: server.auth_token },
+        {
+          backend: catalog.backend,
+          modelId: catalog.id,
+          files,
+          totalSize: catalog.size,
+          hfToken: hfToken ?? undefined,
+        },
+      )) {
         if (event.status === 'error') {
           throw new Error(typeof event.message === 'string' ? event.message : 'Pull failed');
         }
@@ -154,6 +157,62 @@ class ModelService {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       jobStore.fail(jobId, message);
+      serverModelsService.invalidate(server.id);
+      this.notifyListeners();
+    }
+  }
+
+  /** Fan out a Piper model upload to the given servers (or all online ones if `serverIds`
+   *  is omitted). Skips servers where the slug is already installed. Each upload is its
+   *  own job so partial failures (one server unreachable) don't block the rest. */
+  public async startPiperImport(input: { slug: string; name: string; onnxBytes: ArrayBuffer; onnxName: string; onnxType: string; configBytes: ArrayBuffer; configName: string; configType: string; serverIds?: string[] }): Promise<{ jobIds: string[] }> {
+    const { slug, name, onnxBytes, onnxName, onnxType, configBytes, configName, configType, serverIds } = input;
+
+    const servers = await inferenceServerService.listEnabled();
+    const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
+    if (onlineServers.length === 0) {
+      throw new Error('No online inference server available to import this model.');
+    }
+
+    const requested = serverIds ? onlineServers.filter((s) => serverIds.includes(s.id)) : onlineServers;
+    if (serverIds && requested.length !== serverIds.length) {
+      const missing = serverIds.filter((id) => !onlineServers.some((s) => s.id === id));
+      throw new Error(`Servers not online or not found: ${missing.join(', ')}`);
+    }
+
+    const byServer = await serverModelsService.getInstalledByServer();
+    const targets = requested.filter((s) => !byServer.get(s.id)?.has(slug));
+    if (targets.length === 0) {
+      throw new Error('Model is already installed on every selected server.');
+    }
+
+    const jobIds: string[] = [];
+    for (const server of targets) {
+      const jobId = newJobId();
+      jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name} → ${server.name}`, target: pullJobTarget(slug, server.id) });
+      void this.runPiperImport(jobId, server, name, { onnxBytes, onnxName, onnxType, configBytes, configName, configType });
+      jobIds.push(jobId);
+    }
+    return { jobIds };
+  }
+
+  private async runPiperImport(jobId: string, server: InferenceServer, name: string, files: { onnxBytes: ArrayBuffer; onnxName: string; onnxType: string; configBytes: ArrayBuffer; configName: string; configType: string }) {
+    try {
+      // Build a fresh FormData per server — File/Blob hold the same underlying bytes
+      // by reference so this stays cheap memory-wise.
+      const fd = new FormData();
+      fd.append('name', name);
+      fd.append('onnx', new File([files.onnxBytes], files.onnxName, { type: files.onnxType }));
+      fd.append('config', new File([files.configBytes], files.configName, { type: files.configType }));
+
+      await importPiperModelToInference({ url: server.url, authToken: server.auth_token }, fd);
+
+      jobStore.complete(jobId);
+      serverModelsService.invalidate(server.id);
+      this.notifyListeners();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed';
+      jobStore.fail(jobId, `${server.name}: ${message}`);
       serverModelsService.invalidate(server.id);
       this.notifyListeners();
     }
@@ -176,7 +235,7 @@ class ModelService {
     await Promise.all(
       targets.map(async (server) => {
         try {
-          await deleteModel(server.url, modelId);
+          await deleteModel({ url: server.url, authToken: server.auth_token }, modelId);
           serverModelsService.invalidate(server.id);
         } catch (err) {
           errors.push(`${server.name}: ${err instanceof Error ? err.message : 'delete failed'}`);
@@ -192,6 +251,13 @@ class ModelService {
   public addModelChangeListener(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Invalidate the per-server model cache and broadcast a change to subscribers.
+   *  Call after a mutation that bypasses the regular pull/delete paths (e.g. piper import). */
+  public markModelsChanged(serverId: string) {
+    serverModelsService.invalidate(serverId);
+    this.notifyListeners();
   }
 
   public startModelWatcher() {

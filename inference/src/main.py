@@ -4,8 +4,9 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import settings
 from .routers import backends, cache, generate, health, models, transcribe
@@ -52,6 +53,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def bearer_auth(request: Request, call_next):
+    # Auth is opt-in: when INFERENCE_AUTH_TOKEN is unset, behave like before so local
+    # docker-compose setups (server + inference on a private network) keep working.
+    if not settings.auth_token:
+        return await call_next(request)
+    # /health must stay reachable without auth so probes from outside the trust boundary
+    # (load balancers, the Sirene app's health loop on first contact) can verify liveness.
+    if request.url.path == "/health":
+        return await call_next(request)
+    expected = f"Bearer {settings.auth_token}"
+    if request.headers.get("authorization") != expected:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
+
 
 app.include_router(health.router)
 app.include_router(generate.router)

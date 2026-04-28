@@ -27,3 +27,18 @@ See the [Docker guide](./docker.md) for more options.
 1. Open the app (or navigate to `http://localhost:5173` for Docker)
 2. Go to the **Models** page and install the model of your choice (e.g. Kokoro v1.0)
 3. You're ready to generate speech
+
+## Adding more inference workers
+
+If you have a separate Linux machine with a GPU, you can add it as an inference worker:
+
+1. On the worker machine, run:
+
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=worker bash
+   ```
+
+2. The script prints a **URL** and an **auth token** when it finishes
+3. In Sirene → **Settings → Inference servers → Add server**, paste both, give it a name, save
+
+See the [Docker guide](./docker.md#worker-servers-script-install) for details.

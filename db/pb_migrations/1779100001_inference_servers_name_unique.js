@@ -15,10 +15,7 @@ migrate(
       throw e;
     }
 
-    const desired = [
-      'CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)',
-      'CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)',
-    ];
+    const desired = ['CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)', 'CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)'];
 
     collection.indexes = desired;
     app.save(collection);

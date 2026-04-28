@@ -1,6 +1,7 @@
 import type { InferenceServer } from '@sirene/shared';
 import { inferenceServerService } from '../services/inference-server.service';
 import { serverModelsService } from '../services/server-models.service';
+import type { InferenceTarget } from './inference-client';
 
 export class NoInferenceServerError extends Error {
   public constructor(message = 'No inference server is available') {
@@ -9,14 +10,15 @@ export class NoInferenceServerError extends Error {
   }
 }
 
-/** In-flight call counts per server. Used by the router to pick the least-loaded
- *  candidate for a generation. Reset only on process restart — fine since these
- *  numbers are tracked per Hono process. */
 const inFlight = new Map<string, number>();
 
 interface PickOptions {
   /** Restrict candidates to servers that have this model installed. */
   requireModel?: string;
+}
+
+export function targetOf(server: InferenceServer): InferenceTarget {
+  return { url: server.url, authToken: server.auth_token };
 }
 
 /** Pick a server for an outgoing call. Strategy:
@@ -64,17 +66,16 @@ export async function pickServer(options: PickOptions = {}): Promise<InferenceSe
   return winner;
 }
 
-export async function pickServerUrl(options: PickOptions = {}): Promise<string> {
-  const server = await pickServer(options);
-  return server.url;
+export async function pickTarget(options: PickOptions = {}): Promise<InferenceTarget> {
+  return targetOf(await pickServer(options));
 }
 
 /** Wrap a server-bound call so we count it in the in-flight tracker.
  *  The router uses this counter to balance load across servers. */
-export async function withServer<T>(server: InferenceServer, fn: (baseUrl: string) => Promise<T>): Promise<T> {
+export async function withServer<T>(server: InferenceServer, fn: (target: InferenceTarget) => Promise<T>): Promise<T> {
   inFlight.set(server.id, (inFlight.get(server.id) ?? 0) + 1);
   try {
-    return await fn(server.url);
+    return await fn(targetOf(server));
   } finally {
     inFlight.set(server.id, Math.max(0, (inFlight.get(server.id) ?? 1) - 1));
   }

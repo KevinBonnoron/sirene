@@ -84,10 +84,7 @@ migrate(
         },
       ],
       // NOCASE so `Local` and `local` collide and the user gets a clear field-level error.
-      indexes: [
-        'CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)',
-        'CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)',
-      ],
+      indexes: ['CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)', 'CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)'],
     });
 
     app.save(collection);

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     log_level: str = "info"
     cache_dir: str = str(_PROJECT_ROOT / "data" / "cache" / "prompts")
     cache_max_disk_mb: int = 2048
-
+    auth_token: str = ""
     model_config = {"env_prefix": "INFERENCE_"}
 
 

@@ -4,11 +4,18 @@ type JobUpdate = { type: 'job'; job: Job } | { type: 'remove'; id: string };
 type Listener = (update: JobUpdate) => void;
 
 const COMPLETED_TTL_MS = 30_000;
+// Coalesce progress emissions inside this window. Fast-downloading models (Kokoro, Piper)
+// can fire 50-100 percent updates per second per job; flushing to listeners on every one
+// of those would saturate React. Terminal events (start/complete/fail/remove) bypass this.
+const PROGRESS_THROTTLE_MS = 100;
 
 class JobStore {
   private readonly jobs = new Map<string, Job>();
   private readonly listeners = new Set<Listener>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Pending progress updates keyed by job id — only the latest per job is kept. */
+  private readonly pendingProgress = new Map<string, Job>();
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   public list(): Job[] {
     return Array.from(this.jobs.values()).sort((a, b) => b.createdAt - a.createdAt);
@@ -52,8 +59,12 @@ class JobStore {
     if (label) {
       next.label = label;
     }
+    if (next.progress === job.progress && next.label === job.label) {
+      return;
+    }
     this.jobs.set(id, next);
-    this.emit({ type: 'job', job: next });
+    this.pendingProgress.set(id, next);
+    this.scheduleFlush();
   }
 
   public complete(id: string) {
@@ -61,6 +72,7 @@ class JobStore {
     if (!job) {
       return;
     }
+    this.pendingProgress.delete(id);
     const next: Job = { ...job, status: 'completed', progress: 100, completedAt: Date.now() };
     this.jobs.set(id, next);
     this.emit({ type: 'job', job: next });
@@ -72,6 +84,7 @@ class JobStore {
     if (!job) {
       return;
     }
+    this.pendingProgress.delete(id);
     const next: Job = { ...job, status: 'failed', error, completedAt: Date.now() };
     this.jobs.set(id, next);
     this.emit({ type: 'job', job: next });
@@ -98,6 +111,20 @@ class JobStore {
     }
   }
 
+  private scheduleFlush() {
+    if (this.flushTimer) {
+      return;
+    }
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      const items = Array.from(this.pendingProgress.values());
+      this.pendingProgress.clear();
+      for (const job of items) {
+        this.emit({ type: 'job', job });
+      }
+    }, PROGRESS_THROTTLE_MS);
+  }
+
   private scheduleCleanup(id: string) {
     const existing = this.timers.get(id);
     if (existing) {
@@ -111,6 +138,7 @@ class JobStore {
     if (!this.jobs.delete(id)) {
       return;
     }
+    this.pendingProgress.delete(id);
     const timer = this.timers.get(id);
     if (timer) {
       clearTimeout(timer);

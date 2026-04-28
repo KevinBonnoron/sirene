@@ -15,6 +15,7 @@ import { getStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
+import { AddServerDialog } from './add-server-dialog';
 
 const STATUS_DOT: Record<'online' | 'offline' | 'unknown', string> = {
   online: 'bg-accent-sage',
@@ -83,20 +84,18 @@ export function InferenceServersSection() {
         <CardDescription>{t('inferenceServers.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {servers.length === 0 && !adding && <p className="text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>}
+        {servers.length === 0 && <p className="text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>}
 
         {servers.map((server) => (
           <ServerRow key={server.id} server={server} />
         ))}
 
-        {adding ? (
-          <ServerForm onCancel={() => setAdding(false)} onSaved={() => setAdding(false)} />
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)} className="gap-2">
-            <Plus className="size-3.5" />
-            {t('inferenceServers.addServer')}
-          </Button>
-        )}
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)} className="gap-2">
+          <Plus className="size-3.5" />
+          {t('inferenceServers.addServer')}
+        </Button>
+
+        <AddServerDialog open={adding} onOpenChange={setAdding} />
       </CardContent>
     </Card>
   );

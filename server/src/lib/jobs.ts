@@ -69,7 +69,10 @@ class JobStore {
 
   public complete(id: string) {
     const job = this.jobs.get(id);
-    if (!job) {
+    // Reject double-terminal transitions: a late callback flipping a completed job
+    // back to failed (or vice versa) would emit a second terminal event and confuse
+    // any client that already saw the first one.
+    if (!job || job.status !== 'running') {
       return;
     }
     this.pendingProgress.delete(id);
@@ -81,7 +84,7 @@ class JobStore {
 
   public fail(id: string, error: string) {
     const job = this.jobs.get(id);
-    if (!job) {
+    if (!job || job.status !== 'running') {
       return;
     }
     this.pendingProgress.delete(id);
@@ -107,7 +110,13 @@ class JobStore {
 
   private emit(update: JobUpdate) {
     for (const listener of this.listeners) {
-      listener(update);
+      try {
+        listener(update);
+      } catch (err) {
+        // One bad subscriber must not break fan-out to the others or bubble up into
+        // the calling job-mutation path (start/progress/complete/fail/remove).
+        console.error('[jobs] listener error', err);
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import type { Job } from '@sirene/shared';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { jobsClient } from '@/clients/jobs.client';
+import { openAuthenticatedStream } from '@/lib/auth-stream';
 import { config } from '@/lib/config';
 
 type Listener = () => void;
@@ -8,7 +9,7 @@ type Listener = () => void;
 class JobsStore {
   private jobs: Job[] = [];
   private readonly listeners = new Set<Listener>();
-  private es: EventSource | null = null;
+  private stream: { close: () => void } | null = null;
   private refCount = 0;
 
   public getSnapshot = (): Job[] => this.jobs;
@@ -23,8 +24,14 @@ class JobsStore {
   };
 
   public dismiss(id: string) {
-    // Optimistic removal — server will also broadcast a remove event.
-    this.replace(this.jobs.filter((j) => j.id !== id));
+    // Server only allows dismissing terminal jobs (completed/failed). Optimistically
+    // hiding a running job would briefly remove an in-flight task from the UI until
+    // the next stream event puts it back. Skip the optimism for running jobs and let
+    // the server's `remove` broadcast drive the local state.
+    const target = this.jobs.find((j) => j.id === id);
+    if (target && target.status !== 'running') {
+      this.replace(this.jobs.filter((j) => j.id !== id));
+    }
     void jobsClient.dismiss(id).catch(() => {
       // If the dismiss failed, the next snapshot/event will re-add the job.
     });
@@ -32,38 +39,38 @@ class JobsStore {
 
   private acquire() {
     this.refCount++;
-    if (this.es) {
+    if (this.stream) {
       return;
     }
-    this.es = new EventSource(`${config.server.url}/jobs/stream`);
-
-    this.es.addEventListener('snapshot', (event) => {
-      this.replace(JSON.parse(event.data) as Job[]);
-    });
-    this.es.addEventListener('job', (event) => {
-      const job = JSON.parse(event.data) as Job;
-      const idx = this.jobs.findIndex((j) => j.id === job.id);
-      if (idx === -1) {
-        this.replace([job, ...this.jobs]);
-      } else {
-        const next = [...this.jobs];
-        next[idx] = job;
-        this.replace(next);
+    // Fetch-based SSE so the auth token travels in an Authorization header
+    // (EventSource forces query-param tokens, which leak to logs).
+    this.stream = openAuthenticatedStream(`${config.server.url}/jobs/stream`, ({ event, data }) => {
+      if (event === 'snapshot') {
+        this.replace(JSON.parse(data) as Job[]);
+      } else if (event === 'job') {
+        const job = JSON.parse(data) as Job;
+        const idx = this.jobs.findIndex((j) => j.id === job.id);
+        if (idx === -1) {
+          this.replace([job, ...this.jobs]);
+        } else {
+          const next = [...this.jobs];
+          next[idx] = job;
+          this.replace(next);
+        }
+      } else if (event === 'remove') {
+        const { id } = JSON.parse(data) as { id: string };
+        this.replace(this.jobs.filter((j) => j.id !== id));
       }
-    });
-    this.es.addEventListener('remove', (event) => {
-      const { id } = JSON.parse(event.data) as { id: string };
-      this.replace(this.jobs.filter((j) => j.id !== id));
     });
   }
 
   private release() {
     this.refCount--;
-    if (this.refCount > 0 || !this.es) {
+    if (this.refCount > 0 || !this.stream) {
       return;
     }
-    this.es.close();
-    this.es = null;
+    this.stream.close();
+    this.stream = null;
     this.jobs = [];
   }
 
@@ -88,12 +95,16 @@ export function useJobs() {
 /** Subscribe to a job's terminal state (completed/failed) and run a side effect once. */
 export function useJobCompletion(jobId: string | null, onTerminal: (job: Job) => void) {
   const { jobs } = useJobs();
+  const firedFor = useRef<string | null>(null);
+
   useEffect(() => {
     if (!jobId) {
+      firedFor.current = null;
       return;
     }
     const job = jobs.find((j) => j.id === jobId);
-    if (job && job.status !== 'running') {
+    if (job && job.status !== 'running' && firedFor.current !== job.id) {
+      firedFor.current = job.id;
       onTerminal(job);
     }
   }, [jobId, jobs, onTerminal]);

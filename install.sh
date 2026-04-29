@@ -211,14 +211,24 @@ if [ "$INSTALL_MODE" = "worker" ]; then
 
   remove_container sirene-inference
 
-  if command -v openssl >/dev/null 2>&1; then
-    AUTH_TOKEN=$(openssl rand -hex 32)
-  else
-    AUTH_TOKEN=$(head -c 32 /dev/urandom | xxd -p -c 64)
+  # Reuse the existing token on reinstall so server entries already registered
+  # with this worker keep working — rotating here would silently break every
+  # server pointing at this URL. A non-empty file with only whitespace would
+  # otherwise produce an empty AUTH_TOKEN and boot the worker fail-closed.
+  if [ -s auth_token ]; then
+    AUTH_TOKEN=$(tr -d '\n\r' < auth_token)
   fi
-
-  ( umask 077 && printf '%s\n' "$AUTH_TOKEN" > auth_token )
-  ok "saved auth token to $INSTALL_DIR/auth_token (mode 600)"
+  if [ -n "${AUTH_TOKEN:-}" ]; then
+    ok "reusing auth token from $(pwd)/auth_token (mode 600)"
+  else
+    if command -v openssl >/dev/null 2>&1; then
+      AUTH_TOKEN=$(openssl rand -hex 32)
+    else
+      AUTH_TOKEN=$(head -c 32 /dev/urandom | xxd -p -c 64)
+    fi
+    ( umask 077 && printf '%s\n' "$AUTH_TOKEN" > auth_token )
+    ok "saved auth token to $(pwd)/auth_token (mode 600)"
+  fi
 
   info "pulling $IMAGE ..."
   $SUDO docker pull "$IMAGE" >/dev/null
@@ -269,7 +279,7 @@ if [ "$INSTALL_MODE" = "worker" ]; then
   printf "    ${YELLOW}Auth token${RESET} %s\n" "$AUTH_TOKEN"
   echo
   printf "  ${DIM}Models:${RESET} %s\n" "$DATA_DIR_ABS"
-  printf "  ${DIM}Token:${RESET}  $INSTALL_DIR/auth_token\n"
+  printf "  ${DIM}Token:${RESET}  %s\n" "$(pwd)/auth_token"
   printf "  ${DIM}Logs:${RESET}   docker logs -f sirene-inference\n"
   echo
   exit 0
@@ -277,19 +287,67 @@ fi
 
 # ── Mode: full / server (server container, optional inference) ──────────────
 
+PB_DATA_HAS_CONTENT=0
+if [ -d "$DATA_DIR_ABS/pb_data" ] && [ -n "$(ls -A "$DATA_DIR_ABS/pb_data" 2>/dev/null)" ]; then
+  PB_DATA_HAS_CONTENT=1
+fi
 mkdir -p "$DATA_DIR_ABS/pb_data"
 [ "$INSTALL_MODE" = "full" ] && mkdir -p "$DATA_DIR_ABS/models" "$DATA_DIR_ABS/packages"
 
 PB_SUPERUSER_EMAIL="admin@sirene.local"
-PB_PASSWORD=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
 
-# Persist credentials so the user can find them later (mode 600).
-( umask 077 && cat > credentials <<EOF
+# Read a single KEY=VALUE pair from the credentials file without sourcing it.
+# Sourcing executes whatever sh code happens to be in the file, which is unsafe
+# for a path that's already on disk by the time we get here.
+read_cred() {
+  local key="$1"
+  local file="$2"
+  [ -f "$file" ] || return 1
+  awk -v k="$key" -F= '
+    /^[[:space:]]*#/ || $1 ~ /^[[:space:]]*$/ { next }
+    {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
+      if ($1 == k) {
+        sub(/^[^=]*=/, "")
+        # strip surrounding quotes if present
+        gsub(/^["'\'']|["'\'']$/, "")
+        print
+        exit
+      }
+    }
+  ' "$file"
+}
+
+# On a reinstall PB still uses the admin account that was stored in pb_data, so
+# rotating the password here would print credentials that no longer work. Reuse
+# the saved credentials when available; if pb_data exists without a credentials
+# file, leave the user to recover it manually rather than silently overwriting.
+if [ -f credentials ]; then
+  EXISTING_EMAIL=$(read_cred PB_SUPERUSER_EMAIL credentials || true)
+  EXISTING_PASSWORD=$(read_cred PB_SUPERUSER_PASSWORD credentials || true)
+  if [ -n "$EXISTING_PASSWORD" ]; then
+    PB_PASSWORD="$EXISTING_PASSWORD"
+    PB_SUPERUSER_EMAIL="${EXISTING_EMAIL:-$PB_SUPERUSER_EMAIL}"
+    ok "reusing PocketBase credentials from $(pwd)/credentials"
+  fi
+fi
+
+if [ -z "${PB_PASSWORD:-}" ]; then
+  if [ "$PB_DATA_HAS_CONTENT" = "1" ]; then
+    printf "${YELLOW}warning:${RESET} pb_data already exists but no credentials file was found.\n"
+    printf "         Skipping password generation — recover the existing admin via PB Admin UI\n"
+    printf "         or remove %s to start fresh.\n" "$DATA_DIR_ABS/pb_data"
+    PB_PASSWORD=""
+  else
+    PB_PASSWORD=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
+    ( umask 077 && cat > credentials <<EOF
 PB_SUPERUSER_EMAIL=${PB_SUPERUSER_EMAIL}
 PB_SUPERUSER_PASSWORD=${PB_PASSWORD}
 EOF
-)
-ok "saved PocketBase credentials to $INSTALL_DIR/credentials (mode 600)"
+    )
+    ok "saved PocketBase credentials to $(pwd)/credentials (mode 600)"
+  fi
+fi
 
 ensure_network
 
@@ -310,6 +368,7 @@ if [ "$INSTALL_MODE" = "full" ]; then
     --name sirene-inference \
     --network "$NETWORK_NAME" \
     --restart unless-stopped \
+    -e INFERENCE_ALLOW_NO_AUTH=true \
     -v "${DATA_DIR_ABS}/models:/app/data/models" \
     -v "${DATA_DIR_ABS}/packages:/app/data/packages" \
     $GPU_ARGS \
@@ -327,10 +386,13 @@ info "pulling $SERVER_IMAGE ..."
 $SUDO docker pull "$SERVER_IMAGE" >/dev/null
 
 info "starting sirene-server on port 80 ..."
-SERVER_ENV_ARGS=(
-  -e "PB_SUPERUSER_EMAIL=$PB_SUPERUSER_EMAIL"
-  -e "PB_SUPERUSER_PASSWORD=$PB_PASSWORD"
-)
+SERVER_ENV_ARGS=()
+if [ -n "$PB_PASSWORD" ]; then
+  SERVER_ENV_ARGS+=(
+    -e "PB_SUPERUSER_EMAIL=$PB_SUPERUSER_EMAIL"
+    -e "PB_SUPERUSER_PASSWORD=$PB_PASSWORD"
+  )
+fi
 if [ -n "$EFFECTIVE_INFERENCE_URL" ]; then
   SERVER_ENV_ARGS+=(-e "INFERENCE_URL=$EFFECTIVE_INFERENCE_URL")
 fi
@@ -353,9 +415,18 @@ printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "URL:" "http://localhost"
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Admin:" "http://localhost/db/_/"
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Email:" "${PB_SUPERUSER_EMAIL}"
-printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "${PB_PASSWORD}"
+if [ -n "$PB_PASSWORD" ]; then
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "${PB_PASSWORD}"
+else
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "(see existing pb_data — credentials were not regenerated)"
+fi
 printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Data:" "$DATA_DIR_ABS"
-printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Creds:" "./$INSTALL_DIR/credentials"
+# Only point at the credentials file when we actually wrote one this run; on the
+# "pb_data exists but no credentials file was found" path it would otherwise
+# advertise a path that doesn't exist.
+if [ -f credentials ]; then
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Creds:" "$(pwd)/credentials"
+fi
 printf "  ${GREEN}└${BORDER}┘${RESET}\n"
 printf "\n"

@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import logging
 import shutil
 import zipfile
 from pathlib import Path
@@ -16,6 +17,7 @@ from ..services.downloader import download_model_files
 from ..services.model_manager import model_manager
 
 router = APIRouter(prefix="/models")
+logger = logging.getLogger(__name__)
 
 
 def _scan_custom_piper_models(models_path: Path) -> list[dict]:
@@ -100,9 +102,10 @@ async def pull_model(req: ModelPullRequest):
                     if failed.is_set():
                         return
                     await queue.put(event)
-            except Exception as exc:  # noqa: BLE001 — surface any producer failure as a structured event
+            except Exception:  # noqa: BLE001 — full traceback goes to logs; client gets a generic message
+                logger.exception("Model pull producer failed for model_id=%s", req.model_id)
                 failed.set()
-                await queue.put({"status": "error", "message": str(exc)})
+                await queue.put({"status": "error", "message": "Model pull failed. See inference server logs for details."})
 
         tasks = [
             asyncio.create_task(produce(download_model_files(

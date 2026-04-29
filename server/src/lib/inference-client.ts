@@ -74,18 +74,17 @@ export async function installBackendDeps(target: InferenceTarget, backend: strin
 }
 
 export async function getModels(target: InferenceTarget): Promise<{ installed: string[]; custom: CatalogModel[] }> {
-  try {
-    const response = await fetch(`${target.url}/models`, {
-      headers: authHeaders(target),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      return { installed: [], custom: [] };
-    }
-    return response.json() as Promise<{ installed: string[]; custom: CatalogModel[] }>;
-  } catch {
-    return { installed: [], custom: [] };
+  // Throws on transport / non-OK so callers can distinguish a genuinely empty
+  // worker from a transient probe failure (and avoid caching the failure as
+  // "empty" for the TTL window).
+  const response = await fetch(`${target.url}/models`, {
+    headers: authHeaders(target),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(`getModels HTTP ${response.status}`);
   }
+  return response.json() as Promise<{ installed: string[]; custom: CatalogModel[] }>;
 }
 
 export async function deleteModel(target: InferenceTarget, modelId: string): Promise<void> {

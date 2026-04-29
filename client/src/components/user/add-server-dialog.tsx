@@ -2,19 +2,25 @@ import { Check, Copy, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { inferenceServerClient } from '@/clients/inference-server.client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { pb } from '@/lib/pocketbase';
+import { explainApiError } from '@/lib/api-error';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const INSTALL_COMMAND = 'curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=worker bash';
+// Worker mode landed after the v0.0.1 tag was cut, so there is no tagged release
+// the installer can be pinned to today. Use `main` and surface a security note in
+// the dialog hint; once a worker-capable release exists this should switch back
+// to a fetched-version-based pin (the /version endpoint is already wired).
+const INSTALL_REF = 'main';
+const INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/install.sh | INSTALL_MODE=worker bash`;
 
 export function AddServerDialog({ open, onOpenChange }: Props) {
   const { t } = useTranslation();
@@ -45,22 +51,23 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
   }
 
   async function handleSubmit() {
-    if (!name.trim() || !url.trim()) {
+    // Early-out before the React state flush has had a chance to disable the button
+    // (form double-submit, Enter twice, etc.) so we can't double-create the same server.
+    if (saving || !name.trim() || !url.trim()) {
       return;
     }
     setSaving(true);
     try {
-      await pb.collection('inference_servers').create({
+      await inferenceServerClient.create({
         name: name.trim(),
         url: url.trim().replace(/\/$/, ''),
         enabled,
         priority: Number.parseInt(priority, 10) || 0,
-        last_health_status: 'unknown',
-        auth_token: authToken.trim() || '',
+        auth_token: authToken.trim() || undefined,
       });
       onOpenChange(false);
     } catch (e) {
-      toast.error(explainPbError(e, t('inferenceServers.saveFailed')));
+      toast.error(explainApiError(e, t('inferenceServers.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -132,23 +139,4 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function explainPbError(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { data?: Record<string, { message?: string }> } }).response;
-    const fieldErrors = response?.data;
-    if (fieldErrors) {
-      const messages: string[] = [];
-      for (const [field, info] of Object.entries(fieldErrors)) {
-        if (info?.message) {
-          messages.push(`${field}: ${info.message}`);
-        }
-      }
-      if (messages.length > 0) {
-        return messages.join('; ');
-      }
-    }
-  }
-  return err instanceof Error ? err.message : fallback;
 }

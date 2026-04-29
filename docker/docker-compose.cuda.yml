@@ -11,6 +11,10 @@ services:
 
   inference:
     image: ghcr.io/kevinbonnoron/sirene-inference:cuda
+    environment:
+      # Compose runs server + inference on a private docker network, so unauthenticated
+      # mode is acceptable here. Remote workers must instead set INFERENCE_AUTH_TOKEN.
+      INFERENCE_ALLOW_NO_AUTH: "true"
     volumes:
       - sirene-models:/app/data/models
       - sirene-packages:/app/data/packages

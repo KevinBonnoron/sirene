@@ -1,9 +1,10 @@
 import type { InferenceServer } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
 import { Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { inferenceServerClient } from '@/clients/inference-server.client';
 import { inferenceServerCollection } from '@/collections';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { explainApiError } from '@/lib/api-error';
 import { getStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
-import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { AddServerDialog } from './add-server-dialog';
 
@@ -37,7 +38,11 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
   if (!iso) {
     return t('inferenceServers.neverChecked');
   }
-  const elapsed = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  const parsed = new Date(iso).getTime();
+  if (!Number.isFinite(parsed)) {
+    return t('inferenceServers.neverChecked');
+  }
+  const elapsed = Math.max(0, Math.floor((Date.now() - parsed) / 1000));
   let when: string;
   if (elapsed < 60) {
     when = t('studio.relativeJustNow');
@@ -51,30 +56,12 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
   return t('inferenceServers.lastChecked', { when });
 }
 
-/** PocketBase exposes per-field validation messages on ClientResponseError.
- *  Surface them so the user gets "Value must be unique" instead of "Failed to create record". */
-function explainPbError(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { data?: Record<string, { message?: string }> } }).response;
-    const fieldErrors = response?.data;
-    if (fieldErrors) {
-      const messages: string[] = [];
-      for (const [field, info] of Object.entries(fieldErrors)) {
-        if (info?.message) {
-          messages.push(`${field}: ${info.message}`);
-        }
-      }
-      if (messages.length > 0) {
-        return messages.join('; ');
-      }
-    }
-  }
-  return err instanceof Error ? err.message : fallback;
-}
-
 export function InferenceServersSection() {
   const { t } = useTranslation();
-  const { data: servers } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
+  const { data: serversData } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
+  // useLiveQuery yields undefined on the very first render before the collection
+  // has hydrated; default to an empty array so neither .length nor .map throws.
+  const servers = serversData ?? [];
   const [adding, setAdding] = useState(false);
 
   return (
@@ -122,18 +109,26 @@ function ServerRow({ server }: { server: InferenceServer }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        throw new Error(`Test failed (${res.status})`);
+        // Surface the server's `{ message }` body when present so the user gets a real
+        // explanation (DNS, 502 from the worker, etc.) instead of a bare HTTP status.
+        const body = await res.json().catch(() => null);
+        const message = body && typeof body.message === 'string' ? body.message : t('inferenceServers.testFailedStatus', { status: res.status });
+        throw new Error(message);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Test failed');
+      toast.error(explainApiError(e, t('inferenceServers.testFailed')));
     } finally {
       setTesting(false);
     }
   }
 
-  function handleConfirmRemove() {
-    inferenceServerCollection.delete(server.id);
+  async function handleConfirmRemove() {
     setConfirmingDelete(false);
+    try {
+      await inferenceServerClient.remove(server.id);
+    } catch (e) {
+      toast.error(explainApiError(e, t('inferenceServers.removeFailed')));
+    }
   }
 
   const status = statusOf(server);
@@ -187,32 +182,48 @@ function ServerRow({ server }: { server: InferenceServer }) {
 
 function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; onCancel: () => void; onSaved: () => void }) {
   const { t } = useTranslation();
+  const reactId = useId();
+  const nameId = `${reactId}-name`;
+  const urlId = `${reactId}-url`;
+  const tokenId = `${reactId}-token`;
+  const priorityId = `${reactId}-priority`;
+  const enabledId = `${reactId}-enabled`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
+  // PB hides auth_token, so we can't pre-fill the existing value. Treat the field
+  // as "leave blank to keep current; type to overwrite" via the dirty flag.
+  const [authToken, setAuthToken] = useState('');
+  const [authTokenDirty, setAuthTokenDirty] = useState(false);
   const [priority, setPriority] = useState(String(server?.priority ?? 0));
   const [enabled, setEnabled] = useState(server?.enabled ?? true);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
-    if (!name.trim() || !url.trim()) {
+    // Bail before the disabled-button state propagates so a fast double-submit
+    // can't fire two create/update requests for the same form.
+    if (saving || !name.trim() || !url.trim()) {
       return;
     }
-    const payload = {
+    const payload: { name: string; url: string; priority: number; enabled: boolean; auth_token?: string } = {
       name: name.trim(),
       url: url.trim().replace(/\/$/, ''),
       priority: Number.parseInt(priority, 10) || 0,
       enabled,
     };
+    if (authTokenDirty) {
+      // Empty string clears the token server-side; non-empty replaces it.
+      payload.auth_token = authToken.trim();
+    }
     setSaving(true);
     try {
       if (server) {
-        await pb.collection('inference_servers').update(server.id, payload);
+        await inferenceServerClient.update(server.id, payload);
       } else {
-        await pb.collection('inference_servers').create({ ...payload, last_health_status: 'unknown' });
+        await inferenceServerClient.create({ ...payload, auth_token: payload.auth_token ?? '' });
       }
       onSaved();
     } catch (e) {
-      toast.error(explainPbError(e, t('inferenceServers.saveFailed')));
+      toast.error(explainApiError(e, t('inferenceServers.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -228,22 +239,36 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="srv-name">{t('inferenceServers.name')}</Label>
-          <Input id="srv-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('inferenceServers.namePlaceholder')} />
+          <Label htmlFor={nameId}>{t('inferenceServers.name')}</Label>
+          <Input id={nameId} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('inferenceServers.namePlaceholder')} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="srv-url">{t('inferenceServers.url')}</Label>
-          <Input id="srv-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('inferenceServers.urlPlaceholder')} className="font-mono text-xs" />
+          <Label htmlFor={urlId}>{t('inferenceServers.url')}</Label>
+          <Input id={urlId} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('inferenceServers.urlPlaceholder')} className="font-mono text-xs" />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={tokenId}>{t('inferenceServers.authToken')}</Label>
+          <Input
+            id={tokenId}
+            value={authToken}
+            onChange={(e) => {
+              setAuthToken(e.target.value);
+              setAuthTokenDirty(true);
+            }}
+            placeholder={server ? t('inferenceServers.authTokenEditPlaceholder') : t('inferenceServers.authTokenPlaceholder')}
+            className="font-mono text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">{server ? t('inferenceServers.authTokenEditHint') : t('inferenceServers.authTokenHint')}</p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="srv-priority">{t('inferenceServers.priority')}</Label>
-          <Input id="srv-priority" type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
+          <Label htmlFor={priorityId}>{t('inferenceServers.priority')}</Label>
+          <Input id={priorityId} type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
           <p className="text-[10px] text-dim">{t('inferenceServers.priorityHint')}</p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="srv-enabled">{t('inferenceServers.enabled')}</Label>
+          <Label htmlFor={enabledId}>{t('inferenceServers.enabled')}</Label>
           <div className="flex h-9 items-center">
-            <Switch id="srv-enabled" checked={enabled} onCheckedChange={setEnabled} />
+            <Switch id={enabledId} checked={enabled} onCheckedChange={setEnabled} />
           </div>
         </div>
       </div>

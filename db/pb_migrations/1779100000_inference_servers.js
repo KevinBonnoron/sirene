@@ -8,13 +8,15 @@ migrate(
     const collection = new Collection({
       name: 'inference_servers',
       type: 'base',
-      // Any authenticated user can list/view/create/update/delete servers.
-      // Single-user product; tighten later if multi-tenant becomes a goal.
+      // Reads stay open to authenticated users so the UI dropdowns and realtime
+      // subscriptions work. Writes go through the server-side API (which authenticates
+      // as superuser via the shared pb singleton) so non-admin users can't reroute
+      // inference traffic for the whole deployment by hitting PocketBase directly.
       listRule: "@request.auth.id != ''",
       viewRule: "@request.auth.id != ''",
-      createRule: "@request.auth.id != ''",
-      updateRule: "@request.auth.id != ''",
-      deleteRule: "@request.auth.id != ''",
+      createRule: null,
+      updateRule: null,
+      deleteRule: null,
       fields: [
         {
           name: 'id',

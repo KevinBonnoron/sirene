@@ -9,16 +9,44 @@ import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
 import { modelService } from '../services';
+import { InvalidServerSelectionError, ModelAlreadyInstalledError, NoOnlineServerError } from '../services/model.service';
+
+interface ApiError {
+  message: string;
+}
+
+/** Maps service-layer error classes to (status, message) tuples. Used by both
+ *  /pull and /piper/import so the HTTP layer reflects what actually went wrong. */
+function mapModelServiceError(err: unknown): { status: 400 | 409 | 503 | 500; body: ApiError } {
+  if (err instanceof NoOnlineServerError || err instanceof NoInferenceServerError) {
+    return { status: 503, body: { message: err.message } };
+  }
+  if (err instanceof InvalidServerSelectionError) {
+    return { status: 400, body: { message: err.message } };
+  }
+  if (err instanceof ModelAlreadyInstalledError) {
+    return { status: 409, body: { message: err.message } };
+  }
+  return { status: 500, body: { message: err instanceof Error ? err.message : 'Internal error' } };
+}
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
-/** Public SSE routes — EventSource cannot send auth headers. */
+/** Public SSE route — emits an opaque re-fetch trigger only, no model data. The
+ *  payload used to be the full installation map, which would have leaked the model
+ *  inventory to anyone hitting the URL. The client receives the ping and goes through
+ *  the protected /installed endpoint, where authMiddleware enforces the boundary. */
 const modelSseRoutes = new Hono().get('/events', async (c) => {
   return streamSSE(c, async (stream) => {
     const removeListener = modelService.addModelChangeListener(async () => {
-      const catalog = await modelService.getFullCatalog();
-      const installations = await modelService.getInstallations(catalog);
-      await stream.writeSSE({ event: 'change', data: JSON.stringify(installations) });
+      try {
+        await stream.writeSSE({ event: 'change', data: '1' });
+      } catch (err) {
+        // SSE write failed → client disconnected. Drop ourselves; transient backend
+        // errors no longer reach this listener (we don't read state here).
+        console.warn('[models/events] write failed, unsubscribing', err);
+        removeListener();
+      }
     });
 
     await new Promise<void>((resolve) => {
@@ -98,28 +126,39 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, body?.serverIds);
       return c.json({ jobIds }, alreadyRunning ? 200 : 202);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to start download';
-      return c.json({ message }, 503);
+      const { status, body } = mapModelServiceError(err);
+      return c.json(body, status);
     }
   })
 
   .post('/piper/import', async (c) => {
     const formData = await c.req.formData();
-    const onnxFile = formData.get('onnx') as File | null;
-    const configFile = formData.get('config') as File | null;
-    const name = (formData.get('name') as string)?.trim();
+    // FormData entries can be string or File. A `name=…&onnx=foo` payload would
+    // pass an `as File` cast and only blow up when we try to read its bytes,
+    // turning a malformed client request into a 500. Validate up front.
+    const onnxRaw = formData.get('onnx');
+    const configRaw = formData.get('config');
+    const nameRaw = formData.get('name');
+    const onnxFile = onnxRaw instanceof File ? onnxRaw : null;
+    const configFile = configRaw instanceof File ? configRaw : null;
+    const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
     // serverIds is sent as a JSON array string from the dialog; absent = all online.
+    // Any non-empty value that fails to parse as a string[] is rejected — silently
+    // falling back to "all online servers" turns a malformed payload into an unintended
+    // fan-out write.
     const serverIdsRaw = formData.get('serverIds');
     let serverIds: string[] | undefined;
     if (typeof serverIdsRaw === 'string' && serverIdsRaw.length > 0) {
+      let parsed: unknown;
       try {
-        const parsed = JSON.parse(serverIdsRaw);
-        if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')) {
-          serverIds = parsed;
-        }
+        parsed = JSON.parse(serverIdsRaw);
       } catch {
         return c.json({ message: 'serverIds must be a JSON array of strings' }, 400);
       }
+      if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === 'string' && v.length > 0)) {
+        return c.json({ message: 'serverIds must be a JSON array of non-empty strings' }, 400);
+      }
+      serverIds = parsed as string[];
     }
 
     if (!onnxFile || !configFile || !name) {
@@ -176,9 +215,8 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       });
       return c.json({ id: slug, jobIds }, 202);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Import failed';
-      const status = err instanceof NoInferenceServerError ? 503 : 400;
-      return c.json({ message }, status);
+      const { status, body } = mapModelServiceError(err);
+      return c.json(body, status);
     }
   })
 
@@ -197,10 +235,20 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       if (err instanceof NoInferenceServerError) {
         return c.json({ message: err.message }, 503);
       }
-      throw err;
+      // pickTarget can also surface PB read errors / unexpected failures. Map those
+      // to 502 so they reach the client as a clean { message } envelope instead of
+      // bubbling into Hono's default 500 handler.
+      const message = err instanceof Error ? err.message : 'Failed to select inference server';
+      return c.json({ message }, 502);
     }
 
-    const inferenceResponse = await fetchModelExport(exportTarget, modelId);
+    let inferenceResponse: Response;
+    try {
+      inferenceResponse = await fetchModelExport(exportTarget, modelId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Inference server unreachable';
+      return c.json({ message }, 502);
+    }
     if (!inferenceResponse.ok) {
       return c.json({ message: 'Export failed' }, 502);
     }

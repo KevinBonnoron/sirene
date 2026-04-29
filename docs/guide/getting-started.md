@@ -20,6 +20,8 @@ The quickest way to run Sirene as a server:
 curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 ```
 
+> **Supply-chain note.** The bootstrap script is fetched from `main`. For production deployments review the [latest release](https://github.com/KevinBonnoron/sirene/releases) and replace `main` with the corresponding tag once a release that supports your installation mode is published.
+
 See the [Docker guide](./docker.md) for more options.
 
 ## First Launch
@@ -40,5 +42,9 @@ If you have a separate Linux machine with a GPU, you can add it as an inference 
 
 2. The script prints a **URL** and an **auth token** when it finishes
 3. In Sirene → **Settings → Inference servers → Add server**, paste both, give it a name, save
+
+> **Keep the auth token secret.** It grants full control of your worker's inference. Do not paste it into chats, screenshots, or logs, and rotate it if you suspect it has leaked.
+>
+> **Rotating a token.** Delete `auth_token` on the worker, rerun the worker installer to mint a new value, then update the matching server entry in Sirene → **Settings → Inference servers** with the new token. Until the server entry is updated, every request to that worker will return 401.
 
 See the [Docker guide](./docker.md#worker-servers-script-install) for details.

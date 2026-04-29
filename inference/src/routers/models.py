@@ -197,21 +197,59 @@ async def unload_model(req: ModelUnloadRequest):
     return {"message": f"Unloaded {req.backend} model from {req.model_path}"}
 
 
+class _StreamBuffer(io.RawIOBase):
+    """Write-only buffer that lets a ZipFile stream chunks to an HTTP response."""
+
+    def __init__(self) -> None:
+        self._buf = bytearray()
+        self._pos = 0
+
+    def writable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return False
+
+    def write(self, b) -> int:
+        n = len(b)
+        self._buf.extend(b)
+        self._pos += n
+        return n
+
+    def tell(self) -> int:
+        return self._pos
+
+    def drain(self) -> bytes:
+        data = bytes(self._buf)
+        self._buf.clear()
+        return data
+
+
 @router.get("/{model_id}/export")
 async def export_model(model_id: str):
     model_dir = Path(settings.models_path) / model_id
     if not model_dir.exists():
         raise HTTPException(status_code=404, detail=f"Model {model_id!r} not found")
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for f in model_dir.rglob("*"):
-            if f.is_file():
-                zf.write(f, f.relative_to(model_dir))
+    files = sorted(p for p in model_dir.rglob("*") if p.is_file())
 
-    buf.seek(0)
+    def stream_zip():
+        buffer = _StreamBuffer()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as zf:
+            for f in files:
+                arcname = str(f.relative_to(model_dir))
+                with zf.open(arcname, "w") as entry, open(f, "rb") as src:
+                    while chunk := src.read(1024 * 1024):
+                        entry.write(chunk)
+                        if out := buffer.drain():
+                            yield out
+                if out := buffer.drain():
+                    yield out
+        if out := buffer.drain():
+            yield out
+
     return StreamingResponse(
-        buf,
+        stream_zip(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="piper-{model_id}.zip"'},
     )

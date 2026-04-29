@@ -6,6 +6,33 @@ import { modelsCatalog } from '../manifest/models.manifest';
 import { inferenceServerService } from './inference-server.service';
 import { serverModelsService } from './server-models.service';
 
+/** Thrown when no inference server is online; HTTP route maps to 503. */
+export class NoOnlineServerError extends Error {
+  public readonly code = 'no_online_server';
+  public constructor(message: string) {
+    super(message);
+    this.name = 'NoOnlineServerError';
+  }
+}
+
+/** Thrown when the caller passed serverIds that don't match online servers; route maps to 400. */
+export class InvalidServerSelectionError extends Error {
+  public readonly code = 'invalid_server_selection';
+  public constructor(message: string) {
+    super(message);
+    this.name = 'InvalidServerSelectionError';
+  }
+}
+
+/** Thrown when the model is already installed on every requested server; route maps to 409. */
+export class ModelAlreadyInstalledError extends Error {
+  public readonly code = 'already_installed';
+  public constructor(message: string) {
+    super(message);
+    this.name = 'ModelAlreadyInstalledError';
+  }
+}
+
 const HF_BASE = 'https://huggingface.co';
 
 const API_KEY_MAP: Record<string, string> = {
@@ -86,21 +113,27 @@ class ModelService {
    *  pull, plus alreadyRunning=true if at least one matching pull was already in flight. */
   public async startModelDownload(catalog: CatalogModel, serverIds?: string[]): Promise<{ jobIds: string[]; alreadyRunning: boolean }> {
     const servers = await inferenceServerService.listEnabled();
+    // 'unknown' (never probed yet) is treated as eligible alongside 'online' so a freshly
+    // added server can accept jobs before the first 15s health-loop tick. Probe failures
+    // mark the record 'offline' explicitly, so this can't accept a known-bad server.
     const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
     if (onlineServers.length === 0) {
-      throw new Error('No online inference server available to pull this model.');
+      throw new NoOnlineServerError('No online inference server available to pull this model.');
     }
 
-    const requested = serverIds ? onlineServers.filter((s) => serverIds.includes(s.id)) : onlineServers;
-    if (serverIds && requested.length !== serverIds.length) {
-      const missing = serverIds.filter((id) => !onlineServers.some((s) => s.id === id));
-      throw new Error(`Servers not online or not found: ${missing.join(', ')}`);
+    // Dedupe so a payload like ["srv1","srv1"] doesn't make the length check fail
+    // even though the only referenced server exists.
+    const uniqueServerIds = serverIds ? Array.from(new Set(serverIds)) : undefined;
+    const requested = uniqueServerIds ? onlineServers.filter((s) => uniqueServerIds.includes(s.id)) : onlineServers;
+    if (uniqueServerIds && requested.length !== uniqueServerIds.length) {
+      const missing = uniqueServerIds.filter((id) => !onlineServers.some((s) => s.id === id));
+      throw new InvalidServerSelectionError(`Servers not online or not found: ${missing.join(', ')}`);
     }
 
     const byServer = await serverModelsService.getInstalledByServer();
     const targets = requested.filter((s) => !byServer.get(s.id)?.has(catalog.id));
     if (targets.length === 0) {
-      throw new Error('Model is already installed on every selected server.');
+      throw new ModelAlreadyInstalledError('Model is already installed on every selected server.');
     }
 
     const jobIds: string[] = [];
@@ -171,25 +204,34 @@ class ModelService {
     const servers = await inferenceServerService.listEnabled();
     const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
     if (onlineServers.length === 0) {
-      throw new Error('No online inference server available to import this model.');
+      throw new NoOnlineServerError('No online inference server available to import this model.');
     }
 
-    const requested = serverIds ? onlineServers.filter((s) => serverIds.includes(s.id)) : onlineServers;
-    if (serverIds && requested.length !== serverIds.length) {
-      const missing = serverIds.filter((id) => !onlineServers.some((s) => s.id === id));
-      throw new Error(`Servers not online or not found: ${missing.join(', ')}`);
+    const uniqueServerIds = serverIds ? Array.from(new Set(serverIds)) : undefined;
+    const requested = uniqueServerIds ? onlineServers.filter((s) => uniqueServerIds.includes(s.id)) : onlineServers;
+    if (uniqueServerIds && requested.length !== uniqueServerIds.length) {
+      const missing = uniqueServerIds.filter((id) => !onlineServers.some((s) => s.id === id));
+      throw new InvalidServerSelectionError(`Servers not online or not found: ${missing.join(', ')}`);
     }
 
     const byServer = await serverModelsService.getInstalledByServer();
     const targets = requested.filter((s) => !byServer.get(s.id)?.has(slug));
     if (targets.length === 0) {
-      throw new Error('Model is already installed on every selected server.');
+      throw new ModelAlreadyInstalledError('Model is already installed on every selected server.');
     }
 
     const jobIds: string[] = [];
     for (const server of targets) {
+      const target = pullJobTarget(slug, server.id);
+      // Reuse an in-flight import for the same slug+server. Two concurrent imports race
+      // on the same files (PB record, models dir) and corrupt each other.
+      const existing = jobStore.findRunning('model_import', target);
+      if (existing) {
+        jobIds.push(existing.id);
+        continue;
+      }
       const jobId = newJobId();
-      jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name} → ${server.name}`, target: pullJobTarget(slug, server.id) });
+      jobStore.start({ id: jobId, type: 'model_import', label: `Importing ${name} → ${server.name}`, target });
       void this.runPiperImport(jobId, server, name, { onnxBytes, onnxName, onnxType, configBytes, configName, configType });
       jobIds.push(jobId);
     }

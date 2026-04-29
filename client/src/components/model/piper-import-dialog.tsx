@@ -91,6 +91,17 @@ export function PiperImportDialog() {
     return new Set(installationsByName.get(slug)?.serverIds ?? []);
   }, [slug, installationsByName]);
 
+  // Submitted serverIds need to drop stale entries (offline or already-installed by the
+  // time the user clicks Import). The UI already disables those rows, but `selectedServerIds`
+  // is only updated on click/slug-change so it can lag behind the live server state.
+  const effectiveSelectedServerIds = useMemo(() => {
+    const byId = new Map(enabledServers.map((s) => [s.id, s]));
+    return selectedServerIds.filter((id) => {
+      const server = byId.get(id);
+      return !!server && server.last_health_status !== 'offline' && !installedOnIds.has(id);
+    });
+  }, [enabledServers, installedOnIds, selectedServerIds]);
+
   const prevSlugRef = useRef<string | null>(null);
   useEffect(() => {
     if (!slug || prevSlugRef.current === slug || enabledServers.length === 0) {
@@ -101,13 +112,33 @@ export function PiperImportDialog() {
     dispatch({ type: 'setSelectedServerIds', ids: candidates });
   }, [slug, enabledServers, installedOnIds]);
 
+  // Drop entries that became ineligible (offline or already installed) after selection
+  // so the stored selection stays in sync with what the UI actually shows checked. The
+  // dispatch is gated on a real change to avoid an update loop.
+  useEffect(() => {
+    if (effectiveSelectedServerIds.length === selectedServerIds.length) {
+      return;
+    }
+    dispatch({ type: 'setSelectedServerIds', ids: effectiveSelectedServerIds });
+  }, [effectiveSelectedServerIds, selectedServerIds.length]);
+
+  // Guards stale `File.text()` resolutions. Fast successive drops can resolve out of
+  // order, and the older read overwriting the newer file changes the derived slug and
+  // submitted bytes silently.
+  const latestConfigRead = useRef(0);
+
   function handleConfigFile(f: File | null) {
     if (!f) {
+      latestConfigRead.current++;
       dispatch({ type: 'setConfigFile', file: null, info: null });
       return;
     }
+    const readId = ++latestConfigRead.current;
 
     f.text().then((text) => {
+      if (latestConfigRead.current !== readId) {
+        return;
+      }
       try {
         const data = JSON.parse(text);
         const voice = data?.espeak?.voice ?? 'unknown';
@@ -126,7 +157,19 @@ export function PiperImportDialog() {
   }
 
   const isMultiServer = enabledServers.length > 1;
-  const noTargets = isMultiServer && selectedServerIds.length === 0;
+  // Single-server mode: the implicit target is the only server, but we must still
+  // check it's actually usable (online and not already running this slug). Without
+  // this guard, the form happily submits requests that the server will reject.
+  const noTargets = (() => {
+    if (enabledServers.length === 0) {
+      return true;
+    }
+    if (isMultiServer) {
+      return effectiveSelectedServerIds.length === 0;
+    }
+    const onlySrv = enabledServers[0];
+    return onlySrv.last_health_status === 'offline' || installedOnIds.has(onlySrv.id);
+  })();
 
   async function handleImport() {
     if (!onnxFile || !configFile || !name.trim() || noTargets) {
@@ -140,10 +183,14 @@ export function PiperImportDialog() {
       formData.append('onnx', onnxFile);
       formData.append('config', configFile);
       if (isMultiServer) {
-        formData.append('serverIds', JSON.stringify(selectedServerIds));
+        formData.append('serverIds', JSON.stringify(effectiveSelectedServerIds));
       }
       const result = await modelClient.importPiper(formData);
-      toast.success(t('model.importPiperSuccess', { id: result.id }));
+      // The actual upload runs as a background job per target server (visible in
+      // the notification bell). result.jobIds.length tells the user how many uploads
+      // were kicked off and lets them track them there instead of guessing whether
+      // the toast meant "queued" or "done".
+      toast.success(t('model.importPiperSuccess', { id: result.id, count: result.jobIds.length }));
       dispatch({ type: 'reset' });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('voice.importFailed'));
@@ -219,7 +266,7 @@ export function PiperImportDialog() {
                   const alreadyInstalled = installedOnIds.has(server.id);
                   const offline = status === 'offline';
                   const disabled = alreadyInstalled || offline;
-                  const checked = selectedServerIds.includes(server.id);
+                  const checked = effectiveSelectedServerIds.includes(server.id);
                   return (
                     <li key={server.id}>
                       <label className={cn('flex cursor-pointer items-center gap-2 rounded-md border border-border-subtle bg-card/40 px-2 py-1.5 text-xs', disabled && 'cursor-not-allowed opacity-60')}>

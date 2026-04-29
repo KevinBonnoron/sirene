@@ -1,7 +1,15 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // Forward fix for environments that already had the inference_servers collection without
-// a unique-name index. Idempotent: skips if the collection or the index is already absent.
+// a unique-name index. Adds the name index without touching any other index — future
+// migrations or hand-applied indexes survive both directions.
+
+const NAME_INDEX = 'CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)';
+
+function indexName(sql) {
+  const match = sql.match(/INDEX\s+`?([a-zA-Z0-9_]+)`?/i);
+  return match ? match[1] : null;
+}
 
 migrate(
   (app) => {
@@ -15,10 +23,11 @@ migrate(
       throw e;
     }
 
-    const desired = ['CREATE UNIQUE INDEX `idx_inference_servers_name` ON `inference_servers` (`name` COLLATE NOCASE)', 'CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)'];
-
-    collection.indexes = desired;
-    app.save(collection);
+    const existing = collection.indexes || [];
+    if (!existing.some((sql) => indexName(sql) === 'idx_inference_servers_name')) {
+      collection.indexes = [...existing, NAME_INDEX];
+      app.save(collection);
+    }
   },
   (app) => {
     let collection;
@@ -31,7 +40,11 @@ migrate(
       throw e;
     }
 
-    collection.indexes = ['CREATE UNIQUE INDEX `idx_inference_servers_url` ON `inference_servers` (`url`)'];
-    app.save(collection);
+    const existing = collection.indexes || [];
+    const next = existing.filter((sql) => indexName(sql) !== 'idx_inference_servers_name');
+    if (next.length !== existing.length) {
+      collection.indexes = next;
+      app.save(collection);
+    }
   },
 );

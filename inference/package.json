@@ -3,6 +3,6 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "INFERENCE_LOG_LEVEL=debug uvicorn src.main:app --reload --port 8000"
+    "dev": "INFERENCE_LOG_LEVEL=debug INFERENCE_ALLOW_NO_AUTH=true uvicorn src.main:app --reload --port 8000"
   }
 }

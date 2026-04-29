@@ -37,15 +37,9 @@ export function ModelsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { catalog, installationsByName, isLoading } = useModels();
-  const { pullModel, pulling } = usePullModel();
+  const { pullModel } = usePullModel();
 
   const [filter, setFilter] = useState<FilterKey | null>(null);
-
-  // Merge pull progress into installations
-  const mergedInstallations = new Map(installationsByName);
-  for (const [modelId, progress] of pulling) {
-    mergedInstallations.set(modelId, { id: modelId, status: 'pulling', progress });
-  }
 
   // Available model types (only those present in catalog)
   const types = useMemo(() => {
@@ -75,7 +69,7 @@ export function ModelsPage() {
     return catalog.filter((c) => c.types.includes(filter));
   }, [catalog, filter]);
 
-  const groups = groupByBackend(filteredModels, mergedInstallations);
+  const groups = groupByBackend(filteredModels, installationsByName);
 
   // Check if piper backend exists
   const hasPiper = catalog.some((c) => c.backend === 'piper');

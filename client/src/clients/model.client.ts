@@ -8,12 +8,13 @@ export const modelClient = universalClient(
   withMethods(({ delegate }) => ({
     catalog: () => delegate.get<CatalogModel[]>('/models/catalog'),
     installed: () => delegate.get<Model[]>('/models/installed'),
-    voices: (modelId: string) => delegate.get<PresetVoice[]>(`/models/${modelId}/voices`),
-    remove: (id: string) => delegate.delete<void>(`/models/${id}`),
-    importPiper: (formData: FormData) => delegate.post<{ id: string; message: string }>('/models/piper/import', formData),
+    voices: (modelId: string) => delegate.get<PresetVoice[]>(`/models/${encodeURIComponent(modelId)}/voices`),
+    pull: (id: string, serverIds?: string[]) => delegate.post<{ jobIds: string[] }>(`/models/${encodeURIComponent(id)}/pull`, serverIds ? { serverIds } : {}),
+    remove: (id: string, serverId?: string) => delegate.delete<void>(serverId ? `/models/${encodeURIComponent(id)}?serverId=${encodeURIComponent(serverId)}` : `/models/${encodeURIComponent(id)}`),
+    importPiper: (formData: FormData) => delegate.post<{ id: string; jobIds: string[] }>('/models/piper/import', formData),
     exportPiper: async (id: string): Promise<Blob> => {
       const token = (await import('@/lib/auth-interceptor')).getStoredToken();
-      const res = await fetch(`${config.server.url}/models/${id}/export`, {
+      const res = await fetch(`${config.server.url}/models/${encodeURIComponent(id)}/export`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {

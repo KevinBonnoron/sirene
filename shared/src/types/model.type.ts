@@ -48,4 +48,6 @@ export interface Model {
   status: ModelStatus;
   progress: number;
   error?: string;
+  /** Server ids where the model is currently installed. Empty when not installed anywhere. */
+  serverIds: string[];
 }

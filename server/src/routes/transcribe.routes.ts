@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { config } from '../lib/config';
+import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
 import { modelService } from '../services';
 
 export const transcribeRoutes = new Hono().post('/', async (c) => {
@@ -25,14 +25,41 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
     return c.json({ error: 'No Whisper model installed. Please install one from the Models page.' }, 400);
   }
 
+  let target: { url: string; authToken?: string };
+  try {
+    target = await pickTarget({ requireModel: modelPath });
+  } catch (err) {
+    if (err instanceof NoInferenceServerError) {
+      return c.json({ error: err.message }, 503);
+    }
+    throw err;
+  }
+
   const inferenceForm = new FormData();
   inferenceForm.append('audio', audioFile);
   inferenceForm.append('model_path', modelPath);
 
-  const response = await fetch(`${config.inferenceUrl}/transcribe`, {
-    method: 'POST',
-    body: inferenceForm,
-  });
+  // Whisper transcription latency is bounded by audio length; capping at 5 minutes
+  // covers very long uploads while still preventing unbounded resource pile-up if the
+  // worker accepts the connection but stalls.
+  const TRANSCRIBE_TIMEOUT_MS = 300_000;
+
+  let response: Response;
+  try {
+    response = await fetch(`${target.url}/transcribe`, {
+      method: 'POST',
+      headers: target.authToken ? { Authorization: `Bearer ${target.authToken}` } : {},
+      body: inferenceForm,
+      signal: AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // fetch() rejects on connection / DNS / TLS / timeout. With multi-server routing
+    // pickTarget() can hand back an `unknown` fallback that turns out to be unreachable,
+    // so this needs to surface as a bad-gateway (504 for the timeout case).
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
+    const message = err instanceof Error ? err.message : 'inference unreachable';
+    return c.json({ error: `Transcription failed: ${message}` }, isTimeout ? 504 : 502);
+  }
 
   if (!response.ok) {
     const body = await response.text();

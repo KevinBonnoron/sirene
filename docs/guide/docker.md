@@ -73,6 +73,28 @@ Same as above but the inference service uses the CUDA image and requires the [NV
               capabilities: [gpu]
 ```
 
+### Worker servers (script install)
+
+Once Sirene is running, you can add **additional inference workers** to the fleet. On a fresh Linux machine (root or sudo required), run:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=worker bash
+```
+
+The script:
+1. Detects your distro (Ubuntu / Debian) and NVIDIA GPU
+2. Installs Docker and the NVIDIA Container Toolkit if missing
+3. Pulls the inference image and starts it with a randomly generated auth token
+4. Prints the worker's URL and the auth token at the end
+
+Then in Sirene → **Settings → Inference servers → Add server**: paste the URL and the auth token, give it a name, save.
+
+The auth token stays on the worker (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer …` — the worker rejects anything else.
+
+> **Why not auto-register from the worker?** Sirene calls workers; workers never call Sirene at runtime. Adding a one-time reverse callback for setup convenience would require workers to reach Sirene's URL, which is brittle (private networks, firewalls, dev setups). Pasting two values is simpler.
+
+The same `install.sh` covers all three modes: `INSTALL_MODE=full` (default — server + inference), `INSTALL_MODE=server` (just the app), `INSTALL_MODE=worker` (just the inference).
+
 ### Remote Inference (RunPod)
 
 Run the server locally (or on a cheap VPS) and offload inference to a [RunPod](https://www.runpod.io/) GPU pod. This avoids needing a local GPU — model files and Python dependencies live entirely on the pod.
@@ -150,6 +172,7 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 |----------|---------|-------------|
 | `INFERENCE_DEVICE` | `cpu` | `cpu` or `cuda` |
 | `INFERENCE_MODELS_PATH` | `/app/data/models` | Path to model files |
+| `INFERENCE_AUTH_TOKEN` | — | When set, every request (except `/health`) must carry `Authorization: Bearer <token>`. Set automatically by the worker install script; leave unset for trusted-network setups. |
 | `SIRENE_PACKAGES_DIR` | `/app/data/packages` | Persistent dir for lazily installed backend deps |
 
 ## Volumes

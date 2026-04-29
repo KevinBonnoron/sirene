@@ -4,7 +4,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { config } from '../lib/config';
 import { type ElevenLabsRequest, generateElevenLabs } from '../lib/elevenlabs-client';
-import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest } from '../lib/inference-client';
+import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest, type InferenceTarget } from '../lib/inference-client';
+import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
 import { generateOpenAI, type OpenAITTSRequest } from '../lib/openai-tts-client';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
@@ -300,8 +301,19 @@ export const generateRoutes = new Hono<AuthEnv>()
       }
     }
 
+    let target: InferenceTarget;
     try {
-      const audioBuffer = await generateAudio(resolved.inferenceRequest);
+      target = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
+    } catch (err) {
+      await cleanupFailedGeneration(generationId);
+      if (err instanceof NoInferenceServerError) {
+        return c.json({ message: err.message }, 503);
+      }
+      throw err;
+    }
+
+    try {
+      const audioBuffer = await generateAudio(target, resolved.inferenceRequest);
       await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
       return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     } catch (e) {
@@ -310,7 +322,7 @@ export const generateRoutes = new Hono<AuthEnv>()
         throw e;
       }
       const audioData = await fetchSamplesAsBase64(resolved.samples);
-      const audioBuffer = await generateAudio({ ...resolved.inferenceRequest, referenceAudioData: audioData });
+      const audioBuffer = await generateAudio(target, { ...resolved.inferenceRequest, referenceAudioData: audioData });
       await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
       return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     }
@@ -350,15 +362,26 @@ export const generateRoutes = new Hono<AuthEnv>()
       }
     }
 
+    let streamTarget: InferenceTarget;
+    try {
+      streamTarget = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
+    } catch (err) {
+      await cleanupFailedGeneration(generationId);
+      if (err instanceof NoInferenceServerError) {
+        return c.json({ message: err.message }, 503);
+      }
+      throw err;
+    }
+
     // Python now sends keepalive silence for non-streaming backends,
     // so this fetch returns within ~30s and data flows continuously.
     try {
-      const streamResponse = await generateAudioStream(resolved.inferenceRequest).catch(async (e) => {
+      const streamResponse = await generateAudioStream(streamTarget, resolved.inferenceRequest).catch(async (e) => {
         if (!(e instanceof CacheMissError) || !resolved.samples) {
           throw e;
         }
         const audioData = await fetchSamplesAsBase64(resolved.samples);
-        return generateAudioStream({ ...resolved.inferenceRequest, referenceAudioData: audioData });
+        return generateAudioStream(streamTarget, { ...resolved.inferenceRequest, referenceAudioData: audioData });
       });
       const [clientStream, saveStream] = streamResponse.body.tee();
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { NotificationBell } from './notification-bell';
 
 interface Props {
   label: string;
@@ -13,7 +14,10 @@ export function SectionTopbar({ label, subtitle, actions }: Props) {
         <h1 className="font-serif text-sm tracking-tight text-foreground">{label}</h1>
         {subtitle && <p className="hidden truncate text-xs text-muted-foreground md:inline">{subtitle}</p>}
       </div>
-      {actions && <div className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>}
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {actions}
+        <NotificationBell />
+      </div>
     </div>
   );
 }

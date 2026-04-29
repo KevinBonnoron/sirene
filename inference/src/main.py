@@ -4,8 +4,9 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import settings
 from .routers import backends, cache, generate, health, models, transcribe
@@ -52,6 +53,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def bearer_auth(request: Request, call_next):
+    # Auth is opt-in via INFERENCE_AUTH_TOKEN; INFERENCE_ALLOW_NO_AUTH=true is required
+    # at startup (see config.py) when no token is set, so this branch only triggers
+    # for explicitly-trusted private-network setups.
+    if not settings.auth_token:
+        return await call_next(request)
+    # /health must stay reachable without auth so probes from outside the trust boundary
+    # (load balancers, the Sirene app's health loop on first contact) can verify liveness.
+    # Restrict the bypass to GET/HEAD so a future non-probe handler on the same path
+    # can't accidentally inherit unauthenticated access.
+    # Tolerate trailing slashes since reverse proxies and curl users don't always strip them.
+    if request.url.path.rstrip("/") == "/health" and request.method in ("GET", "HEAD"):
+        return await call_next(request)
+    # Compare against the bearer token only — accept any case for the scheme keyword and
+    # tolerate extra surrounding whitespace, both of which are valid per RFC 6750.
+    header = request.headers.get("authorization", "").strip()
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or token.strip() != settings.auth_token:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
+
 
 app.include_router(health.router)
 app.include_router(generate.router)

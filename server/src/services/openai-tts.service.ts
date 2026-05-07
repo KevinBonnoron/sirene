@@ -1,7 +1,7 @@
 import type { PresetVoice } from '@sirene/shared';
-import { getSetting } from '../lib/settings';
 import { openAITtsRepository } from '../repositories';
 import { BadRequestError } from './service-error';
+import { settingsService } from './settings.service';
 
 export interface OpenAITtsGenerateParams {
   text: string;
@@ -21,7 +21,7 @@ class OpenAITtsService {
   }
 
   private async requireApiKey(userId: string): Promise<string> {
-    const apiKey = await getSetting('openai_api_key', userId);
+    const apiKey = await settingsService.get('openai_api_key', userId);
     if (!apiKey) {
       throw new BadRequestError('OpenAI API key not configured. Go to Settings to add it.');
     }

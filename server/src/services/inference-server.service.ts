@@ -1,6 +1,18 @@
 import type { InferenceServer, InferenceServerHealthStatus } from '@sirene/shared';
 import { config } from '../lib/config';
 import { inferenceRepository, inferenceServerRepository } from '../repositories';
+import { serverModelsService } from './server-models.service';
+import { NotFoundError } from './service-error';
+
+export interface InferenceServerWriteInput {
+  name: string;
+  url: string;
+  enabled: boolean;
+  priority: number;
+  authToken?: string;
+}
+
+export type InferenceServerUpdateInput = Partial<InferenceServerWriteInput>;
 
 const HEALTH_INTERVAL_MS = 15_000;
 
@@ -11,14 +23,39 @@ class InferenceServerService {
     return inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
   }
 
-  /** Probe one server and persist the result. */
-  public async checkOne(id: string): Promise<InferenceServer | null> {
+  /** Probe one server and persist the result. Throws NotFoundError on unknown id. */
+  public async checkOne(id: string): Promise<InferenceServer> {
     const record = await inferenceServerRepository.getOne(id);
     if (!record) {
-      return null;
+      throw new NotFoundError('Server not found');
     }
     const probed = await probeHealth(record.url, record.authToken);
-    return this.persistHealth(record, probed);
+    const updated = await this.persistHealth(record, probed);
+    serverModelsService.invalidate(id);
+    return updated;
+  }
+
+  public async create(input: InferenceServerWriteInput): Promise<InferenceServer> {
+    return inferenceServerRepository.create({
+      ...input,
+      url: input.url.replace(/\/$/, ''),
+      lastHealth: { at: '', status: 'unknown', error: '' },
+    });
+  }
+
+  public async update(id: string, input: InferenceServerUpdateInput): Promise<InferenceServer> {
+    const payload = input.url ? { ...input, url: input.url.replace(/\/$/, '') } : input;
+    const updated = await inferenceServerRepository.update(id, payload);
+    // url / authToken / enabled changes invalidate the cached inventory for this
+    // server - without this, routing would keep using the old endpoint for up to
+    // the cache TTL.
+    serverModelsService.invalidate(id);
+    return updated;
+  }
+
+  public async remove(id: string): Promise<void> {
+    await inferenceServerRepository.delete(id);
+    serverModelsService.invalidate(id);
   }
 
   /** Bootstrap a single server from INFERENCE_URL if the registry is empty. */

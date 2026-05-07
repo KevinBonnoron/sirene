@@ -2,11 +2,8 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import { pickTarget } from '../lib/inference-router';
-import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
-import { inferenceRepository } from '../repositories';
-import { elevenlabsService, mapServiceError, modelService, openAITtsService } from '../services';
+import { mapServiceError, modelService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -20,7 +17,7 @@ const modelSseRoutes = new Hono().get('/events', async (c) => {
       try {
         await stream.writeSSE({ event: 'change', data: '1' });
       } catch (err) {
-        // SSE write failed → client disconnected. Drop ourselves; transient backend
+        // SSE write failed -> client disconnected. Drop ourselves; transient backend
         // errors no longer reach this listener (we don't read state here).
         console.warn('[models/events] write failed, unsubscribing', err);
         removeListener();
@@ -40,69 +37,43 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
   .use(authMiddleware)
 
   .get('/catalog', async (c) => {
-    const userId = c.get('userId');
-    const catalog = await modelService.getFullCatalog(userId);
-    return c.json(catalog);
+    return c.json(await modelService.getFullCatalog(c.get('userId')));
   })
 
   .get('/installed', async (c) => {
-    const userId = c.get('userId');
-    const catalog = await modelService.getFullCatalog(userId);
-    const installations = await modelService.getInstallations(catalog);
-    return c.json(installations);
+    const catalog = await modelService.getFullCatalog(c.get('userId'));
+    return c.json(await modelService.getInstallations(catalog));
   })
 
   .get('/:id/voices', zValidator('param', idParamSchema), async (c) => {
-    const userId = c.get('userId');
-    const { id: modelId } = c.req.valid('param');
-    const fullCatalog = await modelService.getFullCatalog(userId);
-    const catalog = fullCatalog.find((m) => m.id === modelId);
-    if (!catalog) {
-      return c.json({ message: 'Model not found' }, 404);
+    try {
+      return c.json(await modelService.listPresetVoicesFor(c.req.valid('param').id, c.get('userId')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status === 500 ? 502 : status);
     }
-
-    if (catalog.backend === 'elevenlabs') {
-      try {
-        const voices = await elevenlabsService.listVoices(userId);
-        return c.json(voices);
-      } catch (e) {
-        const { status, body } = mapServiceError(e);
-        return c.json(body, status);
-      }
-    }
-
-    if (catalog.backend === 'openai') {
-      return c.json(openAITtsService.listVoices());
-    }
-
-    return c.json(catalog.presetVoices ?? []);
   })
 
   .delete('/:id', zValidator('param', idParamSchema), async (c) => {
-    const { id: modelId } = c.req.valid('param');
-    const serverId = c.req.query('serverId');
     try {
-      await modelService.removeModelFiles(modelId, serverId);
+      await modelService.removeModelFiles(c.req.valid('param').id, c.req.query('serverId'));
       return c.body(null, 204);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove';
-      return c.json({ message }, 502);
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status === 500 ? 502 : status);
     }
   })
 
   .post('/:id/pull', zValidator('param', idParamSchema), zValidator('json', z.object({ serverIds: z.array(z.string().min(1)).optional() })), async (c) => {
-    const { id: modelId } = c.req.valid('param');
     const userId = c.get('userId');
-    const body = c.req.valid('json');
-
     const fullCatalog = await modelService.getFullCatalog(userId);
-    const catalog = fullCatalog.find((m) => m.id === modelId);
+    const catalog = fullCatalog.find((m) => m.id === c.req.valid('param').id);
     if (!catalog) {
       return c.json({ message: 'Model not found in catalog' }, 404);
     }
 
     try {
-      const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, body?.serverIds);
+      const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, c.req.valid('json').serverIds);
       return c.json({ jobIds }, alreadyRunning ? 200 : 202);
     } catch (err) {
       const { status, body } = mapServiceError(err);
@@ -112,15 +83,15 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
   .post('/piper/import', async (c) => {
     const formData = await c.req.formData();
-    // FormData entries can be string or File. A `name=…&onnx=foo` payload would
+    // FormData entries can be string or File. A `name=...&onnx=foo` payload would
     // pass an `as File` cast and only blow up when we try to read its bytes,
     // turning a malformed client request into a 500. Validate up front.
-    const onnxRaw = formData.get('onnx');
-    const configRaw = formData.get('config');
+    const onnxFile = formData.get('onnx');
+    const configFile = formData.get('config');
     const nameRaw = formData.get('name');
-    const onnxFile = onnxRaw instanceof File ? onnxRaw : null;
-    const configFile = configRaw instanceof File ? configRaw : null;
-    const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
+    if (!(onnxFile instanceof File) || !(configFile instanceof File) || typeof nameRaw !== 'string') {
+      return c.json({ message: 'Fields "onnx", "config", and "name" are required' }, 400);
+    }
     // serverIds is sent as a JSON array string from the dialog; absent = all online.
     // Any non-empty value that fails to parse as a string[] is rejected - silently
     // falling back to "all online servers" turns a malformed payload into an unintended
@@ -140,58 +111,8 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       serverIds = parsed as string[];
     }
 
-    if (!onnxFile || !configFile || !name) {
-      return c.json({ message: 'Fields "onnx", "config", and "name" are required' }, 400);
-    }
-
-    const configText = await configFile.text();
-    let configData: Record<string, unknown>;
     try {
-      configData = JSON.parse(configText);
-    } catch {
-      return c.json({ message: 'Config file is not valid JSON' }, 400);
-    }
-
-    if (!configData.espeak || !configData.phoneme_id_map) {
-      return c.json({ message: 'Config must contain "espeak" and "phoneme_id_map" fields (Piper format)' }, 400);
-    }
-
-    const catalogIds = new Set(modelsCatalog.map((m) => m.id));
-    const espeakVoice = (configData.espeak as Record<string, string>).voice ?? '';
-    const [langPart = '', regionPart] = espeakVoice.split('-');
-    const locale = regionPart ? `${langPart.toLowerCase()}_${regionPart.toUpperCase()}` : langPart.toLowerCase();
-    const sampleRate = (configData.audio as Record<string, number> | undefined)?.sample_rate ?? 22050;
-    const quality = sampleRate <= 16000 ? 'low' : 'medium';
-    const speakerSlug = name
-      .toLowerCase()
-      .replace(/\s+/g, '_')
-      .replace(/[^a-z0-9_]/g, '');
-    if (!speakerSlug) {
-      return c.json({ message: 'Invalid model name' }, 400);
-    }
-    const slug = `piper-${locale}-${speakerSlug}-${quality}`;
-
-    if (catalogIds.has(slug)) {
-      return c.json({ message: `Name "${slug}" conflicts with an existing catalog model` }, 409);
-    }
-
-    // Read the file bytes once on Hono so we can fan out to multiple inference servers
-    // without re-reading from the user's upload (which is a one-shot stream).
-    const onnxBytes = await onnxFile.arrayBuffer();
-    const configBytes = new TextEncoder().encode(configText).buffer as ArrayBuffer;
-
-    try {
-      const { jobIds } = await modelService.startPiperImport({
-        slug,
-        name,
-        onnxBytes,
-        onnxName: onnxFile.name || `${speakerSlug}.onnx`,
-        onnxType: onnxFile.type || 'application/octet-stream',
-        configBytes,
-        configName: configFile.name || `${speakerSlug}.onnx.json`,
-        configType: configFile.type || 'application/json',
-        serverIds,
-      });
+      const { slug, jobIds } = await modelService.importPiperFromUpload({ name: nameRaw, onnxFile, configFile, serverIds });
       return c.json({ id: slug, jobIds }, 202);
     } catch (err) {
       const { status, body } = mapServiceError(err);
@@ -201,37 +122,18 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
   .get('/:id/export', zValidator('param', idParamSchema), async (c) => {
     const { id: modelId } = c.req.valid('param');
-
-    const customs = await modelService.scanCustomModels();
-    if (!customs.find((m) => m.id === modelId)) {
-      return c.json({ message: 'Custom model not found' }, 404);
-    }
-
-    let exportTarget: { url: string; authToken?: string };
     try {
-      exportTarget = await pickTarget({ requireModel: modelId });
+      const upstream = await modelService.exportCustomModel(modelId);
+      return new Response(upstream.body, {
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="piper-${modelId}.zip"`,
+        },
+      });
     } catch (err) {
       const { status, body } = mapServiceError(err);
       return c.json(body, status);
     }
-
-    let inferenceResponse: Response;
-    try {
-      inferenceResponse = await inferenceRepository(exportTarget).fetchExport(modelId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Inference server unreachable';
-      return c.json({ message }, 502);
-    }
-    if (!inferenceResponse.ok) {
-      return c.json({ message: 'Export failed' }, 502);
-    }
-
-    return new Response(inferenceResponse.body, {
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="piper-${modelId}.zip"`,
-      },
-    });
   });
 
 export const modelRoutes = new Hono().route('/', modelSseRoutes).route('/', modelProtectedRoutes);

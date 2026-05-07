@@ -1,7 +1,7 @@
 import type { PresetVoice } from '@sirene/shared';
-import { getSetting } from '../lib/settings';
 import { elevenlabsRepository } from '../repositories';
 import { BadRequestError } from './service-error';
+import { settingsService } from './settings.service';
 
 export interface ElevenlabsGenerateParams {
   text: string;
@@ -22,7 +22,7 @@ class ElevenlabsService {
   }
 
   private async requireApiKey(userId: string): Promise<string> {
-    const apiKey = await getSetting('elevenlabs_api_key', userId);
+    const apiKey = await settingsService.get('elevenlabs_api_key', userId);
     if (!apiKey) {
       throw new BadRequestError('ElevenLabs API key not configured. Go to Settings to add it.');
     }

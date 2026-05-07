@@ -1,11 +1,14 @@
-import type { CatalogModel, InferenceServer, Model } from '@sirene/shared';
+import type { CatalogModel, InferenceServer, Model, PresetVoice } from '@sirene/shared';
+import { pickTarget } from '../lib/inference-router';
 import { jobStore, newJobId } from '../lib/jobs';
-import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { inferenceRepository } from '../repositories';
+import { elevenlabsService } from './elevenlabs.service';
 import { inferenceServerService } from './inference-server.service';
+import { openAITtsService } from './openai-tts.service';
 import { serverModelsService } from './server-models.service';
-import { BadRequestError, ConflictError, ServiceUnavailableError } from './service-error';
+import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError, UpstreamError } from './service-error';
+import { settingsService } from './settings.service';
 
 /** Thrown when no inference server is online; HTTP route maps to 503. */
 export class NoOnlineServerError extends ServiceUnavailableError {}
@@ -54,7 +57,7 @@ class ModelService {
     for (const model of all) {
       if (model.types.includes('api')) {
         const settingKey = API_KEY_MAP[model.backend];
-        if (settingKey && !(await getSetting(settingKey, userId))) {
+        if (settingKey && !(await settingsService.get(settingKey, userId))) {
           continue;
         }
       }
@@ -138,7 +141,7 @@ class ModelService {
   }
 
   private async runDownload(jobId: string, catalog: CatalogModel, server: InferenceServer) {
-    const hfToken = await getSetting('hf_token');
+    const hfToken = await settingsService.get('hf_token');
     const files = catalog.files.map((entry) => {
       const filePath = typeof entry === 'string' ? entry : entry.path;
       const remotePath = typeof entry === 'string' ? entry : (entry.remotePath ?? entry.path);
@@ -249,7 +252,7 @@ class ModelService {
     if (serverId) {
       targets = targets.filter((s) => s.id === serverId);
       if (targets.length === 0) {
-        throw new Error(`Model is not installed on server "${serverId}".`);
+        throw new NotFoundError(`Model is not installed on server "${serverId}".`);
       }
     }
 
@@ -266,8 +269,102 @@ class ModelService {
     );
     this.notifyListeners();
     if (errors.length > 0) {
-      throw new Error(`Failed to delete on ${errors.length} server(s): ${errors.join('; ')}`);
+      throw new UpstreamError(`Failed to delete on ${errors.length} server(s): ${errors.join('; ')}`);
     }
+  }
+
+  /** Voices a model can produce. For ElevenLabs and OpenAI we read the live
+   *  catalog from the upstream API; preset/cloning catalog models carry their
+   *  own list. Throws NotFoundError when the model id is unknown. */
+  public async listPresetVoicesFor(modelId: string, userId: string): Promise<PresetVoice[]> {
+    const catalog = (await this.getFullCatalog(userId)).find((m) => m.id === modelId);
+    if (!catalog) {
+      throw new NotFoundError('Model not found');
+    }
+    if (catalog.backend === 'elevenlabs') {
+      return elevenlabsService.listVoices(userId);
+    }
+    if (catalog.backend === 'openai') {
+      return openAITtsService.listVoices();
+    }
+    return catalog.presetVoices ?? [];
+  }
+
+  /** Take an uploaded Piper bundle (onnx + config), validate it, derive the
+   *  catalog slug from the espeak voice + sample rate, and fan the import out
+   *  to the requested servers. The slug derivation is in here (not the route)
+   *  because it's domain logic about how Piper models are named in the catalog. */
+  public async importPiperFromUpload(input: { name: string; onnxFile: File; configFile: File; serverIds?: string[] }): Promise<{ slug: string; jobIds: string[] }> {
+    const { name: rawName, onnxFile, configFile, serverIds } = input;
+    const name = rawName.trim();
+    if (!name) {
+      throw new BadRequestError('Fields "onnx", "config", and "name" are required');
+    }
+
+    const configText = await configFile.text();
+    let configData: Record<string, unknown>;
+    try {
+      configData = JSON.parse(configText) as Record<string, unknown>;
+    } catch {
+      throw new BadRequestError('Config file is not valid JSON');
+    }
+    if (!configData.espeak || !configData.phoneme_id_map) {
+      throw new BadRequestError('Config must contain "espeak" and "phoneme_id_map" fields (Piper format)');
+    }
+
+    const espeakVoice = (configData.espeak as Record<string, string>).voice ?? '';
+    const [langPart = '', regionPart] = espeakVoice.split('-');
+    const locale = regionPart ? `${langPart.toLowerCase()}_${regionPart.toUpperCase()}` : langPart.toLowerCase();
+    const sampleRate = (configData.audio as Record<string, number> | undefined)?.sample_rate ?? 22050;
+    const quality = sampleRate <= 16000 ? 'low' : 'medium';
+    const speakerSlug = name
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+    if (!speakerSlug) {
+      throw new BadRequestError('Invalid model name');
+    }
+    const slug = `piper-${locale}-${speakerSlug}-${quality}`;
+
+    const catalogIds = new Set(modelsCatalog.map((m) => m.id));
+    if (catalogIds.has(slug)) {
+      throw new ConflictError(`Name "${slug}" conflicts with an existing catalog model`);
+    }
+
+    // Read the file bytes once on Hono so we can fan out to multiple inference servers
+    // without re-reading from the user's upload (which is a one-shot stream).
+    const onnxBytes = await onnxFile.arrayBuffer();
+    const configBytes = new TextEncoder().encode(configText).buffer as ArrayBuffer;
+
+    const { jobIds } = await this.startPiperImport({
+      slug,
+      name,
+      onnxBytes,
+      onnxName: onnxFile.name || `${speakerSlug}.onnx`,
+      onnxType: onnxFile.type || 'application/octet-stream',
+      configBytes,
+      configName: configFile.name || `${speakerSlug}.onnx.json`,
+      configType: configFile.type || 'application/json',
+      serverIds,
+    });
+    return { slug, jobIds };
+  }
+
+  /** Pull the export zip for a custom model from whichever server has it.
+   *  Returns the upstream Response so the caller can pipe it through unbuffered.
+   *  Throws NotFoundError when the model isn't a known custom model, and
+   *  UpstreamError for transport / non-2xx upstream responses. */
+  public async exportCustomModel(modelId: string): Promise<Response> {
+    const customs = await this.scanCustomModels();
+    if (!customs.find((m) => m.id === modelId)) {
+      throw new NotFoundError('Custom model not found');
+    }
+    const target = await pickTarget({ requireModel: modelId });
+    const response = await inferenceRepository(target).fetchExport(modelId);
+    if (!response.ok) {
+      throw new UpstreamError('Export failed');
+    }
+    return response;
   }
 
   public addModelChangeListener(listener: Listener): () => void {

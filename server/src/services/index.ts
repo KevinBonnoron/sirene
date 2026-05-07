@@ -1,6 +1,6 @@
 export { type AuthResult, type AuthUser, authService, InvalidCredentialsError, type RegisterParams, RegistrationFailedError } from './auth.service';
 export { type ElevenlabsGenerateParams, elevenlabsService } from './elevenlabs.service';
-export { generationService, type ListGenerationsFilter } from './generation.service';
+export { type BufferedGeneration, type GenerateInput, generationService, type ListGenerationsFilter, type StreamingGeneration } from './generation.service';
 export { type InferenceServerUpdateInput, type InferenceServerWriteInput, inferenceServerService } from './inference-server.service';
 export { modelService } from './model.service';
 export { type OpenAITtsGenerateParams, openAITtsService } from './openai-tts.service';

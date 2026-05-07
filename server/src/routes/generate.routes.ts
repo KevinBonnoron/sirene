@@ -1,14 +1,8 @@
-import { createHash } from 'node:crypto';
 import { zValidator } from '@hono/zod-validator';
-import { buildWav, readPcmStream } from '@sirene/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { config } from '../lib/config';
-import { pickTarget } from '../lib/inference-router';
-import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
-import { CacheMissError, generationRepository, type InferenceRequest, type InferenceTarget, inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
-import { type ElevenlabsGenerateParams, elevenlabsService, mapServiceError, modelService, type OpenAITtsGenerateParams, openAITtsService } from '../services';
+import { generationService, mapServiceError } from '../services';
 
 const tuningSchema = z
   .object({
@@ -26,328 +20,44 @@ const generateSchema = z.object({
   editorContent: z.record(z.string(), z.any()).optional(),
 });
 
-type VoiceSample = { id: string; audio: string };
-
-type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenlabsGenerateParams; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITtsGenerateParams; meta: GenerationMeta };
-
-interface GenerationMeta {
-  voice: string;
-  model: string;
-  text: string;
-  language: string;
-  speed: number;
-  user: string;
-  tuning?: z.infer<typeof tuningSchema>;
-  editorContent?: Record<string, unknown>;
-  generationId?: string;
-}
-
-async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: string): Promise<ResolvedGeneration | Response> {
-  const voice = await voiceRepository.getOne(body.voice);
-  if (!voice) {
-    return Response.json({ message: 'Voice not found' }, { status: 404 });
-  }
-
-  if (!voice.model) {
-    return Response.json({ message: 'Voice has no model assigned' }, { status: 400 });
-  }
-
-  const fullCatalog = await modelService.getFullCatalog(userId);
-  const catalog = fullCatalog.find((m) => m.id === voice.model);
-  if (!catalog) {
-    return Response.json({ message: `Model "${voice.model}" not found in catalog` }, { status: 404 });
-  }
-
-  if (!(await modelService.isModelInstalled(catalog))) {
-    return Response.json({ message: `Model "${catalog.name}" is not installed` }, { status: 400 });
-  }
-
-  const options = (voice.options ?? {}) as Record<string, unknown>;
-  const language = voice.language || 'en';
-  const effectiveSpeed = body.tuning?.speedMultiplier ?? body.speed ?? 1;
-  // Map variationSeed (0..1, 0.5 default) to Piper's noise_scale (0.4..0.95). Other backends
-  // ignore the value - see `getVoiceCapabilities` on the shared side for what's actually wired.
-  const noiseScale = catalog.backend === 'piper' && typeof body.tuning?.variationSeed === 'number' ? 0.4 + Math.max(0, Math.min(1, body.tuning.variationSeed)) * 0.55 : undefined;
-  const meta: GenerationMeta = {
-    voice: body.voice,
-    model: voice.model,
-    text: body.input,
-    language,
-    speed: effectiveSpeed,
-    user: '',
-    tuning: body.tuning,
-    editorContent: body.editorContent,
-  };
-
-  // ElevenLabs - direct API call, no inference service
-  if (catalog.backend === 'elevenlabs') {
-    const voiceId = options.presetVoice as string;
-    if (!voiceId) {
-      return Response.json({ message: 'ElevenLabs voice requires a preset voice ID. Edit the voice and select one.' }, { status: 400 });
-    }
-    return { type: 'elevenlabs', elevenLabsRequest: { text: body.input, voiceId, speed: effectiveSpeed, userId }, meta };
-  }
-
-  // OpenAI TTS - direct API call, no inference service
-  if (catalog.backend === 'openai') {
-    const voiceId = options.presetVoice as string;
-    if (!voiceId) {
-      return Response.json({ message: 'OpenAI TTS voice requires a preset voice ID. Edit the voice and select one.' }, { status: 400 });
-    }
-    return { type: 'openai', openAIRequest: { text: body.input, voiceId, speed: effectiveSpeed, userId }, meta };
-  }
-
-  const modelPath = catalog.id;
-  const presetVoice = catalog.types.includes('preset') ? (options.presetVoice as string | undefined) : undefined;
-
-  let referenceAudio: string[] | undefined;
-  let referenceText: string[] | undefined;
-
-  let samples: VoiceSample[] | undefined;
-
-  if (catalog.types.includes('cloning') && !presetVoice) {
-    const rows = await voiceSampleRepository.getAllBy(`voice = "${body.voice}" && enabled = true`, { sort: 'order,created' });
-    if (rows.length === 0) {
-      return Response.json({ message: 'Voice cloning requires at least one enabled audio sample. Edit the voice to upload or enable a sample.' }, { status: 400 });
-    }
-
-    samples = rows.map((s) => ({ id: s.id, audio: s.audio as string }));
-    const cacheKey = createHash('sha256')
-      .update(
-        samples
-          .map((s) => s.id)
-          .sort()
-          .join(','),
-      )
-      .digest('hex')
-      .slice(0, 24);
-    referenceText = rows.map((s) => (s.transcript as string) || '');
-
-    return {
-      type: 'inference',
-      inferenceRequest: {
-        backend: catalog.backend,
-        text: body.input,
-        modelPath,
-        referenceCacheKey: cacheKey,
-        referenceText,
-        speed: effectiveSpeed,
-        noiseScale,
-        language,
-      },
-      meta,
-      samples,
-    };
-  }
-
-  return {
-    type: 'inference',
-    inferenceRequest: {
-      backend: catalog.backend,
-      text: body.input,
-      modelPath,
-      voicePath: presetVoice,
-      referenceAudio,
-      referenceText,
-      speed: effectiveSpeed,
-      noiseScale,
-      language,
-    },
-    meta,
-  };
-}
-
-async function fetchSamplesAsBase64(samples: VoiceSample[]): Promise<string[]> {
-  return Promise.all(
-    samples.map(async (s) => {
-      const url = `${config.pb.url}/api/files/voice_samples/${s.id}/${s.audio}`;
-      const response = await fetch(url, { headers: { Authorization: pb.authStore.token } });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch voice sample ${s.id}: ${response.status}`);
-      }
-      const buffer = await response.arrayBuffer();
-      const ext = s.audio.split('.').pop() ?? 'wav';
-      const mime = ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`;
-      return `data:${mime};base64,${Buffer.from(buffer).toString('base64')}`;
-    }),
-  );
-}
-
-async function preCreateGeneration(meta: GenerationMeta): Promise<string> {
-  const record = await generationRepository.create({
-    voice: meta.voice,
-    model: meta.model,
-    text: meta.text,
-    language: meta.language,
-    speed: meta.speed,
-    user: meta.user,
-    state: 'ready',
-    tuning: meta.tuning ?? null,
-    editorContent: meta.editorContent ?? null,
-  });
-  return record.id;
-}
-
-async function finalizeGeneration(generationId: string, audio: ArrayBuffer | Buffer, duration: number, contentType: string, filename: string) {
-  const formData = new FormData();
-  formData.append('duration', String(Math.round(duration)));
-  formData.append('audio', new Blob([audio], { type: contentType }), filename);
-  await generationRepository.update(generationId, formData);
-}
-
-async function accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate: number, generationId: string) {
-  const { chunks, totalBytes } = await readPcmStream(stream);
-  if (totalBytes === 0) {
-    return;
-  }
-
-  const wavBuffer = buildWav(chunks, totalBytes, sampleRate);
-  const duration = totalBytes / (2 * sampleRate);
-  await finalizeGeneration(generationId, wavBuffer, duration, 'audio/wav', 'generation.wav');
-}
-
-async function cleanupFailedGeneration(generationId: string) {
-  try {
-    await generationRepository.delete(generationId);
-  } catch (err) {
-    console.error('[generate] Failed to clean up placeholder generation:', err);
-  }
-}
-
 export const generateRoutes = new Hono<AuthEnv>()
   .post('', zValidator('json', generateSchema), async (c) => {
-    const userId = c.get('userId') as string;
-    const body = c.req.valid('json');
-    const resolved = await resolveGeneration(body, userId);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    resolved.meta.user = userId;
-
-    const generationId = await preCreateGeneration(resolved.meta);
-
-    async function finalize(audio: ArrayBuffer | Buffer, contentType: string, filename: string, duration: number) {
-      await finalizeGeneration(generationId, audio, duration, contentType, filename);
-    }
-
-    if (resolved.type === 'elevenlabs') {
-      try {
-        const audioBuffer = await elevenlabsService.generate(resolved.elevenLabsRequest);
-        await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
-      } catch (e) {
-        await cleanupFailedGeneration(generationId);
-        return c.json({ message: e instanceof Error ? e.message : 'ElevenLabs generation failed' }, 502);
-      }
-    }
-
-    if (resolved.type === 'openai') {
-      try {
-        const audioBuffer = await openAITtsService.generate(resolved.openAIRequest);
-        await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
-      } catch (e) {
-        await cleanupFailedGeneration(generationId);
-        return c.json({ message: e instanceof Error ? e.message : 'OpenAI TTS generation failed' }, 502);
-      }
-    }
-
-    let target: InferenceTarget;
     try {
-      target = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
-    } catch (err) {
-      await cleanupFailedGeneration(generationId);
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-
-    try {
-      const audioBuffer = await inferenceRepository(target).generate(resolved.inferenceRequest);
-      await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
-      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
-    } catch (e) {
-      if (!(e instanceof CacheMissError) || !resolved.samples) {
-        await cleanupFailedGeneration(generationId);
-        throw e;
-      }
-      const audioData = await fetchSamplesAsBase64(resolved.samples);
-      const audioBuffer = await inferenceRepository(target).generate({ ...resolved.inferenceRequest, referenceAudioData: audioData });
-      await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
-      return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
-    }
-  })
-  .post('/stream', zValidator('json', generateSchema), async (c) => {
-    const userId = c.get('userId') as string;
-    const body = c.req.valid('json');
-    const resolved = await resolveGeneration(body, userId);
-    if (resolved instanceof Response) {
-      return resolved;
-    }
-    resolved.meta.user = userId;
-
-    const generationId = await preCreateGeneration(resolved.meta);
-
-    // ElevenLabs: fall back to non-streaming
-    if (resolved.type === 'elevenlabs') {
-      try {
-        const audioBuffer = await elevenlabsService.generate(resolved.elevenLabsRequest);
-        await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
-      } catch (e) {
-        await cleanupFailedGeneration(generationId);
-        return c.json({ message: e instanceof Error ? e.message : 'ElevenLabs generation failed' }, 502);
-      }
-    }
-
-    // OpenAI TTS: fall back to non-streaming
-    if (resolved.type === 'openai') {
-      try {
-        const audioBuffer = await openAITtsService.generate(resolved.openAIRequest);
-        await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
-        return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
-      } catch (e) {
-        await cleanupFailedGeneration(generationId);
-        return c.json({ message: e instanceof Error ? e.message : 'OpenAI TTS generation failed' }, 502);
-      }
-    }
-
-    let streamTarget: InferenceTarget;
-    try {
-      streamTarget = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
-    } catch (err) {
-      await cleanupFailedGeneration(generationId);
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-
-    // Python now sends keepalive silence for non-streaming backends,
-    // so this fetch returns within ~30s and data flows continuously.
-    try {
-      const streamRepo = inferenceRepository(streamTarget);
-      const streamResponse = await streamRepo.generateStream(resolved.inferenceRequest).catch(async (e) => {
-        if (!(e instanceof CacheMissError) || !resolved.samples) {
-          throw e;
-        }
-        const audioData = await fetchSamplesAsBase64(resolved.samples);
-        return streamRepo.generateStream({ ...resolved.inferenceRequest, referenceAudioData: audioData });
-      });
-      const [clientStream, saveStream] = streamResponse.body.tee();
-
-      accumulateAndSave(saveStream, streamResponse.sampleRate, generationId).catch(async (err) => {
-        console.error('[generate/stream] Failed to save generation:', err);
-        await cleanupFailedGeneration(generationId);
-      });
-
-      return new Response(clientStream, {
+      const result = await generationService.generateBuffered(c.req.valid('json'), c.get('userId'));
+      return new Response(result.audio, {
         headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-Sample-Rate': String(streamResponse.sampleRate),
-          'X-Channels': '1',
-          'X-Bits-Per-Sample': '16',
-          'X-Generation-Id': generationId,
+          'Content-Type': result.contentType,
+          'X-Generation-Id': result.generationId,
         },
       });
-    } catch (e) {
-      return c.json({ message: e instanceof Error ? e.message : 'Generation failed' }, 500);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
+  })
+
+  .post('/stream', zValidator('json', generateSchema), async (c) => {
+    try {
+      const result = await generationService.generateStreaming(c.req.valid('json'), c.get('userId'));
+      if (result.type === 'streaming') {
+        return new Response(result.stream, {
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'X-Sample-Rate': String(result.sampleRate),
+            'X-Channels': '1',
+            'X-Bits-Per-Sample': '16',
+            'X-Generation-Id': result.generationId,
+          },
+        });
+      }
+      return new Response(result.audio, {
+        headers: {
+          'Content-Type': result.contentType,
+          'X-Generation-Id': result.generationId,
+        },
+      });
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
     }
   });

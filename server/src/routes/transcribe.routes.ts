@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
-import { modelService } from '../services';
+import { pickTarget } from '../lib/inference-router';
+import { mapServiceError, modelService } from '../services';
 
 export const transcribeRoutes = new Hono().post('/', async (c) => {
   const formData = await c.req.formData();
@@ -29,10 +29,8 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
   try {
     target = await pickTarget({ requireModel: modelPath });
   } catch (err) {
-    if (err instanceof NoInferenceServerError) {
-      return c.json({ error: err.message }, 503);
-    }
-    throw err;
+    const { status, body } = mapServiceError(err);
+    return c.json(body, status);
   }
 
   const inferenceForm = new FormData();

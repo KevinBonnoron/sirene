@@ -4,35 +4,15 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport } from '../lib/inference-client';
-import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
+import { pickTarget } from '../lib/inference-router';
 import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
-import { modelService } from '../services';
-import { InvalidServerSelectionError, ModelAlreadyInstalledError, NoOnlineServerError } from '../services/model.service';
-
-interface ApiError {
-  message: string;
-}
-
-/** Maps service-layer error classes to (status, message) tuples. Used by both
- *  /pull and /piper/import so the HTTP layer reflects what actually went wrong. */
-function mapModelServiceError(err: unknown): { status: 400 | 409 | 503 | 500; body: ApiError } {
-  if (err instanceof NoOnlineServerError || err instanceof NoInferenceServerError) {
-    return { status: 503, body: { message: err.message } };
-  }
-  if (err instanceof InvalidServerSelectionError) {
-    return { status: 400, body: { message: err.message } };
-  }
-  if (err instanceof ModelAlreadyInstalledError) {
-    return { status: 409, body: { message: err.message } };
-  }
-  return { status: 500, body: { message: err instanceof Error ? err.message : 'Internal error' } };
-}
+import { mapServiceError, modelService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
-/** Public SSE route — emits an opaque re-fetch trigger only, no model data. The
+/** Public SSE route - emits an opaque re-fetch trigger only, no model data. The
  *  payload used to be the full installation map, which would have leaked the model
  *  inventory to anyone hitting the URL. The client receives the ping and goes through
  *  the protected /installed endpoint, where authMiddleware enforces the boundary. */
@@ -126,7 +106,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, body?.serverIds);
       return c.json({ jobIds }, alreadyRunning ? 200 : 202);
     } catch (err) {
-      const { status, body } = mapModelServiceError(err);
+      const { status, body } = mapServiceError(err);
       return c.json(body, status);
     }
   })
@@ -143,7 +123,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
     const configFile = configRaw instanceof File ? configRaw : null;
     const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
     // serverIds is sent as a JSON array string from the dialog; absent = all online.
-    // Any non-empty value that fails to parse as a string[] is rejected — silently
+    // Any non-empty value that fails to parse as a string[] is rejected - silently
     // falling back to "all online servers" turns a malformed payload into an unintended
     // fan-out write.
     const serverIdsRaw = formData.get('serverIds');
@@ -215,7 +195,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       });
       return c.json({ id: slug, jobIds }, 202);
     } catch (err) {
-      const { status, body } = mapModelServiceError(err);
+      const { status, body } = mapServiceError(err);
       return c.json(body, status);
     }
   })
@@ -232,14 +212,8 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
     try {
       exportTarget = await pickTarget({ requireModel: modelId });
     } catch (err) {
-      if (err instanceof NoInferenceServerError) {
-        return c.json({ message: err.message }, 503);
-      }
-      // pickTarget can also surface PB read errors / unexpected failures. Map those
-      // to 502 so they reach the client as a clean { message } envelope instead of
-      // bubbling into Hono's default 500 handler.
-      const message = err instanceof Error ? err.message : 'Failed to select inference server';
-      return c.json({ message }, 502);
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
     }
 
     let inferenceResponse: Response;

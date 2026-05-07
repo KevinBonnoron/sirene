@@ -5,30 +5,16 @@ import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { inferenceServerService } from './inference-server.service';
 import { serverModelsService } from './server-models.service';
+import { BadRequestError, ConflictError, ServiceUnavailableError } from './service-error';
 
 /** Thrown when no inference server is online; HTTP route maps to 503. */
-export class NoOnlineServerError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'NoOnlineServerError';
-  }
-}
+export class NoOnlineServerError extends ServiceUnavailableError {}
 
 /** Thrown when the caller passed serverIds that don't match online servers; route maps to 400. */
-export class InvalidServerSelectionError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'InvalidServerSelectionError';
-  }
-}
+export class InvalidServerSelectionError extends BadRequestError {}
 
 /** Thrown when the model is already installed on every requested server; route maps to 409. */
-export class ModelAlreadyInstalledError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = 'ModelAlreadyInstalledError';
-  }
-}
+export class ModelAlreadyInstalledError extends ConflictError {}
 
 const HF_BASE = 'https://huggingface.co';
 

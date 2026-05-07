@@ -52,7 +52,7 @@ export const authRoutes = new Hono()
       try {
         await pb.collection('users').update(created.id, { role: 'admin' });
       } catch (err) {
-        // Only the partial-unique-index conflict means "another admin already exists" —
+        // Only the partial-unique-index conflict means "another admin already exists"
         // anything else (PB down, network error) is a real failure and would otherwise
         // silently leave a deployment with zero admins. Log the unexpected paths so
         // the operator can react instead of seeing a clean 201.

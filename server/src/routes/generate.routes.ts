@@ -6,12 +6,12 @@ import { z } from 'zod';
 import { config } from '../lib/config';
 import { type ElevenLabsRequest, generateElevenLabs } from '../lib/elevenlabs-client';
 import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest, type InferenceTarget } from '../lib/inference-client';
-import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
+import { pickTarget } from '../lib/inference-router';
 import { generateOpenAI, type OpenAITTSRequest } from '../lib/openai-tts-client';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
 import { generationRepository, voiceRepository, voiceSampleRepository } from '../repositories';
-import { modelService } from '../services';
+import { mapServiceError, modelService } from '../services';
 
 const tuningSchema = z
   .object({
@@ -260,10 +260,8 @@ export const generateRoutes = new Hono<AuthEnv>()
       target = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
     } catch (err) {
       await cleanupFailedGeneration(generationId);
-      if (err instanceof NoInferenceServerError) {
-        return c.json({ message: err.message }, 503);
-      }
-      throw err;
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
     }
 
     try {
@@ -321,10 +319,8 @@ export const generateRoutes = new Hono<AuthEnv>()
       streamTarget = await pickTarget({ requireModel: resolved.inferenceRequest.modelPath });
     } catch (err) {
       await cleanupFailedGeneration(generationId);
-      if (err instanceof NoInferenceServerError) {
-        return c.json({ message: err.message }, 503);
-      }
-      throw err;
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
     }
 
     // Python now sends keepalive silence for non-streaming backends,

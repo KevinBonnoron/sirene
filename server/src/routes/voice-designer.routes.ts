@@ -2,10 +2,10 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { generateAudio } from '../lib/inference-client';
-import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
+import { pickTarget } from '../lib/inference-router';
 import type { AuthEnv } from '../middleware';
 import { voiceRepository, voiceSampleRepository } from '../repositories';
-import { modelService } from '../services';
+import { mapServiceError, modelService } from '../services';
 
 const previewSchema = z.object({
   modelId: z.string().min(1),
@@ -44,10 +44,8 @@ export const voiceDesignerRoutes = new Hono<AuthEnv>()
         headers: { 'Content-Type': 'audio/wav' },
       });
     } catch (e) {
-      if (e instanceof NoInferenceServerError) {
-        return c.json({ message: e.message }, 503);
-      }
-      return c.json({ message: e instanceof Error ? e.message : 'Voice design failed' }, 500);
+      const { status, body } = mapServiceError(e);
+      return c.json(body, status);
     }
   })
 

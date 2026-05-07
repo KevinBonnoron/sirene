@@ -5,10 +5,9 @@ import { z } from 'zod';
 import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
-import { listOpenAIVoices } from '../lib/openai-tts-client';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
-import { mapServiceError, modelService } from '../services';
+import { mapServiceError, modelService, openAITtsService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -73,7 +72,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
     }
 
     if (catalog.backend === 'openai') {
-      return c.json(listOpenAIVoices());
+      return c.json(openAITtsService.listVoices());
     }
 
     return c.json(catalog.presetVoices ?? []);

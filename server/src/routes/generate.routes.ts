@@ -7,11 +7,10 @@ import { config } from '../lib/config';
 import { type ElevenLabsRequest, generateElevenLabs } from '../lib/elevenlabs-client';
 import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest, type InferenceTarget } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
-import { generateOpenAI, type OpenAITTSRequest } from '../lib/openai-tts-client';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
 import { generationRepository, voiceRepository, voiceSampleRepository } from '../repositories';
-import { mapServiceError, modelService } from '../services';
+import { mapServiceError, modelService, type OpenAITtsGenerateParams, openAITtsService } from '../services';
 
 const tuningSchema = z
   .object({
@@ -31,7 +30,7 @@ const generateSchema = z.object({
 
 type VoiceSample = { id: string; audio: string };
 
-type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenLabsRequest; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITTSRequest; meta: GenerationMeta };
+type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenLabsRequest; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITtsGenerateParams; meta: GenerationMeta };
 
 interface GenerationMeta {
   voice: string;
@@ -246,7 +245,7 @@ export const generateRoutes = new Hono<AuthEnv>()
 
     if (resolved.type === 'openai') {
       try {
-        const audioBuffer = await generateOpenAI(resolved.openAIRequest);
+        const audioBuffer = await openAITtsService.generate(resolved.openAIRequest);
         await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
         return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
@@ -305,7 +304,7 @@ export const generateRoutes = new Hono<AuthEnv>()
     // OpenAI TTS: fall back to non-streaming
     if (resolved.type === 'openai') {
       try {
-        const audioBuffer = await generateOpenAI(resolved.openAIRequest);
+        const audioBuffer = await openAITtsService.generate(resolved.openAIRequest);
         await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
         return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {

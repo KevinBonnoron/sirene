@@ -1,5 +1,5 @@
 import type { CatalogModel } from '@sirene/shared';
-import { OPENAI_VOICES } from '../lib/openai-tts-client';
+import { OPENAI_VOICES } from '../repositories';
 
 export const modelsCatalog: CatalogModel[] = [
   {

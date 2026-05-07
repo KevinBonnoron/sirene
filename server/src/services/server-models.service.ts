@@ -1,5 +1,5 @@
 import type { CatalogModel, InferenceServer } from '@sirene/shared';
-import { getModels } from '../lib/inference-client';
+import { inferenceRepository } from '../repositories';
 import { inferenceServerService } from './inference-server.service';
 
 const CACHE_TTL_MS = 60_000;
@@ -58,7 +58,7 @@ class ServerModelsService {
   }
 
   /** Aggregated custom (Piper) models across all online servers, deduped by id.
-   *  Same isolation policy as getInstalledByServer — one bad worker doesn't blank
+   *  Same isolation policy as getInstalledByServer - one bad worker doesn't blank
    *  the catalog for everyone else. */
   public async aggregatedCustom(): Promise<CatalogModel[]> {
     const servers = await inferenceServerService.listEnabled();
@@ -87,7 +87,7 @@ class ServerModelsService {
     return Array.from(seen.values());
   }
 
-  /** Force a refresh for one server — call after pulls, deletes, or health recovery. */
+  /** Force a refresh for one server - call after pulls, deletes, or health recovery. */
   public invalidate(serverId: string): void {
     this.cache.delete(serverId);
   }
@@ -102,7 +102,7 @@ class ServerModelsService {
     if (cached && cached.fingerprint === fingerprint && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached;
     }
-    const { installed, custom } = await getModels({ url: server.url, authToken: server.authToken });
+    const { installed, custom } = await inferenceRepository({ url: server.url, authToken: server.authToken }).listModels();
     const entry: CacheEntry = { installed: new Set(installed), custom, fetchedAt: Date.now(), fingerprint };
     this.cache.set(server.id, entry);
     return entry;

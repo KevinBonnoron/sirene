@@ -1,9 +1,8 @@
 import type { InferenceServer, InferenceServerHealthStatus } from '@sirene/shared';
 import { config } from '../lib/config';
-import { inferenceServerRepository } from '../repositories';
+import { inferenceRepository, inferenceServerRepository } from '../repositories';
 
 const HEALTH_INTERVAL_MS = 15_000;
-const HEALTH_TIMEOUT_MS = 5_000;
 
 class InferenceServerService {
   private healthTimer: ReturnType<typeof setInterval> | null = null;
@@ -30,7 +29,7 @@ class InferenceServerService {
     }
     // Idempotent under concurrent startup: the read above is racy across multiple
     // API instances, and the unique-name/url indexes will reject the loser. Treat
-    // that case as success — by then another instance has already seeded the row.
+    // that case as success - by then another instance has already seeded the row.
     try {
       await inferenceServerRepository.create({
         name: 'Local',
@@ -93,15 +92,7 @@ async function probeHealth(url: string, authToken?: string): Promise<{ status: I
     // but if the worker was started in fail-closed mode and the operator decides to
     // require auth on every path, still send the bearer so the probe matches what
     // every other inference call does.
-    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
-    const response = await fetch(`${url}/health`, {
-      method: 'GET',
-      headers,
-      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      return { status: 'offline', error: `HTTP ${response.status}` };
-    }
+    await inferenceRepository({ url, authToken }).health();
     return { status: 'online', error: '' };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Health check failed';

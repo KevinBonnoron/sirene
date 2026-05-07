@@ -4,11 +4,10 @@ import { buildWav, readPcmStream } from '@sirene/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { config } from '../lib/config';
-import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest, type InferenceTarget } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
-import { generationRepository, voiceRepository, voiceSampleRepository } from '../repositories';
+import { CacheMissError, generationRepository, type InferenceRequest, type InferenceTarget, inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
 import { type ElevenlabsGenerateParams, elevenlabsService, mapServiceError, modelService, type OpenAITtsGenerateParams, openAITtsService } from '../services';
 
 const tuningSchema = z
@@ -263,7 +262,7 @@ export const generateRoutes = new Hono<AuthEnv>()
     }
 
     try {
-      const audioBuffer = await generateAudio(target, resolved.inferenceRequest);
+      const audioBuffer = await inferenceRepository(target).generate(resolved.inferenceRequest);
       await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
       return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     } catch (e) {
@@ -272,7 +271,7 @@ export const generateRoutes = new Hono<AuthEnv>()
         throw e;
       }
       const audioData = await fetchSamplesAsBase64(resolved.samples);
-      const audioBuffer = await generateAudio(target, { ...resolved.inferenceRequest, referenceAudioData: audioData });
+      const audioBuffer = await inferenceRepository(target).generate({ ...resolved.inferenceRequest, referenceAudioData: audioData });
       await finalize(audioBuffer, 'audio/wav', 'generation.wav', 0);
       return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/wav', 'X-Generation-Id': generationId } });
     }
@@ -324,12 +323,13 @@ export const generateRoutes = new Hono<AuthEnv>()
     // Python now sends keepalive silence for non-streaming backends,
     // so this fetch returns within ~30s and data flows continuously.
     try {
-      const streamResponse = await generateAudioStream(streamTarget, resolved.inferenceRequest).catch(async (e) => {
+      const streamRepo = inferenceRepository(streamTarget);
+      const streamResponse = await streamRepo.generateStream(resolved.inferenceRequest).catch(async (e) => {
         if (!(e instanceof CacheMissError) || !resolved.samples) {
           throw e;
         }
         const audioData = await fetchSamplesAsBase64(resolved.samples);
-        return generateAudioStream(streamTarget, { ...resolved.inferenceRequest, referenceAudioData: audioData });
+        return streamRepo.generateStream({ ...resolved.inferenceRequest, referenceAudioData: audioData });
       });
       const [clientStream, saveStream] = streamResponse.body.tee();
 

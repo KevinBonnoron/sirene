@@ -2,10 +2,10 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import { fetchModelExport } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
+import { inferenceRepository } from '../repositories';
 import { elevenlabsService, mapServiceError, modelService, openAITtsService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
@@ -217,7 +217,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
     let inferenceResponse: Response;
     try {
-      inferenceResponse = await fetchModelExport(exportTarget, modelId);
+      inferenceResponse = await inferenceRepository(exportTarget).fetchExport(modelId);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Inference server unreachable';
       return c.json({ message }, 502);

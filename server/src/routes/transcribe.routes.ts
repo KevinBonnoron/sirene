@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { pickTarget } from '../lib/inference-router';
+import { inferenceRepository } from '../repositories';
 import { mapServiceError, modelService } from '../services';
 
 export const transcribeRoutes = new Hono().post('/', async (c) => {
@@ -42,28 +43,12 @@ export const transcribeRoutes = new Hono().post('/', async (c) => {
   // worker accepts the connection but stalls.
   const TRANSCRIBE_TIMEOUT_MS = 300_000;
 
-  let response: Response;
   try {
-    response = await fetch(`${target.url}/transcribe`, {
-      method: 'POST',
-      headers: target.authToken ? { Authorization: `Bearer ${target.authToken}` } : {},
-      body: inferenceForm,
-      signal: AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS),
-    });
+    const result = await inferenceRepository(target).transcribe(inferenceForm, AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS));
+    return c.json(result);
   } catch (err) {
-    // fetch() rejects on connection / DNS / TLS / timeout. With multi-server routing
-    // pickTarget() can hand back an `unknown` fallback that turns out to be unreachable,
-    // so this needs to surface as a bad-gateway (504 for the timeout case).
     const isTimeout = err instanceof Error && err.name === 'TimeoutError';
-    const message = err instanceof Error ? err.message : 'inference unreachable';
-    return c.json({ error: `Transcription failed: ${message}` }, isTimeout ? 504 : 502);
+    const { status, body } = mapServiceError(err);
+    return c.json(body, isTimeout ? 504 : status);
   }
-
-  if (!response.ok) {
-    const body = await response.text();
-    return c.json({ error: `Transcription failed: ${body}` }, 502);
-  }
-
-  const result = (await response.json()) as { text: string; language?: string };
-  return c.json(result);
 });

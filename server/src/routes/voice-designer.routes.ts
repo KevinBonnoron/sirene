@@ -1,10 +1,9 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { generateAudio } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
 import type { AuthEnv } from '../middleware';
-import { voiceRepository, voiceSampleRepository } from '../repositories';
+import { inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
 import { mapServiceError, modelService } from '../services';
 
 const previewSchema = z.object({
@@ -32,7 +31,7 @@ export const voiceDesignerRoutes = new Hono<AuthEnv>()
 
     try {
       const target = await pickTarget({ requireModel: modelPath });
-      const audioBuffer = await generateAudio(target, {
+      const audioBuffer = await inferenceRepository(target).generate({
         backend: catalog.backend,
         text,
         modelPath,

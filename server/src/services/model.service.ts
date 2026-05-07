@@ -1,8 +1,8 @@
 import type { CatalogModel, InferenceServer, Model } from '@sirene/shared';
-import { deleteModel, importPiperModelToInference, pullModel } from '../lib/inference-client';
 import { jobStore, newJobId } from '../lib/jobs';
 import { getSetting } from '../lib/settings';
 import { modelsCatalog } from '../manifest/models.manifest';
+import { inferenceRepository } from '../repositories';
 import { inferenceServerService } from './inference-server.service';
 import { serverModelsService } from './server-models.service';
 import { BadRequestError, ConflictError, ServiceUnavailableError } from './service-error';
@@ -147,16 +147,13 @@ class ModelService {
     });
 
     try {
-      for await (const event of pullModel(
-        { url: server.url, authToken: server.authToken },
-        {
-          backend: catalog.backend,
-          modelId: catalog.id,
-          files,
-          totalSize: catalog.size,
-          hfToken: hfToken ?? undefined,
-        },
-      )) {
+      for await (const event of inferenceRepository({ url: server.url, authToken: server.authToken }).pullModel({
+        backend: catalog.backend,
+        modelId: catalog.id,
+        files,
+        totalSize: catalog.size,
+        hfToken: hfToken ?? undefined,
+      })) {
         if (event.status === 'error') {
           throw new Error(typeof event.message === 'string' ? event.message : 'Pull failed');
         }
@@ -230,7 +227,7 @@ class ModelService {
       fd.append('onnx', new File([files.onnxBytes], files.onnxName, { type: files.onnxType }));
       fd.append('config', new File([files.configBytes], files.configName, { type: files.configType }));
 
-      await importPiperModelToInference({ url: server.url, authToken: server.authToken }, fd);
+      await inferenceRepository({ url: server.url, authToken: server.authToken }).importPiperModel(fd);
 
       jobStore.complete(jobId);
       serverModelsService.invalidate(server.id);
@@ -260,7 +257,7 @@ class ModelService {
     await Promise.all(
       targets.map(async (server) => {
         try {
-          await deleteModel({ url: server.url, authToken: server.authToken }, modelId);
+          await inferenceRepository({ url: server.url, authToken: server.authToken }).deleteModel(modelId);
           serverModelsService.invalidate(server.id);
         } catch (err) {
           errors.push(`${server.name}: ${err instanceof Error ? err.message : 'delete failed'}`);

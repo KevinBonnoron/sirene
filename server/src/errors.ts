@@ -4,9 +4,9 @@
 // envelope. New errors only have to extend `ServiceError` with the right
 // status; the route layer doesn't need to know about them.
 
-export type ServiceErrorStatus = 400 | 401 | 403 | 404 | 409 | 412 | 502 | 503;
+type ServiceErrorStatus = 400 | 401 | 403 | 404 | 409 | 412 | 502 | 503;
 
-export class ServiceError extends Error {
+class ServiceError extends Error {
   public readonly status: ServiceErrorStatus;
 
   public constructor(message: string, status: ServiceErrorStatus) {
@@ -25,12 +25,6 @@ export class BadRequestError extends ServiceError {
 export class UnauthorizedError extends ServiceError {
   public constructor(message = 'Unauthorized') {
     super(message, 401);
-  }
-}
-
-export class ForbiddenError extends ServiceError {
-  public constructor(message = 'Forbidden') {
-    super(message, 403);
   }
 }
 

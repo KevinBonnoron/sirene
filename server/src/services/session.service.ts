@@ -1,13 +1,13 @@
 import type { Session } from '@sirene/shared';
+import { NotFoundError } from '../errors';
 import { generationRepository, sessionRepository } from '../repositories';
-import { NotFoundError } from './service-error';
 
-export interface CreateSessionInput {
+interface CreateSessionInput {
   name?: string;
   generations?: string[];
 }
 
-export interface UpdateSessionInput {
+interface UpdateSessionInput {
   name?: string | null;
   generations?: string[];
 }

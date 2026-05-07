@@ -1,9 +1,9 @@
 import type { PresetVoice } from '@sirene/shared';
+import { BadRequestError } from '../errors';
 import { elevenlabsRepository } from '../repositories';
-import { BadRequestError } from './service-error';
 import { settingsService } from './settings.service';
 
-export interface ElevenlabsGenerateParams {
+interface ElevenlabsGenerateParams {
   text: string;
   voiceId: string;
   speed?: number;

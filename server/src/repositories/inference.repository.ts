@@ -1,6 +1,6 @@
 import type { CatalogModel } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
-import { UpstreamError } from '../services';
+import { UpstreamError } from '../errors';
 
 // Each `InferenceTarget` points at one inference worker. The router gives us a
 // freshly resolved target per call (least-loaded among healthy servers), so the
@@ -28,12 +28,12 @@ export interface InferenceRequest {
   language?: string;
 }
 
-export interface StreamingAudioResponse {
+interface StreamingAudioResponse {
   body: ReadableStream<Uint8Array>;
   sampleRate: number;
 }
 
-export interface PullModelOptions {
+interface PullModelOptions {
   backend: string;
   modelId: string;
   files: { url: string; path: string }[];

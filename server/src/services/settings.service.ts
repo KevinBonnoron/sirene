@@ -2,7 +2,7 @@ import { settingRepository } from '../repositories';
 
 const CACHE_TTL_MS = 60_000;
 
-export interface MaskedSetting {
+interface MaskedSetting {
   key: string;
   maskedValue: string;
 }

@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Voice, VoiceSample } from '@sirene/shared';
 import JSZip from 'jszip';
+import { BadRequestError, NotFoundError } from '../errors';
 import { config } from '../lib/config';
 import { voiceRepository, voiceSampleRepository } from '../repositories';
-import { BadRequestError, NotFoundError } from './service-error';
 
 interface ImportedSample {
   file: string;
@@ -25,7 +25,7 @@ interface VoiceArchive {
   samples?: ImportedSample[];
 }
 
-export interface ExportedVoice {
+interface ExportedVoice {
   buffer: Uint8Array;
   filename: string;
 }

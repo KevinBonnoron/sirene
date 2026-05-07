@@ -1,8 +1,10 @@
 import type { InferenceServer } from '@sirene/shared';
+import { ServiceUnavailableError } from '../errors';
 import type { InferenceTarget } from '../repositories';
-import { inferenceServerService, ServiceUnavailableError, serverModelsService } from '../services';
+import { inferenceServerService } from './inference-server.service';
+import { serverModelsService } from './server-models.service';
 
-export class NoInferenceServerError extends ServiceUnavailableError {
+class NoInferenceServerError extends ServiceUnavailableError {
   public constructor(message = 'No inference server is available') {
     super(message);
   }

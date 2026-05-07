@@ -1,9 +1,9 @@
 import type { PresetVoice } from '@sirene/shared';
+import { BadRequestError } from '../errors';
 import { openAITtsRepository } from '../repositories';
-import { BadRequestError } from './service-error';
 import { settingsService } from './settings.service';
 
-export interface OpenAITtsGenerateParams {
+interface OpenAITtsGenerateParams {
   text: string;
   voiceId: string;
   speed?: number;

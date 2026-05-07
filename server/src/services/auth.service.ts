@@ -1,9 +1,9 @@
 import PocketBase, { type RecordModel } from 'pocketbase';
+import { UnauthorizedError } from '../errors';
 import { config } from '../lib/config';
 import { pb } from '../lib/pocketbase';
-import { UnauthorizedError } from './service-error';
 
-export interface AuthUser {
+interface AuthUser {
   id: string;
   email: string;
   name?: string;
@@ -11,12 +11,12 @@ export interface AuthUser {
   verified: boolean;
 }
 
-export interface AuthResult {
+interface AuthResult {
   token: string;
   user: AuthUser;
 }
 
-export interface RegisterParams {
+interface RegisterParams {
   email: string;
   password: string;
   passwordConfirm: string;

@@ -1,23 +1,23 @@
 import type { CatalogModel, InferenceServer, Model, PresetVoice } from '@sirene/shared';
-import { pickTarget } from '../lib/inference-router';
+import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError, UpstreamError } from '../errors';
 import { jobStore, newJobId } from '../lib/jobs';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { inferenceRepository } from '../repositories';
 import { elevenlabsService } from './elevenlabs.service';
 import { inferenceServerService } from './inference-server.service';
 import { openAITtsService } from './openai-tts.service';
+import { pickTarget } from './router.service';
 import { serverModelsService } from './server-models.service';
-import { BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError, UpstreamError } from './service-error';
 import { settingsService } from './settings.service';
 
 /** Thrown when no inference server is online; HTTP route maps to 503. */
-export class NoOnlineServerError extends ServiceUnavailableError {}
+class NoOnlineServerError extends ServiceUnavailableError {}
 
 /** Thrown when the caller passed serverIds that don't match online servers; route maps to 400. */
-export class InvalidServerSelectionError extends BadRequestError {}
+class InvalidServerSelectionError extends BadRequestError {}
 
 /** Thrown when the model is already installed on every requested server; route maps to 409. */
-export class ModelAlreadyInstalledError extends ConflictError {}
+class ModelAlreadyInstalledError extends ConflictError {}
 
 const HF_BASE = 'https://huggingface.co';
 

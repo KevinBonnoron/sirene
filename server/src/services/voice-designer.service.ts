@@ -1,10 +1,10 @@
 import type { Voice } from '@sirene/shared';
-import { pickTarget } from '../lib/inference-router';
+import { BadRequestError, NotFoundError } from '../errors';
 import { inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
 import { modelService } from './model.service';
-import { BadRequestError, NotFoundError } from './service-error';
+import { pickTarget } from './router.service';
 
-export interface PreviewParams {
+interface PreviewParams {
   modelId: string;
   text: string;
   instructText: string;
@@ -12,7 +12,7 @@ export interface PreviewParams {
   language: string;
 }
 
-export interface SaveDesignedVoiceParams {
+interface SaveDesignedVoiceParams {
   userId: string;
   name: string;
   description?: string;

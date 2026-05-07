@@ -1,11 +1,11 @@
-import { pickTarget } from '../lib/inference-router';
+import { BadRequestError } from '../errors';
 import { inferenceRepository } from '../repositories';
 import { modelService } from './model.service';
-import { BadRequestError } from './service-error';
+import { pickTarget } from './router.service';
 
 const TRANSCRIBE_TIMEOUT_MS = 300_000;
 
-export interface TranscribeResult {
+interface TranscribeResult {
   text: string;
   language?: string;
 }

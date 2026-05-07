@@ -1,6 +1,6 @@
 import type { PresetVoice } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
-import { UpstreamError } from '../services';
+import { UpstreamError } from '../errors';
 
 const OPENAI_BASE = 'https://api.openai.com/v1';
 

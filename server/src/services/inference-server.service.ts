@@ -1,10 +1,10 @@
 import type { InferenceServer, InferenceServerHealthStatus } from '@sirene/shared';
+import { NotFoundError } from '../errors';
 import { config } from '../lib/config';
 import { inferenceRepository, inferenceServerRepository } from '../repositories';
 import { serverModelsService } from './server-models.service';
-import { NotFoundError } from './service-error';
 
-export interface InferenceServerWriteInput {
+interface InferenceServerWriteInput {
   name: string;
   url: string;
   enabled: boolean;
@@ -12,7 +12,7 @@ export interface InferenceServerWriteInput {
   authToken?: string;
 }
 
-export type InferenceServerUpdateInput = Partial<InferenceServerWriteInput>;
+type InferenceServerUpdateInput = Partial<InferenceServerWriteInput>;
 
 const HEALTH_INTERVAL_MS = 15_000;
 

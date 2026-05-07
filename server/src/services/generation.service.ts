@@ -1,27 +1,27 @@
 import { createHash } from 'node:crypto';
 import type { Generation, GenerationAlignment, WordAlignment } from '@sirene/shared';
 import { buildWav, readPcmStream } from '@sirene/shared';
+import { BadRequestError, NotFoundError } from '../errors';
 import { config } from '../lib/config';
-import { pickTarget } from '../lib/inference-router';
 import { pb } from '../lib/pocketbase';
 import { CacheMissError, generationRepository, type InferenceRequest, inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
 import { elevenlabsService } from './elevenlabs.service';
 import { modelService } from './model.service';
 import { openAITtsService } from './openai-tts.service';
-import { BadRequestError, NotFoundError } from './service-error';
+import { pickTarget } from './router.service';
 
-export interface ListGenerationsFilter {
+interface ListGenerationsFilter {
   voice?: string;
   model?: string;
 }
 
-export interface GenerationTuningInput {
+interface GenerationTuningInput {
   pitchShift?: number;
   speedMultiplier?: number;
   variationSeed?: number;
 }
 
-export interface GenerateInput {
+interface GenerateInput {
   voice: string;
   input: string;
   speed?: number;
@@ -47,14 +47,14 @@ interface VoiceSampleRef {
 
 type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSampleRef[] } | { type: 'elevenlabs'; voiceId: string; speed: number; meta: GenerationMeta } | { type: 'openai'; voiceId: string; speed: number; meta: GenerationMeta };
 
-export interface BufferedGeneration {
+interface BufferedGeneration {
   type: 'buffered';
   generationId: string;
   audio: ArrayBuffer | Buffer;
   contentType: string;
 }
 
-export interface StreamingGeneration {
+interface StreamingGeneration {
   type: 'streaming';
   generationId: string;
   stream: ReadableStream<Uint8Array>;

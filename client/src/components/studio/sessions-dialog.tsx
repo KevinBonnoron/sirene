@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { asStringArray } from '@/utils/format';
 import { formatRelative } from '@/utils/format-relative';
 
 interface Props {
@@ -14,16 +15,6 @@ interface Props {
   generations: Generation[];
   activeSessionId: string | null;
   onRequestDelete: (sessionId: string, displayName: string) => void;
-}
-
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  }
-  if (typeof value === 'string' && value.length > 0) {
-    return [value];
-  }
-  return [];
 }
 
 export function SessionsDialog({ open, onOpenChange, sessions, generations, activeSessionId, onRequestDelete }: Props) {

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { pb } from '@/lib/pocketbase';
+import { formatTime } from '@/utils/format';
 
 interface Props {
   sessionId: string;
@@ -163,13 +164,4 @@ function PublicTake({ index, generation, voice }: PublicTakeProps) {
       </div>
     </article>
   );
-}
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds)) {
-    return '0:00';
-  }
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
 }

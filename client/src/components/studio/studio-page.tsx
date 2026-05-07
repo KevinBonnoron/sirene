@@ -16,6 +16,7 @@ import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { exportSessionAsZip } from '@/utils/export-session';
+import { asStringArray } from '@/utils/format';
 import { contentToSSML } from '@/utils/ssml';
 import { DeleteSessionAlert } from './delete-session-alert';
 import { generationToTake } from './generation-to-take';
@@ -33,16 +34,6 @@ interface DraftState {
 
 const DEFAULT_TUNING: TakeTuning = { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 };
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
-
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  }
-  if (typeof value === 'string' && value.length > 0) {
-    return [value];
-  }
-  return [];
-}
 
 function makeDraftTake(orderIndex: number, version: number, draft: DraftState): TakeData {
   return {
@@ -195,7 +186,7 @@ export function StudioPage() {
         if (activeSessionId) {
           const session = sessions?.find((s) => s.id === activeSessionId);
           if (session) {
-            const nextGenerations = [...asStringArray(session.generations), generationId];
+            const nextGenerations = [...session.generations, generationId];
             await sessionCollection.update(activeSessionId, (s) => {
               s.generations = nextGenerations;
             }).isPersisted.promise;

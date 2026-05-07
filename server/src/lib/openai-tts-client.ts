@@ -11,7 +11,7 @@ export interface OpenAITTSRequest {
   userId: string;
 }
 
-const OPENAI_VOICES: PresetVoice[] = [
+export const OPENAI_VOICES: PresetVoice[] = [
   { id: 'alloy', label: 'Alloy', description: 'Neutral and balanced' },
   { id: 'ash', label: 'Ash', description: 'Warm and conversational' },
   { id: 'ballad', label: 'Ballad', description: 'Gentle and expressive' },

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { zValidator } from '@hono/zod-validator';
+import { buildWav, readPcmStream } from '@sirene/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { config } from '../lib/config';
@@ -68,7 +69,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
   const language = voice.language || 'en';
   const effectiveSpeed = body.tuning?.speedMultiplier ?? body.speed ?? 1;
   // Map variationSeed (0..1, 0.5 default) to Piper's noise_scale (0.4..0.95). Other backends
-  // ignore the value — see `getVoiceCapabilities` on the shared side for what's actually wired.
+  // ignore the value - see `getVoiceCapabilities` on the shared side for what's actually wired.
   const noiseScale = catalog.backend === 'piper' && typeof body.tuning?.variationSeed === 'number' ? 0.4 + Math.max(0, Math.min(1, body.tuning.variationSeed)) * 0.55 : undefined;
   const meta: GenerationMeta = {
     voice: body.voice,
@@ -81,7 +82,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     editorContent: body.editorContent,
   };
 
-  // ElevenLabs — direct API call, no inference service
+  // ElevenLabs - direct API call, no inference service
   if (catalog.backend === 'elevenlabs') {
     const voiceId = options.presetVoice as string;
     if (!voiceId) {
@@ -90,7 +91,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     return { type: 'elevenlabs', elevenLabsRequest: { text: body.input, voiceId, speed: effectiveSpeed, userId }, meta };
   }
 
-  // OpenAI TTS — direct API call, no inference service
+  // OpenAI TTS - direct API call, no inference service
   if (catalog.backend === 'openai') {
     const voiceId = options.presetVoice as string;
     if (!voiceId) {
@@ -175,41 +176,6 @@ async function fetchSamplesAsBase64(samples: VoiceSample[]): Promise<string[]> {
   );
 }
 
-function buildWav(chunks: Uint8Array[], totalBytes: number, sampleRate: number): ArrayBuffer {
-  const headerSize = 44;
-  const wav = new ArrayBuffer(headerSize + totalBytes);
-  const view = new DataView(wav);
-
-  const writeStr = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeStr(0, 'RIFF');
-  view.setUint32(4, 36 + totalBytes, true);
-  writeStr(8, 'WAVE');
-  writeStr(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // byte rate
-  view.setUint16(32, 2, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-  writeStr(36, 'data');
-  view.setUint32(40, totalBytes, true);
-
-  const out = new Uint8Array(wav, headerSize);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return wav;
-}
-
 async function preCreateGeneration(meta: GenerationMeta): Promise<string> {
   const record = await generationRepository.create({
     voice: meta.voice,
@@ -233,19 +199,7 @@ async function finalizeGeneration(generationId: string, audio: ArrayBuffer | Buf
 }
 
 async function accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate: number, generationId: string) {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    chunks.push(value);
-    totalBytes += value.length;
-  }
-
+  const { chunks, totalBytes } = await readPcmStream(stream);
   if (totalBytes === 0) {
     return;
   }

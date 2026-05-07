@@ -1,4 +1,18 @@
 /**
+ * Coerce a possibly-unknown value (PB returns `unknown` for arbitrary JSON
+ * columns) into a clean string array, dropping non-string and empty entries.
+ */
+export function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    return [value];
+  }
+  return [];
+}
+
+/**
  * Format seconds as m:ss (e.g. 1:05, 0:30).
  */
 export function formatTime(seconds: number): string {

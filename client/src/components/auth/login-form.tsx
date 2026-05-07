@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useValidators } from '@/hooks/use-validators';
-import { useAppForm, zodFieldErrors } from '@/lib/form';
+import { useAppForm, zodValidator } from '@/lib/form';
 import { useAuth } from '@/providers/auth-provider';
 
 export function LoginForm() {
@@ -20,16 +20,7 @@ export function LoginForm() {
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
-    validators: {
-      onSubmit: ({ value }) => {
-        const result = schema.safeParse(value);
-        if (!result.success) {
-          return { fields: zodFieldErrors(result.error) };
-        }
-
-        return undefined;
-      },
-    },
+    validators: { onSubmit: zodValidator(schema) },
     onSubmit: async ({ value }) => {
       setServerError('');
       try {

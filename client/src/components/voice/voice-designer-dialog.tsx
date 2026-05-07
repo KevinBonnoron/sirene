@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LANGUAGES } from '@/constants/languages';
 import { useModels } from '@/hooks/use-models';
 import { cn } from '@/lib/utils';
+import { LanguagePicker } from './language-picker';
 import { Waveform } from './waveform';
 
 type Step = 1 | 2 | 3;
@@ -210,21 +211,7 @@ export function VoiceDesignerDialog({ open, onOpenChange }: Props) {
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>{t('voice.language')}</Label>
-                <Select value={language} onValueChange={(v) => dispatch({ type: 'setLanguage', value: v })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <LanguagePicker value={language} onChange={(v) => dispatch({ type: 'setLanguage', value: v })} />
             </div>
           )}
 

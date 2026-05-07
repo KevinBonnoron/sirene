@@ -12,14 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { LANGUAGES } from '@/constants/languages';
 import { useModels } from '@/hooks/use-models';
 import { getCurrentUserId } from '@/lib/auth-interceptor';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
+import { LanguagePicker } from './language-picker';
 import { AvatarPicker } from './voice-dialog/avatar-picker';
 import { getNextSampleId, makeInitialState, voiceFormReducer } from './voice-dialog/state';
 import { VoiceModelPicker } from './voice-dialog/voice-model-picker';
@@ -218,21 +217,7 @@ export function VoiceDialog({ voice, trigger, open: controlledOpen, onOpenChange
                 <Label>{t('voice.description')}</Label>
                 <Textarea value={description} onChange={(e) => dispatch({ type: 'setDescription', value: e.target.value })} placeholder={t('voice.descriptionPlaceholder')} rows={3} />
               </div>
-              <div className="space-y-2">
-                <Label>{t('voice.language')}</Label>
-                <Select value={language} onValueChange={(v) => dispatch({ type: 'setLanguage', value: v })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <LanguagePicker value={language} onChange={(v) => dispatch({ type: 'setLanguage', value: v })} />
               <div className="space-y-2">
                 <Label>{t('voice.tags')}</Label>
                 {tags.length > 0 && (

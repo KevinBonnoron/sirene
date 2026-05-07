@@ -17,5 +17,8 @@
       "file": "client/src/components/ui/**",
       "exports": ["*"]
     }
-  ]
+  ],
+  "duplicates": {
+    "ignore": ["db/pb_migrations/**"]
+  }
 }

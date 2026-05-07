@@ -10,6 +10,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { cn } from '@/lib/utils';
+import { formatTime } from '@/utils/format';
 import { countWords, estimateSpeechDuration } from '@/utils/ssml';
 import { type PitchPoint, ProsodyTimeline } from './prosody-timeline';
 import { type ActiveMarks, TakeEditor, type TakeEditorHandle } from './take-editor';
@@ -59,15 +60,6 @@ const STATE_BADGE: Record<TakeState, { labelKey: string; dotClass: string; textC
   ready: { labelKey: 'studio.stateReady', dotClass: 'bg-accent-sage', textClass: 'text-accent-sage' },
   tuned: { labelKey: 'studio.stateTuned', dotClass: 'bg-accent-violet', textClass: 'text-accent-violet' },
 };
-
-function formatTime(seconds?: number): string {
-  if (!seconds || !Number.isFinite(seconds)) {
-    return '0:00';
-  }
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 type AffinageMode = 'quick' | 'detailed';
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-- The Docker image ships with **zero models** — only code and manifests
+- The Docker image ships with **zero models** - only code and manifests
 - A Docker volume (`sirene-models`) persists models between restarts
 - Models are downloaded on demand from the web interface
 - The Python service downloads into the volume and lazy-loads into GPU memory
@@ -78,6 +78,6 @@ Each model has a JSON manifest embedded in the `manifests/` directory that descr
 
 The inference service manages GPU memory with:
 
-- **Lazy loading** — Models are loaded only when first used
-- **LRU eviction** — When `INFERENCE_MAX_LOADED_MODELS` is reached, the least recently used model is unloaded
-- **Manual unload** — Models can be explicitly unloaded via `POST /models/unload`
+- **Lazy loading** - Models are loaded only when first used
+- **LRU eviction** - When `INFERENCE_MAX_LOADED_MODELS` is reached, the least recently used model is unloaded
+- **Manual unload** - Models can be explicitly unloaded via `POST /models/unload`

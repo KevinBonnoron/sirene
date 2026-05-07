@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Sirene
   text: Multi-backend TTS Router
-  tagline: A single entry point to generate speech via Kokoro, Qwen3-TTS, F5-TTS, Piper, and more — with custom voice management via audio samples.
+  tagline: A single entry point to generate speech via Kokoro, Qwen3-TTS, F5-TTS, Piper, and more - with custom voice management via audio samples.
   actions:
     - theme: brand
       text: Get Started

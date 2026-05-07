@@ -2,12 +2,12 @@ import type { JSONContent } from '@tiptap/core';
 
 function getSpeedColor(rate: number): string {
   if (rate < 1.0) {
-    return 'oklch(0.72 0.22 230)'; // blue — slow
+    return 'oklch(0.72 0.22 230)'; // blue - slow
   }
   if (rate <= 1.25) {
-    return 'oklch(0.80 0.18 55)'; // amber — fast
+    return 'oklch(0.80 0.18 55)'; // amber - fast
   }
-  return 'oklch(0.72 0.24 25)'; // red — x-fast
+  return 'oklch(0.72 0.24 25)'; // red - x-fast
 }
 
 export function getSpeedStyle(rate: number): string {
@@ -51,7 +51,7 @@ export function stripSSML(text: string): string {
 }
 
 // Tiptap text nodes split when marks change. A single word "hello" wrapped in a mark gets
-// emitted as two adjacent text nodes ("hel" + "lo") that we must NOT separate with a space —
+// emitted as two adjacent text nodes ("hel" + "lo") that we must NOT separate with a space -
 // otherwise countWords doubles the count. Track block (paragraph) boundaries explicitly and
 // only insert a separator between blocks.
 const TIPTAP_BLOCK_TYPES = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem']);

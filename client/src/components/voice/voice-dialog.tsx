@@ -207,7 +207,7 @@ export function VoiceDialog({ voice, trigger, open: controlledOpen, onOpenChange
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col sm:min-h-0 sm:flex-1 sm:overflow-hidden">
           <div className="flex flex-col gap-6 sm:min-h-0 sm:flex-1 sm:flex-row sm:overflow-y-auto">
-            {/* Left panel — Avatar, Name, Description */}
+            {/* Left panel - Avatar, Name, Description */}
             <div className="space-y-4 sm:w-2/5">
               <AvatarPicker src={displayedAvatar} name={name} onFile={(file) => dispatch({ type: 'setAvatar', file })} onClear={() => dispatch({ type: 'clearAvatar' })} />
               <div className="space-y-2">
@@ -292,7 +292,7 @@ export function VoiceDialog({ voice, trigger, open: controlledOpen, onOpenChange
             <Separator orientation="vertical" className="hidden h-auto sm:block" />
             <Separator orientation="horizontal" className="sm:hidden" />
 
-            {/* Right panel — Model, Voice, Samples */}
+            {/* Right panel - Model, Voice, Samples */}
             <div className="flex flex-col gap-4 sm:min-h-0 sm:w-3/5">
               <VoiceModelPicker open={open} installedModels={installedModels} modelId={modelId} presetVoice={presetVoice} onModelChange={(id) => dispatch({ type: 'setModelId', value: id })} onPresetVoiceChange={(id) => dispatch({ type: 'setPresetVoice', value: id })} />
 

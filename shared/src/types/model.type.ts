@@ -1,4 +1,4 @@
-/** A file to download — either a plain path (uses the model repo) or an object with a custom repo.
+/** A file to download - either a plain path (uses the model repo) or an object with a custom repo.
  *  Use `remotePath` when the HF file path differs from the desired local path. */
 export type CatalogFile = string | { path: string; repo?: string; remotePath?: string };
 
@@ -11,7 +11,7 @@ export interface PresetVoice {
   description?: string;
 }
 
-/** Catalog entry — available for download (from the manifest) */
+/** Catalog entry - available for download (from the manifest) */
 export interface CatalogModel {
   id: string;
   name: string;
@@ -32,7 +32,7 @@ export interface CatalogModel {
   maxReferenceDuration?: number;
   /** Model requires a HuggingFace token (gated repo). */
   gated?: boolean;
-  /** Language code (e.g. "fr", "en") — mainly for Piper custom imports. */
+  /** Language code (e.g. "fr", "en") - mainly for Piper custom imports. */
   language?: string;
   /** Supports instruct_text for emotional tone control (e.g. CosyVoice, Qwen, HiggsAudio). */
   supportsInstruct?: boolean;
@@ -40,7 +40,7 @@ export interface CatalogModel {
   supportsEffects?: boolean;
 }
 
-/** Installation record — derived from filesystem + in-memory download state */
+/** Installation record - derived from filesystem + in-memory download state */
 export type ModelStatus = 'pulling' | 'installed' | 'error';
 
 export interface Model {

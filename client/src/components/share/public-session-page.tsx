@@ -137,7 +137,7 @@ function PublicTake({ index, generation, voice }: PublicTakeProps) {
   const { t } = useTranslation();
   const audioUrl = generation.audio ? pb.files.getURL(generation, generation.audio) : undefined;
   const { isPlaying, toggle } = useAudioPlayback(audioUrl);
-  const voiceName = voice?.name ?? '—';
+  const voiceName = voice?.name ?? '-';
   const avatarUrl = voice?.avatar ? pb.files.getURL(voice, voice.avatar) : undefined;
   const duration = generation.duration ?? 0;
 

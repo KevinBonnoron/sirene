@@ -6,7 +6,7 @@
     </linearGradient>
   </defs>
   <rect width="256" height="256" rx="56" fill="url(#g)"/>
-  <!-- Siren's song — sound wave arcs rising upward -->
+  <!-- Siren's song - sound wave arcs rising upward -->
   <g fill="none" stroke="#fff" stroke-linecap="round" stroke-width="10">
     <path d="M92 104 Q128 84 164 104" opacity=".55"/>
     <path d="M76 74 Q128 46 180 74" opacity=".75"/>

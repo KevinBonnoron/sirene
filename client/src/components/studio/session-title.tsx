@@ -8,7 +8,7 @@ interface Props {
   onEditingChange: (editing: boolean) => void;
 }
 
-// Parent owns reset semantics by passing a `key` keyed on the active session id — switching
+// Parent owns reset semantics by passing a `key` keyed on the active session id - switching
 // sessions remounts this component so the draft is freshly initialised from `name`. Same
 // `name` change without a session switch (autosave echo) doesn't stomp the local draft.
 export function SessionTitle({ name, onChange, editing, onEditingChange }: Props) {

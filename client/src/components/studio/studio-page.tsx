@@ -529,7 +529,7 @@ export function StudioPage() {
                   <Plus className="size-4 shrink-0" />
                   <span className="truncate">
                     {t('studio.addTake')}
-                    <span className="hidden text-muted-foreground/70 sm:inline"> — {t('studio.addTakeHint')}</span>
+                    <span className="hidden text-muted-foreground/70 sm:inline"> - {t('studio.addTakeHint')}</span>
                   </span>
                 </span>
                 <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-[11px] leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>

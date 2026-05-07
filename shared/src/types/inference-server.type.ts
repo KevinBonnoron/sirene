@@ -19,6 +19,6 @@ export interface InferenceServer extends PocketBaseRecord {
   priority: number;
   lastHealth: InferenceServerHealth;
   /** Outbound auth token used by the API to authenticate against the remote inference server.
-   *  PB-hidden — only admin reads return it; the client never sees this field. */
+   *  PB-hidden - only admin reads return it; the client never sees this field. */
   authToken?: string;
 }

@@ -31,7 +31,7 @@ export async function listElevenLabsVoices(userId: string): Promise<PresetVoice[
 
   const data = (await response.json()) as ElevenLabsVoiceResponse;
   return data.voices.map((v) => {
-    const match = v.name.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+    const match = v.name.match(/^(.+?)\s*[-–-]\s*(.+)$/);
     if (match) {
       return { id: v.voice_id, label: match[1].trim(), description: match[2].trim() };
     }

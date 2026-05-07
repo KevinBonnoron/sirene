@@ -8,12 +8,12 @@ PIP="${PIP:-pip}"
 # chatterbox-tts pins numpy<1.26 and transformers==4.46.3 which conflicts
 # with other backends. Only the package itself needs --no-deps; its transitive
 # deps (resemble-perth, pykakasi, etc.) are declared in pyproject.toml.
-# s3tokenizer pulls onnx which requires protoc to build from source — skip it,
+# s3tokenizer pulls onnx which requires protoc to build from source - skip it,
 # onnxruntime (already installed) provides what we need at runtime.
 $PIP install --no-deps chatterbox-tts s3tokenizer
 
 # flash-attn needs torch at build time and nvcc (CUDA toolkit) to compile from
-# source — no pre-built wheels on PyPI. Install only when both CUDA torch and
+# source - no pre-built wheels on PyPI. Install only when both CUDA torch and
 # nvcc are available; skip gracefully otherwise (backends fall back to the
 # manual PyTorch attention implementation).
 if python3 -c "import torch; exit(0 if torch.version.cuda else 1)" 2>/dev/null \

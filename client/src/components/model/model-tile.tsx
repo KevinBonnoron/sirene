@@ -190,7 +190,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
       .filter((id): id is string => !!id),
   );
 
-  // Custom (uploaded) models can't be transferred — only show servers where they actually live.
+  // Custom (uploaded) models can't be transferred - only show servers where they actually live.
   const visibleServers = isCustom ? servers.filter((s) => installedSet.has(s.id)) : servers;
   const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.lastHealth.status === 'online' && !pullingByServer.has(s.id));
 

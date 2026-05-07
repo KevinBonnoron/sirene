@@ -30,7 +30,9 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
         if not entry.is_dir():
             continue
 
-        onnx_files = [f for f in entry.rglob("*.onnx") if not f.name.endswith(".onnx.json")]
+        onnx_files = [
+            f for f in entry.rglob("*.onnx") if not f.name.endswith(".onnx.json")
+        ]
         if not onnx_files:
             continue
 
@@ -63,19 +65,21 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
         rel_onnx = str(onnx_path.relative_to(entry))
         rel_config = str(config_path.relative_to(entry))
 
-        custom.append({
-            "id": entry.name,
-            "name": f"Piper {locale} {speaker}",
-            "backend": "piper",
-            "backendDisplayName": "Piper",
-            "backendDescription": "Fast and lightweight offline TTS with a wide range of languages.",
-            "description": f"Piper — custom voice ({espeak_voice}).",
-            "repo": "",
-            "files": [rel_onnx, rel_config],
-            "size": onnx_stat.st_size,
-            "types": ["preset"],
-            "presetVoices": preset_voices,
-        })
+        custom.append(
+            {
+                "id": entry.name,
+                "name": f"Piper {locale} {speaker}",
+                "backend": "piper",
+                "backendDisplayName": "Piper",
+                "backendDescription": "Fast and lightweight offline TTS with a wide range of languages.",
+                "description": f"Piper - custom voice ({espeak_voice}).",
+                "repo": "",
+                "files": [rel_onnx, rel_config],
+                "size": onnx_stat.st_size,
+                "types": ["preset"],
+                "presetVoices": preset_voices,
+            }
+        )
 
     return custom
 
@@ -83,7 +87,11 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
 @router.get("")
 async def list_models():
     models_path = Path(settings.models_path)
-    installed = [d.name for d in sorted(models_path.iterdir()) if d.is_dir()] if models_path.exists() else []
+    installed = (
+        [d.name for d in sorted(models_path.iterdir()) if d.is_dir()]
+        if models_path.exists()
+        else []
+    )
     custom = _scan_custom_piper_models(models_path)
     return {"installed": installed, "custom": custom}
 
@@ -102,25 +110,42 @@ async def pull_model(req: ModelPullRequest):
                     if failed.is_set():
                         return
                     await queue.put(event)
-            except Exception:  # noqa: BLE001 — full traceback goes to logs; client gets a generic message
-                logger.exception("Model pull producer failed for model_id=%s", req.model_id)
+            except Exception:  # noqa: BLE001 - full traceback goes to logs; client gets a generic message
+                logger.exception(
+                    "Model pull producer failed for model_id=%s", req.model_id
+                )
                 failed.set()
-                await queue.put({"status": "error", "message": "Model pull failed. See inference server logs for details."})
+                await queue.put(
+                    {
+                        "status": "error",
+                        "message": "Model pull failed. See inference server logs for details.",
+                    }
+                )
 
         tasks = [
-            asyncio.create_task(produce(download_model_files(
-                model_path=model_path,
-                files=req.files,
-                total_size=req.total_size,
-                hf_token=req.hf_token,
-            )))
+            asyncio.create_task(
+                produce(
+                    download_model_files(
+                        model_path=model_path,
+                        files=req.files,
+                        total_size=req.total_size,
+                        hf_token=req.hf_token,
+                    )
+                )
+            )
         ]
 
         if not is_installed(req.backend):
-            tasks.append(asyncio.create_task(produce(install_backend_deps(
-                req.backend,
-                device=settings.device,
-            ))))
+            tasks.append(
+                asyncio.create_task(
+                    produce(
+                        install_backend_deps(
+                            req.backend,
+                            device=settings.device,
+                        )
+                    )
+                )
+            )
 
         async def drain():
             try:
@@ -152,13 +177,20 @@ async def import_piper_model(
         raise HTTPException(status_code=400, detail="Config file is not valid JSON")
 
     if "espeak" not in config_data or "phoneme_id_map" not in config_data:
-        raise HTTPException(status_code=400, detail='Config must contain "espeak" and "phoneme_id_map" fields (Piper format)')
+        raise HTTPException(
+            status_code=400,
+            detail='Config must contain "espeak" and "phoneme_id_map" fields (Piper format)',
+        )
 
     espeak_voice = (config_data.get("espeak") or {}).get("voice", "")
     parts = espeak_voice.split("-")
     lang_part = parts[0] if parts else ""
     region_part = parts[1] if len(parts) > 1 else None
-    locale = f"{lang_part.lower()}_{region_part.upper()}" if region_part else lang_part.lower()
+    locale = (
+        f"{lang_part.lower()}_{region_part.upper()}"
+        if region_part
+        else lang_part.lower()
+    )
 
     sample_rate = (config_data.get("audio") or {}).get("sample_rate", 22050)
     quality = "low" if sample_rate <= 16000 else "medium"
@@ -175,11 +207,17 @@ async def import_piper_model(
     model_dir = Path(settings.models_path) / slug
 
     if model_dir.exists():
-        raise HTTPException(status_code=409, detail=f'A model directory "{slug}" already exists')
+        raise HTTPException(
+            status_code=409, detail=f'A model directory "{slug}" already exists'
+        )
 
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    onnx_name = onnx.filename if (onnx.filename or "").endswith(".onnx") else f"{speaker_slug}.onnx"
+    onnx_name = (
+        onnx.filename
+        if (onnx.filename or "").endswith(".onnx")
+        else f"{speaker_slug}.onnx"
+    )
     config_name = f"{onnx_name}.json"
 
     onnx_data = await onnx.read()

@@ -24,8 +24,8 @@ All configuration is done via environment variables. Default values work for loc
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VITE_PB_URL` | — | PocketBase URL (set at build time) |
-| `VITE_SERVER_URL` | — | Hono server URL (set at build time) |
+| `VITE_PB_URL` | - | PocketBase URL (set at build time) |
+| `VITE_SERVER_URL` | - | Hono server URL (set at build time) |
 
 ::: tip
 In development, Vite proxies requests to the backend services automatically. These variables are only needed for production builds.
@@ -37,8 +37,8 @@ These variables are used by the Docker entrypoint to initialize PocketBase on fi
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PB_SUPERUSER_EMAIL` | — | PocketBase admin email (auto-created on startup) |
-| `PB_SUPERUSER_PASSWORD` | — | PocketBase admin password |
+| `PB_SUPERUSER_EMAIL` | - | PocketBase admin email (auto-created on startup) |
+| `PB_SUPERUSER_PASSWORD` | - | PocketBase admin password |
 | `INFERENCE_DEVICE` | `cpu` | Inference device (`cpu` or `cuda`) |
 
 ::: tip

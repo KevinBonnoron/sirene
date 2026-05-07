@@ -6,14 +6,14 @@ set -euo pipefail
 #   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 #
 # Modes (interactive prompt by default; skip with INSTALL_MODE):
-#   full    — server + inference on this machine [default]
-#   server  — just the app, configure inference workers via the UI
-#   worker  — just the inference, prints URL + auth token
+#   full    - server + inference on this machine [default]
+#   server  - just the app, configure inference workers via the UI
+#   worker  - just the inference, prints URL + auth token
 #
 # Optional env vars:
 #   INSTALL_MODE   full|server|worker
-#   DEVICE         cpu|cuda                (full / worker only — auto-detected if unset)
-#   INFERENCE_URL  http://...               (server mode only — seeds the registry at boot)
+#   DEVICE         cpu|cuda                (full / worker only - auto-detected if unset)
+#   INFERENCE_URL  http://...               (server mode only - seeds the registry at boot)
 #   PORT           default 8000             (worker mode only)
 #   SERVER_URL     default detected via hostname -I (worker mode only)
 #   IMAGE          override the inference image (worker mode only)
@@ -146,7 +146,7 @@ fi
 
 case "$INSTALL_MODE" in
   full|server|worker) ;;
-  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" — expected full / server / worker" ;;
+  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / worker" ;;
 esac
 
 # ── Pick device (full / worker only) ────────────────────────────────────────
@@ -175,7 +175,7 @@ if [ "$INSTALL_MODE" = "full" ] || [ "$INSTALL_MODE" = "worker" ]; then
   fi
   case "$DEVICE" in
     cpu|cuda) ;;
-    *) die "unknown DEVICE \"$DEVICE\" — expected cpu / cuda" ;;
+    *) die "unknown DEVICE \"$DEVICE\" - expected cpu / cuda" ;;
   esac
 fi
 
@@ -212,7 +212,7 @@ if [ "$INSTALL_MODE" = "worker" ]; then
   remove_container sirene-inference
 
   # Reuse the existing token on reinstall so server entries already registered
-  # with this worker keep working — rotating here would silently break every
+  # with this worker keep working - rotating here would silently break every
   # server pointing at this URL. A non-empty file with only whitespace would
   # otherwise produce an empty AUTH_TOKEN and boot the worker fail-closed.
   if [ -s auth_token ]; then
@@ -335,7 +335,7 @@ fi
 if [ -z "${PB_PASSWORD:-}" ]; then
   if [ "$PB_DATA_HAS_CONTENT" = "1" ]; then
     printf "${YELLOW}warning:${RESET} pb_data already exists but no credentials file was found.\n"
-    printf "         Skipping password generation — recover the existing admin via PB Admin UI\n"
+    printf "         Skipping password generation - recover the existing admin via PB Admin UI\n"
     printf "         or remove %s to start fresh.\n" "$DATA_DIR_ABS/pb_data"
     PB_PASSWORD=""
   else
@@ -351,7 +351,7 @@ fi
 
 ensure_network
 
-# Inference (full mode only) — runs first so the server can talk to it on the network.
+# Inference (full mode only) - runs first so the server can talk to it on the network.
 if [ "$INSTALL_MODE" = "full" ]; then
   INFERENCE_IMAGE="${REPO}-inference:$([ "$DEVICE" = "cuda" ] && echo cuda || echo latest)"
   remove_container sirene-inference
@@ -418,7 +418,7 @@ printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n"
 if [ -n "$PB_PASSWORD" ]; then
   printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "${PB_PASSWORD}"
 else
-  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "(see existing pb_data — credentials were not regenerated)"
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "(see existing pb_data - credentials were not regenerated)"
 fi
 printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Data:" "$DATA_DIR_ABS"

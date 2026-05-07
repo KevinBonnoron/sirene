@@ -13,7 +13,7 @@ class JobStore {
   private readonly jobs = new Map<string, Job>();
   private readonly listeners = new Set<Listener>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
-  /** Pending progress updates keyed by job id — only the latest per job is kept. */
+  /** Pending progress updates keyed by job id - only the latest per job is kept. */
   private readonly pendingProgress = new Map<string, Job>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -25,7 +25,7 @@ class JobStore {
     return this.jobs.get(id) ?? null;
   }
 
-  /** Find a running job by type+target — used to dedupe (e.g. avoid double model pulls). */
+  /** Find a running job by type+target - used to dedupe (e.g. avoid double model pulls). */
   public findRunning(type: JobType, target: string): Job | null {
     for (const job of this.jobs.values()) {
       if (job.status === 'running' && job.type === type && job.target === target) {

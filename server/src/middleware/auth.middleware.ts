@@ -26,7 +26,7 @@ export async function authMiddleware(c: Context, next: Next) {
 }
 
 /** Mount after `authMiddleware` on routes that should only be reachable by users
- *  with `role = 'admin'` (the deployment owner — the first registered user). */
+ *  with `role = 'admin'` (the deployment owner - the first registered user). */
 export async function requireAdmin(c: Context<AuthEnv>, next: Next) {
   if (!c.get('isAdmin')) {
     return c.json({ message: 'Forbidden' }, 403);

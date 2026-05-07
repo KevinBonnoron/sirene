@@ -36,7 +36,11 @@ class GenerateParams:
     @property
     def has_reference_audio(self) -> bool:
         """True if any form of reference audio is available (URLs, binary data, or cache key)."""
-        return bool(self.reference_audio or self.reference_audio_data or self.reference_cache_key)
+        return bool(
+            self.reference_audio
+            or self.reference_audio_data
+            or self.reference_cache_key
+        )
 
     @property
     def joined_reference_text(self) -> str:
@@ -143,7 +147,9 @@ class TTSBackend(ABC):
         return audio
 
     @contextmanager
-    def _reference_audio(self, params: "GenerateParams", max_duration: float | None = None):
+    def _reference_audio(
+        self, params: "GenerateParams", max_duration: float | None = None
+    ):
         """Resolve reference audio with L1 caching, yield the file path.
 
         Uses params.reference_cache_key as the cache key when provided (stable,
@@ -173,13 +179,21 @@ class TTSBackend(ABC):
             return
 
         if params.reference_audio_data:
-            logger.info(f"[{self.name}] L1 cache miss, decoding reference audio from request")
-            temp_path = self._decode_and_concatenate_reference(params.reference_audio_data, max_duration)
+            logger.info(
+                f"[{self.name}] L1 cache miss, decoding reference audio from request"
+            )
+            temp_path = self._decode_and_concatenate_reference(
+                params.reference_audio_data, max_duration
+            )
         elif params.reference_audio:
             logger.info(f"[{self.name}] L1 cache miss, downloading reference audio")
-            temp_path = self._download_and_concatenate_reference(params.reference_audio, max_duration)
+            temp_path = self._download_and_concatenate_reference(
+                params.reference_audio, max_duration
+            )
         else:
-            raise ValueError("Reference audio cache miss but no audio data provided in request")
+            raise ValueError(
+                "Reference audio cache miss but no audio data provided in request"
+            )
 
         try:
             cached_path = cache.put_audio(key, temp_path)
@@ -208,7 +222,9 @@ class TTSBackend(ABC):
         if params.reference_cache_key:
             key = params.reference_cache_key
         elif params.reference_audio:
-            key = get_cache().audio_cache_key(params.reference_audio, self.max_reference_duration)
+            key = get_cache().audio_cache_key(
+                params.reference_audio, self.max_reference_duration
+            )
         else:
             return False
 
@@ -225,9 +241,13 @@ class TTSBackend(ABC):
             max_duration = self.max_reference_duration
 
         _MIME_TO_EXT = {
-            "audio/wav": ".wav", "audio/wave": ".wav", "audio/x-wav": ".wav",
-            "audio/mp3": ".mp3", "audio/mpeg": ".mp3",
-            "audio/ogg": ".ogg", "audio/flac": ".flac",
+            "audio/wav": ".wav",
+            "audio/wave": ".wav",
+            "audio/x-wav": ".wav",
+            "audio/mp3": ".mp3",
+            "audio/mpeg": ".mp3",
+            "audio/ogg": ".ogg",
+            "audio/flac": ".flac",
         }
 
         def _decode_one(data_uri: str) -> tuple[bytes, str]:
@@ -266,6 +286,7 @@ class TTSBackend(ABC):
                     target_sr = sr
                 elif sr != target_sr:
                     import librosa
+
                     audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
 
                 all_audio.append(audio)
@@ -313,7 +334,7 @@ class TTSBackend(ABC):
         if max_duration is None:
             max_duration = self.max_reference_duration
 
-        # Fast path: single URL — just download and return
+        # Fast path: single URL - just download and return
         if len(urls) == 1:
             return self._download_single_reference(urls[0])
 
@@ -322,7 +343,9 @@ class TTSBackend(ABC):
         cumulative_samples = 0
 
         for i, url in enumerate(urls):
-            logger.info(f"[{self.name}] Downloading reference audio {i + 1}/{len(urls)} from {url[:80]}...")
+            logger.info(
+                f"[{self.name}] Downloading reference audio {i + 1}/{len(urls)} from {url[:80]}..."
+            )
             response = httpx.get(url, timeout=30.0)
             response.raise_for_status()
 
@@ -347,9 +370,7 @@ class TTSBackend(ABC):
                 elif sr != target_sr:
                     import librosa
 
-                    audio = librosa.resample(
-                        audio, orig_sr=sr, target_sr=target_sr
-                    )
+                    audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
 
                 all_audio.append(audio)
                 cumulative_samples += len(audio)

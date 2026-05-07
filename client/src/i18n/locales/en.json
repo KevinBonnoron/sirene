@@ -166,6 +166,7 @@
     "removeFromAll": "Remove from all servers",
     "noMatch": "No models match your filters.",
     "actionInstall": "Install model",
+    "actionInstallNoServer": "No online inference server — check settings",
     "actionInstalling": "Installing model",
     "actionRemove": "Remove model",
     "actionInstallOnServer": "Install on {{name}}",

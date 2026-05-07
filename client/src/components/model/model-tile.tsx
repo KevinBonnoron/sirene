@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useJobs } from '@/hooks/use-jobs';
 import { cn } from '@/lib/utils';
 import { downloadBlob } from '@/utils/download';
@@ -42,6 +43,10 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   const isMultiServer = !isApi && enabledServers.length > 1;
   const showCoverage = !isApi && status === 'installed' && enabledServers.length > 1 && installedServerIds.length < enabledServers.length;
   const installedNames = installedServerIds.map((id) => enabledServers.find((s) => s.id === id)?.name).filter((n): n is string => !!n);
+  // Mirrors the server-side filter in model.service.ts: 'online' or 'unknown' (never probed)
+  // are eligible; 'offline' is not. Without this, the Install button stays clickable when
+  // every enabled server is down and the API rejects with 503 NoOnlineServerError.
+  const hasOnlineServer = enabledServers.some((s) => s.last_health_status !== 'offline');
 
   async function handleRemove(serverId?: string) {
     try {
@@ -84,7 +89,11 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
                 <Download className="size-3.5" />
               </Button>
             )}
-            {isMultiServer ? <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} /> : <SingleServerActions status={status} isCustom={isCustom} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />}
+            {isMultiServer ? (
+              <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} />
+            ) : (
+              <SingleServerActions status={status} isCustom={isCustom} hasOnlineServer={hasOnlineServer} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />
+            )}
           </div>
         )}
       </div>
@@ -132,15 +141,28 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   );
 }
 
-function SingleServerActions({ status, isCustom, onPull, onRemove }: { status: ModelStatus; isCustom: boolean; onPull: () => void; onRemove: () => void }) {
+function SingleServerActions({ status, isCustom, hasOnlineServer, onPull, onRemove }: { status: ModelStatus; isCustom: boolean; hasOnlineServer: boolean; onPull: () => void; onRemove: () => void }) {
   const { t } = useTranslation();
+  const showInstall = (status === 'available' || status === 'error') && !isCustom;
   return (
     <>
-      {(status === 'available' || status === 'error') && !isCustom && (
-        <Button size="icon" variant="outline" className="size-7" onClick={onPull} aria-label={t('model.actionInstall')}>
-          <Download className="size-3.5" />
-        </Button>
-      )}
+      {showInstall &&
+        (hasOnlineServer ? (
+          <Button size="icon" variant="outline" className="size-7" onClick={onPull} aria-label={t('model.actionInstall')}>
+            <Download className="size-3.5" />
+          </Button>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* aria-disabled (not disabled) keeps the button focusable so the tooltip can
+                   open via keyboard. pointerEvents stays enabled so hover triggers it too. */}
+              <Button size="icon" variant="outline" className="size-7 opacity-50" aria-disabled aria-label={t('model.actionInstallNoServer')} onClick={(e) => e.preventDefault()}>
+                <Download className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('model.actionInstallNoServer')}</TooltipContent>
+          </Tooltip>
+        ))}
       {status === 'pulling' && (
         <Button size="icon" variant="outline" className="size-7" disabled aria-label={t('model.actionInstalling')}>
           <Loader2 className="size-3.5 animate-spin" />

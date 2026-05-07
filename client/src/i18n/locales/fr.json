@@ -166,6 +166,7 @@
     "removeFromAll": "Supprimer de tous les serveurs",
     "noMatch": "Aucun modèle ne correspond à vos filtres.",
     "actionInstall": "Installer le modèle",
+    "actionInstallNoServer": "Aucun serveur d'inférence en ligne — vérifiez les paramètres",
     "actionInstalling": "Installation en cours",
     "actionRemove": "Supprimer le modèle",
     "actionInstallOnServer": "Installer sur {{name}}",

@@ -8,7 +8,6 @@ import { serverModelsService } from './server-models.service';
 
 /** Thrown when no inference server is online; HTTP route maps to 503. */
 export class NoOnlineServerError extends Error {
-  public readonly code = 'no_online_server';
   public constructor(message: string) {
     super(message);
     this.name = 'NoOnlineServerError';
@@ -17,7 +16,6 @@ export class NoOnlineServerError extends Error {
 
 /** Thrown when the caller passed serverIds that don't match online servers; route maps to 400. */
 export class InvalidServerSelectionError extends Error {
-  public readonly code = 'invalid_server_selection';
   public constructor(message: string) {
     super(message);
     this.name = 'InvalidServerSelectionError';
@@ -26,7 +24,6 @@ export class InvalidServerSelectionError extends Error {
 
 /** Thrown when the model is already installed on every requested server; route maps to 409. */
 export class ModelAlreadyInstalledError extends Error {
-  public readonly code = 'already_installed';
   public constructor(message: string) {
     super(message);
     this.name = 'ModelAlreadyInstalledError';
@@ -240,7 +237,7 @@ class ModelService {
 
   private async runPiperImport(jobId: string, server: InferenceServer, name: string, files: { onnxBytes: ArrayBuffer; onnxName: string; onnxType: string; configBytes: ArrayBuffer; configName: string; configType: string }) {
     try {
-      // Build a fresh FormData per server — File/Blob hold the same underlying bytes
+      // Build a fresh FormData per server - File/Blob hold the same underlying bytes
       // by reference so this stays cheap memory-wise.
       const fd = new FormData();
       fd.append('name', name);

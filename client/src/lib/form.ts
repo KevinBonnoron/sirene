@@ -1,9 +1,10 @@
-import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
+import { createFormHook } from '@tanstack/react-form';
 import type { ZodError } from 'zod';
 import { EmailField } from '@/components/atoms/email-field';
 import { InputField } from '@/components/atoms/input-field';
 import { PasswordField } from '@/components/atoms/password-field';
 import { SubscribeButton } from '@/components/atoms/subscribe-button';
+import { fieldContext, formContext } from './form-contexts';
 
 export function zodFieldErrors(error: ZodError): Record<string, string> {
   return error.issues
@@ -16,8 +17,6 @@ export function zodFieldErrors(error: ZodError): Record<string, string> {
       return acc;
     }, {});
 }
-
-export const { fieldContext, useFieldContext, formContext, useFormContext } = createFormHookContexts();
 
 export const { useAppForm } = createFormHook({
   fieldContext,

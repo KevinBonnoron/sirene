@@ -1,0 +1,21 @@
+{
+  "$schema": "https://fallow.dev/schema.json",
+  "dynamicallyLoaded": [
+    "db/pb_migrations/**"
+  ],
+  "entry": [
+    "desktop/electrobun.config.ts",
+    "desktop/src/bun/index.ts"
+  ],
+  "ignorePatterns": [
+    "desktop/build/**",
+    "desktop/vendor/**",
+    "desktop/artifacts/**"
+  ],
+  "ignoreExports": [
+    {
+      "file": "client/src/components/ui/**",
+      "exports": ["*"]
+    }
+  ]
+}

@@ -56,23 +56,6 @@ function buildInferenceBody(request: InferenceRequest) {
   };
 }
 
-export async function installBackendDeps(target: InferenceTarget, backend: string): Promise<void> {
-  try {
-    const response = await fetch(`${target.url}/backends/${backend}/install`, {
-      method: 'POST',
-      headers: authHeaders(target),
-      signal: AbortSignal.timeout(30 * 60 * 1000), // 30 min — torch can be slow
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Backend install failed (${response.status}): ${body}`);
-    }
-  } catch (err) {
-    // Non-fatal: inference server may be unavailable (e.g. API-only backends)
-    console.warn(`Could not install deps for backend "${backend}":`, err);
-  }
-}
-
 export async function getModels(target: InferenceTarget): Promise<{ installed: string[]; custom: CatalogModel[] }> {
   // Throws on transport / non-OK so callers can distinguish a genuinely empty
   // worker from a transient probe failure (and avoid caching the failure as

@@ -1,24 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
 
-function getSpeedColor(rate: number): string {
-  if (rate < 1.0) {
-    return 'oklch(0.72 0.22 230)'; // blue - slow
-  }
-  if (rate <= 1.25) {
-    return 'oklch(0.80 0.18 55)'; // amber - fast
-  }
-  return 'oklch(0.72 0.24 25)'; // red - x-fast
-}
-
-export function getSpeedStyle(rate: number): string {
-  const color = getSpeedColor(rate);
-  return `color: ${color}; font-weight: 500;`;
-}
-
-export function getSpeedBorderColor(rate: number): string {
-  return getSpeedColor(rate);
-}
-
 /** Convert TipTap JSONContent back to the internal SSML/marker string. */
 export function contentToSSML(doc: JSONContent): string {
   return (doc.content ?? [])

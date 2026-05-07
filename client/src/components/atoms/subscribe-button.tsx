@@ -2,7 +2,7 @@ import { useStore } from '@tanstack/react-store';
 import { Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { useFormContext } from '@/lib/form';
+import { useFormContext } from '@/lib/form-contexts';
 
 interface SubscribeButtonProps {
   children: ReactNode;

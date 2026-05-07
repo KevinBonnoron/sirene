@@ -17,7 +17,7 @@ interface PickOptions {
   requireModel?: string;
 }
 
-export function targetOf(server: InferenceServer): InferenceTarget {
+function targetOf(server: InferenceServer): InferenceTarget {
   return { url: server.url, authToken: server.authToken };
 }
 
@@ -25,7 +25,7 @@ export function targetOf(server: InferenceServer): InferenceTarget {
  *  - Filter to enabled+online (or unknown if nothing online) servers
  *  - If `requireModel` is set, keep only servers that have it installed
  *  - Among candidates: pick the one with the fewest in-flight calls; ties broken by priority */
-export async function pickServer(options: PickOptions = {}): Promise<InferenceServer> {
+async function pickServer(options: PickOptions = {}): Promise<InferenceServer> {
   const all = await inferenceServerService.listEnabled();
   if (all.length === 0) {
     throw new NoInferenceServerError('No inference server is configured. Add one from Settings.');
@@ -68,15 +68,4 @@ export async function pickServer(options: PickOptions = {}): Promise<InferenceSe
 
 export async function pickTarget(options: PickOptions = {}): Promise<InferenceTarget> {
   return targetOf(await pickServer(options));
-}
-
-/** Wrap a server-bound call so we count it in the in-flight tracker.
- *  The router uses this counter to balance load across servers. */
-export async function withServer<T>(server: InferenceServer, fn: (target: InferenceTarget) => Promise<T>): Promise<T> {
-  inFlight.set(server.id, (inFlight.get(server.id) ?? 0) + 1);
-  try {
-    return await fn(targetOf(server));
-  } finally {
-    inFlight.set(server.id, Math.max(0, (inFlight.get(server.id) ?? 1) - 1));
-  }
 }

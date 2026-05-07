@@ -4,13 +4,12 @@ import { buildWav, readPcmStream } from '@sirene/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { config } from '../lib/config';
-import { type ElevenLabsRequest, generateElevenLabs } from '../lib/elevenlabs-client';
 import { CacheMissError, generateAudio, generateAudioStream, type InferenceRequest, type InferenceTarget } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
 import { pb } from '../lib/pocketbase';
 import type { AuthEnv } from '../middleware';
 import { generationRepository, voiceRepository, voiceSampleRepository } from '../repositories';
-import { mapServiceError, modelService, type OpenAITtsGenerateParams, openAITtsService } from '../services';
+import { type ElevenlabsGenerateParams, elevenlabsService, mapServiceError, modelService, type OpenAITtsGenerateParams, openAITtsService } from '../services';
 
 const tuningSchema = z
   .object({
@@ -30,7 +29,7 @@ const generateSchema = z.object({
 
 type VoiceSample = { id: string; audio: string };
 
-type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenLabsRequest; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITtsGenerateParams; meta: GenerationMeta };
+type ResolvedGeneration = { type: 'inference'; inferenceRequest: InferenceRequest; meta: GenerationMeta; samples?: VoiceSample[] } | { type: 'elevenlabs'; elevenLabsRequest: ElevenlabsGenerateParams; meta: GenerationMeta } | { type: 'openai'; openAIRequest: OpenAITtsGenerateParams; meta: GenerationMeta };
 
 interface GenerationMeta {
   voice: string;
@@ -234,7 +233,7 @@ export const generateRoutes = new Hono<AuthEnv>()
 
     if (resolved.type === 'elevenlabs') {
       try {
-        const audioBuffer = await generateElevenLabs(resolved.elevenLabsRequest);
+        const audioBuffer = await elevenlabsService.generate(resolved.elevenLabsRequest);
         await finalize(audioBuffer, 'audio/mpeg', 'generation.mp3', 0);
         return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {
@@ -292,7 +291,7 @@ export const generateRoutes = new Hono<AuthEnv>()
     // ElevenLabs: fall back to non-streaming
     if (resolved.type === 'elevenlabs') {
       try {
-        const audioBuffer = await generateElevenLabs(resolved.elevenLabsRequest);
+        const audioBuffer = await elevenlabsService.generate(resolved.elevenLabsRequest);
         await finalizeGeneration(generationId, audioBuffer, 0, 'audio/mpeg', 'generation.mp3');
         return new Response(audioBuffer, { headers: { 'Content-Type': 'audio/mpeg', 'X-Generation-Id': generationId } });
       } catch (e) {

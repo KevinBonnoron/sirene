@@ -2,12 +2,11 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import { listElevenLabsVoices } from '../lib/elevenlabs-client';
 import { fetchModelExport } from '../lib/inference-client';
 import { pickTarget } from '../lib/inference-router';
 import { modelsCatalog } from '../manifest/models.manifest';
 import { type AuthEnv, authMiddleware } from '../middleware';
-import { mapServiceError, modelService, openAITtsService } from '../services';
+import { elevenlabsService, mapServiceError, modelService, openAITtsService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -64,10 +63,11 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
 
     if (catalog.backend === 'elevenlabs') {
       try {
-        const voices = await listElevenLabsVoices(userId);
+        const voices = await elevenlabsService.listVoices(userId);
         return c.json(voices);
       } catch (e) {
-        return c.json({ message: e instanceof Error ? e.message : 'Failed to fetch voices' }, 502);
+        const { status, body } = mapServiceError(e);
+        return c.json(body, status);
       }
     }
 

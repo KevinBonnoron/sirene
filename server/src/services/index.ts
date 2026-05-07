@@ -1,3 +1,4 @@
+export { type ElevenlabsGenerateParams, elevenlabsService } from './elevenlabs.service';
 export { inferenceServerService } from './inference-server.service';
 export { modelService } from './model.service';
 export { type OpenAITtsGenerateParams, openAITtsService } from './openai-tts.service';

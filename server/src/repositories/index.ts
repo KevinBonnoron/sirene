@@ -1,3 +1,4 @@
+export { elevenlabsRepository } from './elevenlabs.repository';
 export { generationRepository } from './generation.repository';
 export { inferenceServerRepository } from './inference-server.repository';
 export { OPENAI_VOICES, openAITtsRepository } from './openai-tts.repository';

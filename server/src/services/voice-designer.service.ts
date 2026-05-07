@@ -46,9 +46,11 @@ class VoiceDesignerService {
     });
   }
 
-  /** Persist a designed voice + its single seed sample. The sample upload races
-   *  the voice insert, so any failure on the sample side leaves an orphan voice
-   *  -- documented for now, addressed when we add transactional voice creation. */
+  /** Persist a designed voice + its single seed sample. PB has no native
+   *  transactions across collections, so on a sample-create failure we
+   *  compensate by deleting the voice we just inserted. The compensating
+   *  delete is best-effort: if it also fails the operator gets a logged
+   *  orphan to clean up, but the original error is what we surface. */
   public async save({ userId, name, description, language, model, transcript, audio }: SaveDesignedVoiceParams): Promise<Voice> {
     const voice = (await voiceRepository.create({
       name,
@@ -61,14 +63,23 @@ class VoiceDesignerService {
       tags: [],
     })) as Voice;
 
-    const sampleForm = new FormData();
-    sampleForm.append('voice', voice.id);
-    sampleForm.append('audio', audio);
-    sampleForm.append('transcript', transcript ?? '');
-    sampleForm.append('duration', '0');
-    sampleForm.append('order', '0');
-    sampleForm.append('enabled', 'true');
-    await voiceSampleRepository.create(sampleForm);
+    try {
+      const sampleForm = new FormData();
+      sampleForm.append('voice', voice.id);
+      sampleForm.append('audio', audio);
+      sampleForm.append('transcript', transcript ?? '');
+      sampleForm.append('duration', '0');
+      sampleForm.append('order', '0');
+      sampleForm.append('enabled', 'true');
+      await voiceSampleRepository.create(sampleForm);
+    } catch (err) {
+      try {
+        await voiceRepository.delete(voice.id);
+      } catch (rollbackErr) {
+        console.error('[voice-designer] Failed to rollback voice after sample-create failure', { voiceId: voice.id, rollbackErr });
+      }
+      throw err;
+    }
 
     return voice;
   }

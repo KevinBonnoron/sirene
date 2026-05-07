@@ -16,7 +16,13 @@ function textToJSON(text: string): JSONContent {
 }
 
 export function generationToTake(generation: Generation, orderIndex: number): TakeData {
-  const content = generation.editorContent && typeof generation.editorContent === 'object' ? (generation.editorContent as JSONContent) : textToJSON(generation.text);
+  // TipTap docs are objects shaped `{ type: 'doc', content: [...] }`. PB stores
+  // editorContent as freeform JSON, so a generation could carry an array, a
+  // string, or a malformed object - any of which would fail at render time. Fall
+  // back to the plain-text reconstruction unless we can confirm the doc shape.
+  const candidate = generation.editorContent;
+  const isValidDoc = typeof candidate === 'object' && candidate !== null && !Array.isArray(candidate) && (candidate as Record<string, unknown>).type === 'doc';
+  const content = isValidDoc ? (candidate as JSONContent) : textToJSON(generation.text);
 
   return {
     id: generation.id,

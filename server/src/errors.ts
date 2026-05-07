@@ -61,12 +61,15 @@ interface MappedError {
 
 /** Translate a thrown value into a `(status, body)` tuple the route layer can
  *  hand straight to Hono's `c.json(body, status)`. Anything that isn't a
- *  `ServiceError` collapses to 500 with a generic message — domain code should
- *  always raise a typed error so the HTTP shape is intentional. */
+ *  `ServiceError` collapses to a generic 500 — domain code should always
+ *  raise a typed error so the HTTP shape is intentional, and we don't want
+ *  to leak raw Error.message strings (stack-trace fragments, internal paths)
+ *  to API clients. The thrown value is logged so the operator can still
+ *  triage it. */
 export function mapServiceError(err: unknown): MappedError {
   if (err instanceof ServiceError) {
     return { status: err.status, body: { message: err.message } };
   }
-  const message = err instanceof Error ? err.message : 'Internal error';
-  return { status: 500, body: { message } };
+  console.error('[mapServiceError] unhandled', err);
+  return { status: 500, body: { message: 'Internal error' } };
 }

@@ -24,7 +24,12 @@ export const voiceRoutes = new Hono<AuthEnv>()
   })
 
   .get('', async (c) => {
-    return c.json(await voiceService.listForUser(c.get('userId')));
+    try {
+      return c.json(await voiceService.listForUser(c.get('userId')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/:id', zValidator('param', idParamSchema), async (c) => {
@@ -37,14 +42,24 @@ export const voiceRoutes = new Hono<AuthEnv>()
   })
 
   .post('', async (c) => {
-    const formData = await c.req.formData();
-    const voice = await voiceService.create(c.get('userId'), formData);
-    return c.json(voice, 201);
+    try {
+      const formData = await c.req.formData();
+      const voice = await voiceService.create(c.get('userId'), formData);
+      return c.json(voice, 201);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .put('/:id', zValidator('param', idParamSchema), async (c) => {
-    const formData = await c.req.formData();
-    return c.json(await voiceService.update(c.req.valid('param').id, formData));
+    try {
+      const formData = await c.req.formData();
+      return c.json(await voiceService.update(c.req.valid('param').id, formData));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/:id/export', zValidator('param', idParamSchema), async (c) => {
@@ -64,7 +79,12 @@ export const voiceRoutes = new Hono<AuthEnv>()
   })
 
   .get('/:id/samples', zValidator('param', idParamSchema), async (c) => {
-    return c.json(await voiceService.listSamples(c.req.valid('param').id));
+    try {
+      return c.json(await voiceService.listSamples(c.req.valid('param').id));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .post('/:id/samples', zValidator('param', idParamSchema), async (c) => {

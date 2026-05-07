@@ -29,7 +29,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
       return c.json(await inferenceServerService.create(c.req.valid('json')), 201);
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 400 : status);
+      return c.json(body, status);
     }
   })
 
@@ -38,7 +38,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
       return c.json(await inferenceServerService.update(c.req.valid('param').id, c.req.valid('json')));
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 400 : status);
+      return c.json(body, status);
     }
   })
 
@@ -48,7 +48,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
       return c.body(null, 204);
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 400 : status);
+      return c.json(body, status);
     }
   })
 
@@ -57,6 +57,6 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
       return c.json(await inferenceServerService.checkOne(c.req.valid('param').id));
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 502 : status);
+      return c.json(body, status);
     }
   });

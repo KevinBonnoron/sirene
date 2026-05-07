@@ -18,8 +18,17 @@ export async function authMiddleware(c: Context, next: Next) {
     const authData = await userPb.collection('users').authRefresh();
     c.set('userId', authData.record.id);
     c.set('isAdmin', authData.record.role === 'admin');
-  } catch {
-    return c.json({ message: 'Invalid or expired token' }, 401);
+  } catch (err) {
+    // PB raises ClientResponseError with a numeric `status`. 401/403 mean the
+    // token is genuinely bad; anything else (PB unreachable, 5xx) is upstream
+    // failure that we shouldn't paper over as "expired token", because that
+    // would log a user out for a transient outage.
+    const status = (err as { status?: unknown })?.status;
+    if (status === 401 || status === 403) {
+      return c.json({ message: 'Invalid or expired token' }, 401);
+    }
+    console.error('[auth] PocketBase auth refresh failed', err);
+    return c.json({ message: 'Authentication service unavailable' }, 503);
   }
 
   await next();

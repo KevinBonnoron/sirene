@@ -56,11 +56,11 @@ class AuthService {
         await pb.collection('users').update(created.id, { role: 'admin' });
       } catch (err) {
         // Only the partial-unique-index conflict means "another admin already exists";
-        // anything else (PB down, network error) is a real failure and would otherwise
-        // silently leave a deployment with zero admins. Log the unexpected paths so the
-        // operator can react instead of seeing a clean 201.
+        // anything else (PB down, network error) is a real failure and we re-throw
+        // rather than returning a clean 201 that hides a system left without an admin.
         if (!isUniqueIndexConflict(err)) {
           console.error('[auth/register] failed to promote first user to admin', err);
+          throw err;
         }
       }
       const authData = await userPb.collection('users').authWithPassword(params.email, params.password);

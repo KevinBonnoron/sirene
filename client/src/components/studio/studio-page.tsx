@@ -186,7 +186,7 @@ export function StudioPage() {
         if (activeSessionId) {
           const session = sessions?.find((s) => s.id === activeSessionId);
           if (session) {
-            const nextGenerations = [...session.generations, generationId];
+            const nextGenerations = [...asStringArray(session.generations), generationId];
             await sessionCollection.update(activeSessionId, (s) => {
               s.generations = nextGenerations;
             }).isPersisted.promise;

@@ -37,12 +37,22 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
   .use(authMiddleware)
 
   .get('/catalog', async (c) => {
-    return c.json(await modelService.getFullCatalog(c.get('userId')));
+    try {
+      return c.json(await modelService.getFullCatalog(c.get('userId')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/installed', async (c) => {
-    const catalog = await modelService.getFullCatalog(c.get('userId'));
-    return c.json(await modelService.getInstallations(catalog));
+    try {
+      const catalog = await modelService.getFullCatalog(c.get('userId'));
+      return c.json(await modelService.getInstallations(catalog));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/:id/voices', zValidator('param', idParamSchema), async (c) => {
@@ -50,7 +60,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.json(await modelService.listPresetVoicesFor(c.req.valid('param').id, c.get('userId')));
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 502 : status);
+      return c.json(body, status);
     }
   })
 
@@ -60,19 +70,18 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       return c.body(null, 204);
     } catch (err) {
       const { status, body } = mapServiceError(err);
-      return c.json(body, status === 500 ? 502 : status);
+      return c.json(body, status);
     }
   })
 
   .post('/:id/pull', zValidator('param', idParamSchema), zValidator('json', z.object({ serverIds: z.array(z.string().min(1)).optional() })), async (c) => {
-    const userId = c.get('userId');
-    const fullCatalog = await modelService.getFullCatalog(userId);
-    const catalog = fullCatalog.find((m) => m.id === c.req.valid('param').id);
-    if (!catalog) {
-      return c.json({ message: 'Model not found in catalog' }, 404);
-    }
-
     try {
+      const userId = c.get('userId');
+      const fullCatalog = await modelService.getFullCatalog(userId);
+      const catalog = fullCatalog.find((m) => m.id === c.req.valid('param').id);
+      if (!catalog) {
+        return c.json({ message: 'Model not found in catalog' }, 404);
+      }
       const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, c.req.valid('json').serverIds);
       return c.json({ jobIds }, alreadyRunning ? 200 : 202);
     } catch (err) {

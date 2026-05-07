@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -9,7 +9,8 @@
     "includes": [
       "**",
       "!client/src/routeTree.gen.ts",
-      "!!client/src/components/ui"
+      "!!client/src/components/ui",
+      "!db/pb_migrations"
     ]
   },
   "formatter": {

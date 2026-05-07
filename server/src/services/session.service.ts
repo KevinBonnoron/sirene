@@ -59,20 +59,23 @@ class SessionService {
     const generationIds = Array.isArray(existing.generations) ? existing.generations : [];
     const updated = (await sessionRepository.update(id, { public: isPublic })) as Session;
 
-    // Best-effort denormalisation. If a referenced generation has been deleted (unusual but
-    // possible if a cascade ran), skip it rather than failing the whole share toggle.
-    await Promise.all(
-      generationIds.map(async (genId) => {
-        try {
-          await generationRepository.update(genId, { public: isPublic });
-        } catch {
-          /* ignore - orphan reference */
-        }
-      }),
-    );
+    // Best-effort denormalisation. We only swallow PB 404s (the referenced generation
+    // was deleted) - anything else (PB unreachable, validation failure) is a transient
+    // problem we surface so the caller doesn't see a clean 200 while half the linked
+    // records were never touched.
+    const settled = await Promise.allSettled(generationIds.map((genId) => generationRepository.update(genId, { public: isPublic })));
+    for (const result of settled) {
+      if (result.status === 'rejected' && !isMissingRecord(result.reason)) {
+        throw result.reason;
+      }
+    }
 
     return updated;
   }
+}
+
+function isMissingRecord(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { status?: unknown }).status === 404;
 }
 
 export const sessionService = new SessionService();

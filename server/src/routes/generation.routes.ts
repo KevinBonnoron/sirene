@@ -34,6 +34,11 @@ export const generationRoutes = new Hono<AuthEnv>()
   })
 
   .delete('/:id', zValidator('param', idParamSchema), async (c) => {
-    await generationService.delete(c.req.valid('param').id);
-    return c.body(null, 204);
+    try {
+      await generationService.delete(c.req.valid('param').id);
+      return c.body(null, 204);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   });

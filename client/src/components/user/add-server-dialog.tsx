@@ -63,7 +63,7 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
         url: url.trim().replace(/\/$/, ''),
         enabled,
         priority: Number.parseInt(priority, 10) || 0,
-        auth_token: authToken.trim() || undefined,
+        authToken: authToken.trim() || undefined,
       });
       onOpenChange(false);
     } catch (e) {

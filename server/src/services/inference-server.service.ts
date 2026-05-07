@@ -18,7 +18,7 @@ class InferenceServerService {
     if (!record) {
       return null;
     }
-    const probed = await probeHealth(record.url, record.auth_token);
+    const probed = await probeHealth(record.url, record.authToken);
     return this.persistHealth(record, probed);
   }
 
@@ -37,9 +37,7 @@ class InferenceServerService {
         url: config.inferenceUrl.replace(/\/$/, ''),
         enabled: true,
         priority: 100,
-        last_health_at: '',
-        last_health_status: 'unknown',
-        last_health_error: '',
+        lastHealth: { at: '', status: 'unknown', error: '' },
       });
       console.log(`Seeded inference_servers with ${config.inferenceUrl}`);
     } catch (err) {
@@ -70,7 +68,7 @@ class InferenceServerService {
     await Promise.allSettled(
       records.map(async (record) => {
         try {
-          const probed = await probeHealth(record.url, record.auth_token);
+          const probed = await probeHealth(record.url, record.authToken);
           await this.persistHealth(record, probed);
         } catch (err) {
           console.warn(`[health] ${record.name} (${record.url}) probe failed:`, err);
@@ -79,21 +77,13 @@ class InferenceServerService {
     );
   }
 
-  /** Always advances `last_health_at` so the UI's "last checked" timestamp keeps moving
-   *  while the 15s loop is running. Status/error fields are only written when they
-   *  actually change to keep the PB realtime stream quiet for stable servers. */
+  /** Writes the full health snapshot on every probe. The three fields are atomically
+   *  in sync as a single PB json column; PB realtime fires per-record anyway, so there's
+   *  no traffic gain in updating only the changed sub-keys. */
   private async persistHealth(record: InferenceServer, probed: { status: InferenceServerHealthStatus; error: string }): Promise<InferenceServer> {
-    const currentStatus = (record.last_health_status || 'unknown') as InferenceServerHealthStatus;
-    const currentError = record.last_health_error || '';
-    const statusChanged = currentStatus !== probed.status || currentError !== probed.error;
-    const update: Partial<InferenceServer> = {
-      last_health_at: new Date().toISOString(),
-    };
-    if (statusChanged) {
-      update.last_health_status = probed.status;
-      update.last_health_error = probed.error;
-    }
-    return inferenceServerRepository.update(record.id, update);
+    return inferenceServerRepository.update(record.id, {
+      lastHealth: { at: new Date().toISOString(), status: probed.status, error: probed.error },
+    });
   }
 }
 

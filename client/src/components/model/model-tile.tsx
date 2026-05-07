@@ -46,7 +46,7 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   // Mirrors the server-side filter in model.service.ts: 'online' or 'unknown' (never probed)
   // are eligible; 'offline' is not. Without this, the Install button stays clickable when
   // every enabled server is down and the API rejects with 503 NoOnlineServerError.
-  const hasOnlineServer = enabledServers.some((s) => s.last_health_status !== 'offline');
+  const hasOnlineServer = enabledServers.some((s) => s.lastHealth.status !== 'offline');
 
   async function handleRemove(serverId?: string) {
     try {
@@ -192,7 +192,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
 
   // Custom (uploaded) models can't be transferred — only show servers where they actually live.
   const visibleServers = isCustom ? servers.filter((s) => installedSet.has(s.id)) : servers;
-  const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.last_health_status === 'online' && !pullingByServer.has(s.id));
+  const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.lastHealth.status === 'online' && !pullingByServer.has(s.id));
 
   return (
     <>
@@ -208,7 +208,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
           {visibleServers.map((server) => {
             const isInstalled = installedSet.has(server.id);
             const isPulling = pullingByServer.has(server.id);
-            const isOffline = server.last_health_status === 'offline';
+            const isOffline = server.lastHealth.status === 'offline';
             const disabled = isPulling || (isOffline && !isInstalled);
             const ActionIcon = isPulling ? Loader2 : isInstalled ? Trash2 : Download;
             const actionLabel = isPulling ? t('model.actionInstalling') : isInstalled ? t('model.actionRemoveFromServer', { name: server.name }) : t('model.actionInstallOnServer', { name: server.name });
@@ -221,7 +221,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
             };
             return (
               <DropdownMenuItem key={server.id} disabled={disabled} onSelect={action} aria-label={actionLabel} className={cn('gap-2', isInstalled && 'data-[highlighted]:text-destructive')}>
-                <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[server.last_health_status])} aria-hidden />
+                <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[server.lastHealth.status])} aria-hidden />
                 <span className="min-w-0 flex-1 truncate">{server.name}</span>
                 <ActionIcon className={cn('size-3.5 shrink-0', isPulling && 'animate-spin')} aria-hidden />
               </DropdownMenuItem>

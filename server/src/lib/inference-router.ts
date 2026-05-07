@@ -18,7 +18,7 @@ interface PickOptions {
 }
 
 export function targetOf(server: InferenceServer): InferenceTarget {
-  return { url: server.url, authToken: server.auth_token };
+  return { url: server.url, authToken: server.authToken };
 }
 
 /** Pick a server for an outgoing call. Strategy:
@@ -31,11 +31,11 @@ export async function pickServer(options: PickOptions = {}): Promise<InferenceSe
     throw new NoInferenceServerError('No inference server is configured. Add one from Settings.');
   }
 
-  let candidates = all.filter((s) => s.last_health_status === 'online');
+  let candidates = all.filter((s) => s.lastHealth.status === 'online');
   if (candidates.length === 0) {
     // Treat 'unknown' as a candidate so a freshly-added server can still be tried before
     // its first health probe completes.
-    candidates = all.filter((s) => !s.last_health_status || s.last_health_status === 'unknown');
+    candidates = all.filter((s) => !s.lastHealth.status || s.lastHealth.status === 'unknown');
   }
   if (candidates.length === 0) {
     throw new NoInferenceServerError('All configured inference servers are offline.');

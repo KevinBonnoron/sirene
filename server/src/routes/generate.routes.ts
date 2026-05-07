@@ -25,7 +25,7 @@ const generateSchema = z.object({
   input: z.string().min(1),
   speed: z.number().min(0.1).max(5).optional(),
   tuning: tuningSchema.optional(),
-  ssmlJson: z.record(z.string(), z.any()).optional(),
+  editorContent: z.record(z.string(), z.any()).optional(),
 });
 
 type VoiceSample = { id: string; audio: string };
@@ -40,7 +40,7 @@ interface GenerationMeta {
   speed: number;
   user: string;
   tuning?: z.infer<typeof tuningSchema>;
-  ssmlJson?: Record<string, unknown>;
+  editorContent?: Record<string, unknown>;
   generationId?: string;
 }
 
@@ -78,7 +78,7 @@ async function resolveGeneration(body: z.infer<typeof generateSchema>, userId: s
     speed: effectiveSpeed,
     user: '',
     tuning: body.tuning,
-    ssmlJson: body.ssmlJson,
+    editorContent: body.editorContent,
   };
 
   // ElevenLabs — direct API call, no inference service
@@ -220,7 +220,7 @@ async function preCreateGeneration(meta: GenerationMeta): Promise<string> {
     user: meta.user,
     state: 'ready',
     tuning: meta.tuning ?? null,
-    ssml_json: meta.ssmlJson ?? null,
+    editorContent: meta.editorContent ?? null,
   });
   return record.id;
 }

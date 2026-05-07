@@ -12,13 +12,13 @@ const writeBodySchema = z.object({
   url: z.string().trim().min(1).max(2048),
   enabled: z.boolean(),
   priority: z.number().int(),
-  auth_token: z.string().max(200).optional(),
+  authToken: z.string().max(200).optional(),
 });
 
 const updateBodySchema = writeBodySchema.partial();
 
 /** Browser-side CRUD for inference servers. PB rules are locked to superuser-only;
- *  every route here is gated by `requireAdmin` (authenticated user with `is_admin=true`)
+ *  every route here is gated by `requireAdmin` (authenticated user with `role='admin'`)
  *  to enforce the same constraint at the application layer. The server's pb client is
  *  authenticated as superuser via initPocketBase(), so the repository writes succeed
  *  for the admin user without granting them PB superuser credentials. */
@@ -31,9 +31,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
       const created = await inferenceServerRepository.create({
         ...body,
         url: body.url.replace(/\/$/, ''),
-        last_health_status: 'unknown',
-        last_health_at: '',
-        last_health_error: '',
+        lastHealth: { at: '', status: 'unknown', error: '' },
       });
       return c.json(created, 201);
     } catch (err) {
@@ -48,7 +46,7 @@ export const inferenceServerRoutes = new Hono<AuthEnv>()
     const payload = body.url ? { ...body, url: body.url.replace(/\/$/, '') } : body;
     try {
       const updated = await inferenceServerRepository.update(id, payload);
-      // url / auth_token / enabled changes invalidate the cached inventory for this
+      // url / authToken / enabled changes invalidate the cached inventory for this
       // server — without this, routing would keep using the old endpoint for up to
       // the cache TTL.
       serverModelsService.invalidate(id);

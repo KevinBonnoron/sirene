@@ -45,12 +45,12 @@ export const authRoutes = new Hono()
     try {
       // Always create as a regular user. Promotion to admin happens in a second step
       // gated by a partial unique index (`idx_users_single_admin`) that allows only
-      // one row to hold is_admin = true. Two concurrent registrations on a fresh
+      // one row to hold role = 'admin'. Two concurrent registrations on a fresh
       // install will both try to promote themselves; the DB guarantees only one wins.
       const userPb = new PocketBase(config.pb.url);
-      const created = await userPb.collection('users').create({ ...body, is_admin: false });
+      const created = await userPb.collection('users').create({ ...body, role: 'user' });
       try {
-        await pb.collection('users').update(created.id, { is_admin: true });
+        await pb.collection('users').update(created.id, { role: 'admin' });
       } catch (err) {
         // Only the partial-unique-index conflict means "another admin already exists" —
         // anything else (PB down, network error) is a real failure and would otherwise

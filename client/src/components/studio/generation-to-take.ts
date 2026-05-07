@@ -16,7 +16,7 @@ function textToJSON(text: string): JSONContent {
 }
 
 export function generationToTake(generation: Generation, orderIndex: number): TakeData {
-  const content = generation.ssml_json && typeof generation.ssml_json === 'object' ? (generation.ssml_json as JSONContent) : textToJSON(generation.text);
+  const content = generation.editorContent && typeof generation.editorContent === 'object' ? (generation.editorContent as JSONContent) : textToJSON(generation.text);
 
   return {
     id: generation.id,

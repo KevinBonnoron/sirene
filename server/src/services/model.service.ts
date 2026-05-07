@@ -116,7 +116,7 @@ class ModelService {
     // 'unknown' (never probed yet) is treated as eligible alongside 'online' so a freshly
     // added server can accept jobs before the first 15s health-loop tick. Probe failures
     // mark the record 'offline' explicitly, so this can't accept a known-bad server.
-    const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
+    const onlineServers = servers.filter((s) => s.lastHealth.status === 'online' || !s.lastHealth.status || s.lastHealth.status === 'unknown');
     if (onlineServers.length === 0) {
       throw new NoOnlineServerError('No online inference server available to pull this model.');
     }
@@ -165,7 +165,7 @@ class ModelService {
 
     try {
       for await (const event of pullModel(
-        { url: server.url, authToken: server.auth_token },
+        { url: server.url, authToken: server.authToken },
         {
           backend: catalog.backend,
           modelId: catalog.id,
@@ -202,7 +202,7 @@ class ModelService {
     const { slug, name, onnxBytes, onnxName, onnxType, configBytes, configName, configType, serverIds } = input;
 
     const servers = await inferenceServerService.listEnabled();
-    const onlineServers = servers.filter((s) => s.last_health_status === 'online' || !s.last_health_status || s.last_health_status === 'unknown');
+    const onlineServers = servers.filter((s) => s.lastHealth.status === 'online' || !s.lastHealth.status || s.lastHealth.status === 'unknown');
     if (onlineServers.length === 0) {
       throw new NoOnlineServerError('No online inference server available to import this model.');
     }
@@ -247,7 +247,7 @@ class ModelService {
       fd.append('onnx', new File([files.onnxBytes], files.onnxName, { type: files.onnxType }));
       fd.append('config', new File([files.configBytes], files.configName, { type: files.configType }));
 
-      await importPiperModelToInference({ url: server.url, authToken: server.auth_token }, fd);
+      await importPiperModelToInference({ url: server.url, authToken: server.authToken }, fd);
 
       jobStore.complete(jobId);
       serverModelsService.invalidate(server.id);
@@ -277,7 +277,7 @@ class ModelService {
     await Promise.all(
       targets.map(async (server) => {
         try {
-          await deleteModel({ url: server.url, authToken: server.auth_token }, modelId);
+          await deleteModel({ url: server.url, authToken: server.authToken }, modelId);
           serverModelsService.invalidate(server.id);
         } catch (err) {
           errors.push(`${server.name}: ${err instanceof Error ? err.message : 'delete failed'}`);

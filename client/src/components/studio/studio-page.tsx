@@ -188,7 +188,7 @@ export function StudioPage() {
         voice: draft.voiceId,
         input: ssml,
         tuning: draft.tuning,
-        ssmlJson: draft.content as unknown as Record<string, unknown>,
+        editorContent: draft.content as unknown as Record<string, unknown>,
       });
 
       if (generationId) {
@@ -233,7 +233,7 @@ export function StudioPage() {
           voice: take.voiceId,
           input: text,
           tuning,
-          ssmlJson: take.content as unknown as Record<string, unknown>,
+          editorContent: take.content as unknown as Record<string, unknown>,
         });
         if (!generationId) {
           return;

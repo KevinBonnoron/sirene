@@ -27,7 +27,7 @@ class ServerModelsService {
     const result = new Map<string, Set<string>>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {
-        if (server.last_health_status === 'offline') {
+        if (server.lastHealth.status === 'offline') {
           return null;
         }
         const entry = await this.getEntry(server);
@@ -65,7 +65,7 @@ class ServerModelsService {
     const seen = new Map<string, CatalogModel>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {
-        if (server.last_health_status === 'offline') {
+        if (server.lastHealth.status === 'offline') {
           return [];
         }
         const entry = await this.getEntry(server);
@@ -97,12 +97,12 @@ class ServerModelsService {
   }
 
   private async getEntry(server: InferenceServer): Promise<CacheEntry> {
-    const fingerprint = `${server.url}|${server.auth_token ?? ''}`;
+    const fingerprint = `${server.url}|${server.authToken ?? ''}`;
     const cached = this.cache.get(server.id);
     if (cached && cached.fingerprint === fingerprint && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached;
     }
-    const { installed, custom } = await getModels({ url: server.url, authToken: server.auth_token });
+    const { installed, custom } = await getModels({ url: server.url, authToken: server.authToken });
     const entry: CacheEntry = { installed: new Set(installed), custom, fetchedAt: Date.now(), fingerprint };
     this.cache.set(server.id, entry);
     return entry;

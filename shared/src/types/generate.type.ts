@@ -5,5 +5,5 @@ export interface GenerateRequest {
   input: string;
   speed?: number;
   tuning?: GenerationTuning;
-  ssmlJson?: object;
+  editorContent?: object;
 }

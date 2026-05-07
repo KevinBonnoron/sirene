@@ -1,10 +1,8 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { pickTarget } from '../lib/inference-router';
 import type { AuthEnv } from '../middleware';
-import { inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
-import { mapServiceError, modelService } from '../services';
+import { mapServiceError, voiceDesignerService } from '../services';
 
 const previewSchema = z.object({
   modelId: z.string().min(1),
@@ -16,62 +14,36 @@ const previewSchema = z.object({
 
 export const voiceDesignerRoutes = new Hono<AuthEnv>()
   .post('/preview', zValidator('json', previewSchema), async (c) => {
-    const { modelId, text, instructText, gender, language } = c.req.valid('json');
-
-    const fullCatalog = await modelService.getFullCatalog();
-    const catalog = fullCatalog.find((m) => m.id === modelId);
-    if (!catalog) {
-      return c.json({ message: `Model "${modelId}" not found` }, 404);
-    }
-    if (!(await modelService.isModelInstalled(catalog))) {
-      return c.json({ message: `Model "${catalog.name}" is not installed` }, 400);
-    }
-
-    const modelPath = catalog.id;
-
     try {
-      const target = await pickTarget({ requireModel: modelPath });
-      const audioBuffer = await inferenceRepository(target).generate({
-        backend: catalog.backend,
-        text,
-        modelPath,
-        instructText,
-        instructGender: gender,
-        language,
-      });
-      return new Response(audioBuffer, {
-        headers: { 'Content-Type': 'audio/wav' },
-      });
-    } catch (e) {
-      const { status, body } = mapServiceError(e);
+      const audio = await voiceDesignerService.preview(c.req.valid('json'));
+      return new Response(audio, { headers: { 'Content-Type': 'audio/wav' } });
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
       return c.json(body, status);
     }
   })
 
   .post('/save', async (c) => {
     const formData = await c.req.formData();
-    const name = formData.get('name') as string;
-    const description = (formData.get('description') as string) || '';
-    const language = (formData.get('language') as string) || 'en';
-    const model = (formData.get('model') as string) || '';
-    const audioFile = formData.get('audio') as File | null;
-    const transcript = (formData.get('transcript') as string) || '';
-
-    if (!name || !audioFile) {
+    const name = (formData.get('name') as string | null)?.trim() ?? '';
+    const audio = formData.get('audio');
+    if (!name || !(audio instanceof File)) {
       return c.json({ message: 'name and audio are required' }, 400);
     }
 
-    const userId = c.get('userId') as string;
-    const voice = await voiceRepository.create({ name, description, language, model, options: {}, user: userId, public: false, tags: [] });
-
-    const sampleForm = new FormData();
-    sampleForm.append('voice', voice.id);
-    sampleForm.append('audio', audioFile);
-    sampleForm.append('transcript', transcript);
-    sampleForm.append('duration', '0');
-    sampleForm.append('order', '0');
-    sampleForm.append('enabled', 'true');
-    await voiceSampleRepository.create(sampleForm);
-
-    return c.json(voice, 201);
+    try {
+      const voice = await voiceDesignerService.save({
+        userId: c.get('userId'),
+        name,
+        description: (formData.get('description') as string | null) ?? undefined,
+        language: (formData.get('language') as string | null) ?? undefined,
+        model: (formData.get('model') as string | null) ?? undefined,
+        transcript: (formData.get('transcript') as string | null) ?? undefined,
+        audio,
+      });
+      return c.json(voice, 201);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   });

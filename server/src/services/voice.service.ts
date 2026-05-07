@@ -140,9 +140,14 @@ class VoiceService {
 
       const audioUrl = `${config.pb.url}/api/files/voice_samples/${sample.id}/${sample.audio}`;
       const audioResponse = await fetch(audioUrl);
-      if (audioResponse.ok) {
-        samplesDir.file(filename, await audioResponse.arrayBuffer());
+      if (!audioResponse.ok) {
+        // Skip sample entirely when its audio can't be fetched -- otherwise the
+        // archive would list a `samples/<file>` reference in voice.json that has
+        // no matching file in the zip, and the importer would silently drop it.
+        console.warn(`[voice export] Failed to fetch sample ${sample.id} (${audioResponse.status}); excluding from archive`);
+        continue;
       }
+      samplesDir.file(filename, await audioResponse.arrayBuffer());
 
       samplesData.push({
         file: filename,
@@ -178,7 +183,10 @@ class VoiceService {
   }
 
   private async dedupeName(userId: string, name: string): Promise<string> {
-    const siblings = await voiceRepository.getAllBy(`user = "${userId}" && name ~ "${name}"`);
+    // Match the exact name OR the "name (N)" suffix pattern. PB's `~` is a
+    // substring search, so a plain `name ~ "Alex"` would also collide with
+    // "Alexander" and bump the suffix unnecessarily.
+    const siblings = await voiceRepository.getAllBy(`user = "${userId}" && (name = "${name}" || name ~ "${name} (")`);
     const taken = new Set(siblings.map((v) => v.name));
     if (!taken.has(name)) {
       return name;

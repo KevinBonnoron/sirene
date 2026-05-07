@@ -1548,7 +1548,7 @@ migrate((app) => {
           "maxSize": 0,
           "name": "lastHealth",
           "presentable": false,
-          "required": false,
+          "required": true,
           "system": false,
           "type": "json"
         },

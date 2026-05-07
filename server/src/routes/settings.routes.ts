@@ -15,7 +15,12 @@ const keyParamSchema = z.object({ key: z.string().regex(SETTING_KEY, 'invalid se
 
 export const settingsRoutes = new Hono<AuthEnv>()
   .get('', async (c) => {
-    return c.json(await settingsService.listMaskedFor(c.get('userId')));
+    try {
+      return c.json(await settingsService.listMaskedFor(c.get('userId')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
   .put('', zValidator('json', updateSchema), async (c) => {
     const { key, value } = c.req.valid('json');

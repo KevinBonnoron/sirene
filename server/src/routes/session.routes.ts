@@ -22,7 +22,12 @@ const shareSchema = z.object({
 
 export const sessionRoutes = new Hono<AuthEnv>()
   .get('', async (c) => {
-    return c.json(await sessionService.listForUser(c.get('userId')));
+    try {
+      return c.json(await sessionService.listForUser(c.get('userId')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/:id', zValidator('param', idParamSchema), async (c) => {
@@ -35,7 +40,12 @@ export const sessionRoutes = new Hono<AuthEnv>()
   })
 
   .post('', zValidator('json', createSchema), async (c) => {
-    return c.json(await sessionService.create(c.get('userId'), c.req.valid('json')), 201);
+    try {
+      return c.json(await sessionService.create(c.get('userId'), c.req.valid('json')), 201);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .patch('/:id', zValidator('param', idParamSchema), zValidator('json', updateSchema), async (c) => {

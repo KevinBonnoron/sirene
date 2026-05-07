@@ -39,7 +39,11 @@ class AuthService {
       const userPb = new PocketBase(config.pb.url);
       const authData = await userPb.collection('users').authWithPassword(email, password);
       return { token: authData.token, user: toAuthUser(authData.record) };
-    } catch {
+    } catch (err) {
+      // Always surface the original cause to the operator log; the route layer
+      // only ever gets a `code: 'invalidCredentials'` envelope so the user-facing
+      // story stays the same.
+      console.warn('[auth/login] authWithPassword failed', err);
       throw new InvalidCredentialsError();
     }
   }
@@ -65,7 +69,8 @@ class AuthService {
       }
       const authData = await userPb.collection('users').authWithPassword(params.email, params.password);
       return { token: authData.token, user: toAuthUser(authData.record) };
-    } catch {
+    } catch (err) {
+      console.warn('[auth/register] PocketBase rejected the registration', err);
       throw new RegistrationFailedError();
     }
   }

@@ -12,7 +12,12 @@ const listQuerySchema = z.object({
 
 export const generationRoutes = new Hono<AuthEnv>()
   .get('', zValidator('query', listQuerySchema), async (c) => {
-    return c.json(await generationService.listForUser(c.get('userId'), c.req.valid('query')));
+    try {
+      return c.json(await generationService.listForUser(c.get('userId'), c.req.valid('query')));
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   })
 
   .get('/:id', zValidator('param', idParamSchema), async (c) => {

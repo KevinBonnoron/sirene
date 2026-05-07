@@ -2,7 +2,6 @@ import type { CatalogModel } from '@sirene/shared';
 import { OPENAI_VOICES } from '../lib/openai-tts-client';
 
 export const modelsCatalog: CatalogModel[] = [
-  // ── Kokoro (lightweight preset TTS) ─────────────────────────────────
   {
     id: 'kokoro-v1.0',
     name: 'Kokoro v1.0',
@@ -42,7 +41,7 @@ export const modelsCatalog: CatalogModel[] = [
       { id: 'ff_siwis', label: 'Siwis (F)' },
     ],
   },
-  // ── Qwen3-TTS (multilingual cloning / preset / voice design) ─────────
+
   {
     id: 'qwen3-tts-1.7B',
     name: 'Qwen3-TTS 1.7B Base',
@@ -145,7 +144,7 @@ export const modelsCatalog: CatalogModel[] = [
     types: ['cloning'],
     maxReferenceDuration: 25,
   },
-  // ── CosyVoice (multilingual cloning with streaming) ─────────────────
+
   {
     id: 'cosyvoice3-0.5B',
     name: 'CosyVoice3 0.5B',
@@ -208,7 +207,7 @@ export const modelsCatalog: CatalogModel[] = [
     maxReferenceDuration: 20,
     supportsInstruct: true,
   },
-  // ── OpenAudio S1-mini (multilingual cloning) ───────────────────────
+
   {
     id: 'openaudio-s1-mini',
     name: 'OpenAudio S1 Mini',
@@ -224,7 +223,7 @@ export const modelsCatalog: CatalogModel[] = [
     gated: true,
     supportsEffects: true,
   },
-  // ── Chatterbox (multilingual cloning with emotion control) ──────────
+
   {
     id: 'chatterbox-en',
     name: 'Chatterbox English',
@@ -251,7 +250,7 @@ export const modelsCatalog: CatalogModel[] = [
     types: ['cloning'],
     maxReferenceDuration: 25,
   },
-  // ── Piper (lightweight preset TTS) ──────────────────────────────────
+
   {
     id: 'piper-ar_JO-kareem-medium',
     name: 'Piper AR Kareem',
@@ -617,7 +616,6 @@ export const modelsCatalog: CatalogModel[] = [
     presetVoices: [{ id: 'default', label: 'Huayan' }],
   },
 
-  // ── Voxtral TTS (multilingual preset + cloning) ──────────────────────
   {
     id: 'voxtral-4b-tts-2603',
     name: 'Voxtral 4B TTS',
@@ -677,7 +675,6 @@ export const modelsCatalog: CatalogModel[] = [
     ],
   },
 
-  // ── Higgs Audio (multilingual cloning) ───────────────────────────────
   {
     id: 'higgs-audio-v2-3B',
     name: 'Higgs Audio V2 3B',
@@ -705,7 +702,6 @@ export const modelsCatalog: CatalogModel[] = [
     supportsInstruct: true,
   },
 
-  // ── OpenAI TTS (cloud API) ──────────────────────────────────────────
   {
     id: 'openai-tts-v1',
     name: 'OpenAI TTS',
@@ -720,7 +716,6 @@ export const modelsCatalog: CatalogModel[] = [
     presetVoices: OPENAI_VOICES,
   },
 
-  // ── ElevenLabs (cloud API) ──────────────────────────────────────────
   {
     id: 'elevenlabs-v1',
     name: 'ElevenLabs',
@@ -734,7 +729,6 @@ export const modelsCatalog: CatalogModel[] = [
     types: ['api'],
   },
 
-  // ── Whisper (transcription) ───────────────────────────────────────
   {
     id: 'whisper-tiny',
     name: 'Whisper Tiny',

@@ -35,12 +35,9 @@ class VoiceService {
     return voiceRepository.getAllBy(`user = "${userId}" || (public = true && user != "")`) as Promise<Voice[]>;
   }
 
-  public async getById(id: string): Promise<Voice> {
-    const voice = (await voiceRepository.getOne(id)) as Voice | null;
-    if (!voice) {
-      throw new NotFoundError('Voice not found');
-    }
-    return voice;
+  /** Read access: the owner, or any user when the voice is public. */
+  public async getById(id: string, userId: string): Promise<Voice> {
+    return this.requireReadable(id, userId);
   }
 
   public async create(userId: string, formData: FormData): Promise<Voice> {
@@ -48,17 +45,21 @@ class VoiceService {
     return voiceRepository.create(formData) as Promise<Voice>;
   }
 
-  public async update(id: string, formData: FormData): Promise<Voice> {
+  /** Write access: only the owner. */
+  public async update(id: string, userId: string, formData: FormData): Promise<Voice> {
+    await this.requireOwned(id, userId);
     return voiceRepository.update(id, formData) as Promise<Voice>;
   }
 
-  public async listSamples(voiceId: string): Promise<VoiceSample[]> {
+  public async listSamples(voiceId: string, userId: string): Promise<VoiceSample[]> {
+    await this.requireReadable(voiceId, userId);
     return voiceSampleRepository.getAllBy(`voice = "${voiceId}"`, { sort: 'order,created' }) as Promise<VoiceSample[]>;
   }
 
   /** Adds a new sample to an existing voice, computing its duration with ffprobe
-   *  so the UI can display it without a second pass. */
-  public async addSample(voiceId: string, audio: File, transcript: string): Promise<VoiceSample> {
+   *  so the UI can display it without a second pass. Owner-only. */
+  public async addSample(voiceId: string, userId: string, audio: File, transcript: string): Promise<VoiceSample> {
+    await this.requireOwned(voiceId, userId);
     const existing = await voiceSampleRepository.getAllBy(`voice = "${voiceId}"`);
     const duration = await getAudioDuration(await audio.arrayBuffer());
 
@@ -70,6 +71,27 @@ class VoiceService {
     sampleForm.append('order', String(existing.length));
     sampleForm.append('enabled', 'true');
     return voiceSampleRepository.create(sampleForm) as Promise<VoiceSample>;
+  }
+
+  /** Loads a voice and ensures the caller may read it (owner OR public).
+   *  Returns NotFoundError on cross-user reads of private voices so the id
+   *  space can't be probed. */
+  private async requireReadable(id: string, userId: string): Promise<Voice> {
+    const voice = (await voiceRepository.getOne(id)) as Voice | null;
+    if (!voice || (voice.user !== userId && !voice.public)) {
+      throw new NotFoundError('Voice not found');
+    }
+    return voice;
+  }
+
+  /** Loads a voice and ensures the caller owns it. Used for write paths
+   *  (update, addSample) where the public flag must not unlock mutations. */
+  private async requireOwned(id: string, userId: string): Promise<Voice> {
+    const voice = (await voiceRepository.getOne(id)) as Voice | null;
+    if (!voice || voice.user !== userId) {
+      throw new NotFoundError('Voice not found');
+    }
+    return voice;
   }
 
   /** Reads a voice export zip and recreates the voice + its samples for the user.
@@ -112,31 +134,58 @@ class VoiceService {
 
     const created = (await voiceRepository.create(voiceForm)) as Voice;
 
-    if (Array.isArray(data.samples)) {
-      for (const [i, sample] of data.samples.entries()) {
-        const audio = zip.file(`samples/${sample.file}`);
-        if (!audio) {
-          continue;
+    // PB has no cross-collection transactions, so on any sample-side failure
+    // we compensate by deleting every record we managed to insert (samples
+    // first, then the voice itself). Worst case the operator gets a logged
+    // orphan; we never leave a half-imported voice visible to the user.
+    const insertedSampleIds: string[] = [];
+    try {
+      if (Array.isArray(data.samples)) {
+        for (const [i, sample] of data.samples.entries()) {
+          const audio = zip.file(`samples/${sample.file}`);
+          if (!audio) {
+            continue;
+          }
+          const bytes = await audio.async('uint8array');
+          const sampleForm = new FormData();
+          sampleForm.append('voice', created.id);
+          sampleForm.append('transcript', sample.transcript ?? '');
+          sampleForm.append('duration', String(sample.duration ?? 0));
+          sampleForm.append('order', String(sample.order ?? i));
+          sampleForm.append('enabled', 'true');
+          sampleForm.append('audio', new Blob([bytes], { type: 'audio/wav' }), sample.file);
+          const inserted = (await voiceSampleRepository.create(sampleForm)) as VoiceSample;
+          insertedSampleIds.push(inserted.id);
         }
-        const bytes = await audio.async('uint8array');
-        const sampleForm = new FormData();
-        sampleForm.append('voice', created.id);
-        sampleForm.append('transcript', sample.transcript ?? '');
-        sampleForm.append('duration', String(sample.duration ?? 0));
-        sampleForm.append('order', String(sample.order ?? i));
-        sampleForm.append('enabled', 'true');
-        sampleForm.append('audio', new Blob([bytes], { type: 'audio/wav' }), sample.file);
-        await voiceSampleRepository.create(sampleForm);
       }
+    } catch (err) {
+      await this.rollbackImport(created.id, insertedSampleIds);
+      throw err instanceof BadRequestError || err instanceof NotFoundError ? err : new BadRequestError('Invalid archive: failed to import samples');
     }
 
     return created;
   }
 
-  /** Bundles a voice + its samples + avatar into a downloadable zip. */
-  public async exportToZip(id: string): Promise<ExportedVoice> {
-    const voice = await this.getById(id);
-    const samples = await this.listSamples(id);
+  private async rollbackImport(voiceId: string, sampleIds: string[]): Promise<void> {
+    for (const sampleId of sampleIds) {
+      try {
+        await voiceSampleRepository.delete(sampleId);
+      } catch (err) {
+        console.error('[voice/import] rollback: failed to delete sample', { sampleId, err });
+      }
+    }
+    try {
+      await voiceRepository.delete(voiceId);
+    } catch (err) {
+      console.error('[voice/import] rollback: failed to delete voice', { voiceId, err });
+    }
+  }
+
+  /** Bundles a voice + its samples + avatar into a downloadable zip. Same
+   *  read access model as getById: owner OR public. */
+  public async exportToZip(id: string, userId: string): Promise<ExportedVoice> {
+    const voice = await this.requireReadable(id, userId);
+    const samples = (await voiceSampleRepository.getAllBy(`voice = "${id}"`, { sort: 'order,created' })) as VoiceSample[];
 
     const zip = new JSZip();
     const samplesDir = zip.folder('samples') as JSZip;

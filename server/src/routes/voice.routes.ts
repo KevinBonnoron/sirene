@@ -34,7 +34,7 @@ export const voiceRoutes = new Hono<AuthEnv>()
 
   .get('/:id', zValidator('param', idParamSchema), async (c) => {
     try {
-      return c.json(await voiceService.getById(c.req.valid('param').id));
+      return c.json(await voiceService.getById(c.req.valid('param').id, c.get('userId')));
     } catch (err) {
       const { status, body } = mapServiceError(err);
       return c.json(body, status);
@@ -55,7 +55,7 @@ export const voiceRoutes = new Hono<AuthEnv>()
   .put('/:id', zValidator('param', idParamSchema), async (c) => {
     try {
       const formData = await c.req.formData();
-      return c.json(await voiceService.update(c.req.valid('param').id, formData));
+      return c.json(await voiceService.update(c.req.valid('param').id, c.get('userId'), formData));
     } catch (err) {
       const { status, body } = mapServiceError(err);
       return c.json(body, status);
@@ -64,7 +64,7 @@ export const voiceRoutes = new Hono<AuthEnv>()
 
   .get('/:id/export', zValidator('param', idParamSchema), async (c) => {
     try {
-      const { buffer, filename } = await voiceService.exportToZip(c.req.valid('param').id);
+      const { buffer, filename } = await voiceService.exportToZip(c.req.valid('param').id, c.get('userId'));
       return new Response(buffer, {
         headers: {
           'Content-Type': 'application/zip',
@@ -80,7 +80,7 @@ export const voiceRoutes = new Hono<AuthEnv>()
 
   .get('/:id/samples', zValidator('param', idParamSchema), async (c) => {
     try {
-      return c.json(await voiceService.listSamples(c.req.valid('param').id));
+      return c.json(await voiceService.listSamples(c.req.valid('param').id, c.get('userId')));
     } catch (err) {
       const { status, body } = mapServiceError(err);
       return c.json(body, status);
@@ -95,7 +95,7 @@ export const voiceRoutes = new Hono<AuthEnv>()
     }
     const transcript = (formData.get('transcript') as string | null) ?? '';
     try {
-      const sample = await voiceService.addSample(c.req.valid('param').id, audio, transcript);
+      const sample = await voiceService.addSample(c.req.valid('param').id, c.get('userId'), audio, transcript);
       return c.json(sample, 201);
     } catch (err) {
       const { status, body } = mapServiceError(err);

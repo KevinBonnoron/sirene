@@ -63,14 +63,20 @@ interface StreamingGeneration {
 
 class GenerationService {
   public async listForUser(userId: string, filter: ListGenerationsFilter): Promise<Generation[]> {
-    const filters = [`user = "${userId}"`];
+    // pb.filter() escapes single quotes in string params, blocking injection
+    // attempts where a crafted `voice` or `model` query value would otherwise
+    // close the predicate and bypass the leading `user = ...` clause.
+    const parts = ['user = {:userId}'];
+    const params: Record<string, unknown> = { userId };
     if (filter.voice) {
-      filters.push(`voice = "${filter.voice}"`);
+      parts.push('voice = {:voice}');
+      params.voice = filter.voice;
     }
     if (filter.model) {
-      filters.push(`model = "${filter.model}"`);
+      parts.push('model = {:model}');
+      params.model = filter.model;
     }
-    return generationRepository.getAllBy(filters.join(' && ')) as Promise<Generation[]>;
+    return generationRepository.getAllBy(pb.filter(parts.join(' && '), params)) as Promise<Generation[]>;
   }
 
   public async getById(id: string, userId: string): Promise<Generation> {
@@ -339,7 +345,10 @@ class GenerationService {
   private async accumulateAndSave(stream: ReadableStream<Uint8Array>, sampleRate: number, generationId: string) {
     const { chunks, totalBytes } = await readPcmStream(stream);
     if (totalBytes === 0) {
-      return;
+      // The detached `.catch()` on the streaming path runs cleanup, so we
+      // raise instead of silently returning -- otherwise the placeholder
+      // record stays at `state: 'ready'` with no audio attached.
+      throw new Error('Inference stream ended before any PCM data was received');
     }
     const wavBuffer = buildWav(chunks, totalBytes, sampleRate);
     const duration = totalBytes / (2 * sampleRate);

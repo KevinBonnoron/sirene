@@ -23,8 +23,16 @@ if _packages_dir:
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    format="%(levelname)s %(asctime)s [%(name)s]: %(message)s",
+    force=True,
 )
+# Uvicorn installs its own handlers on these loggers at startup, which bypasses
+# basicConfig and produces the "INFO:     ..." format alongside our own. Strip
+# those handlers so everything propagates to root and shares one format.
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    _lg = logging.getLogger(_name)
+    _lg.handlers.clear()
+    _lg.propagate = True
 logging.getLogger("sse_starlette.sse").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)

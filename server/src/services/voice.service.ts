@@ -80,7 +80,15 @@ class VoiceService {
     if (!voiceFile) {
       throw new BadRequestError('Invalid archive: missing voice.json');
     }
-    const data = JSON.parse(await voiceFile.async('text')) as VoiceArchive;
+    let data: VoiceArchive;
+    try {
+      data = JSON.parse(await voiceFile.async('text')) as VoiceArchive;
+    } catch {
+      throw new BadRequestError('Invalid archive: voice.json is not valid JSON');
+    }
+    if (typeof data?.name !== 'string' || data.name.length === 0) {
+      throw new BadRequestError('Invalid archive: voice.json is missing a "name" field');
+    }
 
     const voiceName = await this.dedupeName(userId, data.name);
 
@@ -139,7 +147,15 @@ class VoiceService {
       const filename = `sample-${String(i + 1).padStart(3, '0')}.${ext}`;
 
       const audioUrl = `${config.pb.url}/api/files/voice_samples/${sample.id}/${sample.audio}`;
-      const audioResponse = await fetch(audioUrl);
+      let audioResponse: Response;
+      try {
+        audioResponse = await fetchWithTimeout(audioUrl);
+      } catch (err) {
+        // Network / DNS / TLS / timeout. Skip the sample entirely so the archive
+        // doesn't reference an audio file we couldn't actually attach.
+        console.warn(`[voice export] Failed to fetch sample ${sample.id}:`, err);
+        continue;
+      }
       if (!audioResponse.ok) {
         // Skip sample entirely when its audio can't be fetched -- otherwise the
         // archive would list a `samples/<file>` reference in voice.json that has
@@ -171,9 +187,13 @@ class VoiceService {
 
     if (voice.avatar) {
       const avatarUrl = `${config.pb.url}/api/files/voices/${id}/${voice.avatar}`;
-      const avatarResponse = await fetch(avatarUrl);
-      if (avatarResponse.ok) {
-        zip.file(voice.avatar, await avatarResponse.arrayBuffer());
+      try {
+        const avatarResponse = await fetchWithTimeout(avatarUrl);
+        if (avatarResponse.ok) {
+          zip.file(voice.avatar, await avatarResponse.arrayBuffer());
+        }
+      } catch (err) {
+        console.warn(`[voice export] Failed to fetch avatar ${voice.avatar}:`, err);
       }
     }
 
@@ -197,6 +217,14 @@ class VoiceService {
     }
     return `${name} (${n})`;
   }
+}
+
+/** `fetch` has no built-in timeout. PB file URLs hit the local PB server and
+ *  almost always answer within milliseconds, but a stalled remote can otherwise
+ *  freeze the whole export until the route times out. 10s is generous for a
+ *  local file fetch and short enough not to feel hung. */
+function fetchWithTimeout(url: string, timeoutMs = 10_000): Promise<Response> {
+  return fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
 }
 
 async function getAudioDuration(buffer: ArrayBuffer): Promise<number> {

@@ -73,27 +73,32 @@ class GenerationService {
     return generationRepository.getAllBy(filters.join(' && ')) as Promise<Generation[]>;
   }
 
-  public async getById(id: string): Promise<Generation> {
-    const generation = (await generationRepository.getOne(id)) as Generation | null;
-    if (!generation) {
-      throw new NotFoundError('Generation not found');
-    }
-    return generation;
+  public async getById(id: string, userId: string): Promise<Generation> {
+    return this.requireOwned(id, userId);
   }
 
   /** Word-level alignment for a generation. Today this is a uniform stub
    *  (each word gets `duration / N` seconds); will be replaced by whisperx /
    *  MFA / model-native timestamps. */
   public async getAlignment(id: string, userId: string): Promise<GenerationAlignment> {
+    const generation = await this.requireOwned(id, userId);
+    return stubAlign(generation.text ?? '', generation.duration ?? 0, id);
+  }
+
+  public async delete(id: string, userId: string): Promise<void> {
+    await this.requireOwned(id, userId);
+    await generationRepository.delete(id);
+  }
+
+  /** Loads a generation and ensures it belongs to the caller. Returning the
+   *  same NotFoundError for "missing" and "not yours" prevents probing the
+   *  id space to learn whether other users' generations exist. */
+  private async requireOwned(id: string, userId: string): Promise<Generation> {
     const generation = (await generationRepository.getOne(id)) as Generation | null;
     if (!generation || generation.user !== userId) {
       throw new NotFoundError('Generation not found');
     }
-    return stubAlign(generation.text ?? '', generation.duration ?? 0, id);
-  }
-
-  public async delete(id: string): Promise<void> {
-    await generationRepository.delete(id);
+    return generation;
   }
 
   /** Buffered generation: pre-creates the PB record, runs the matching backend,

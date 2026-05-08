@@ -60,10 +60,17 @@ class AuthService {
         await pb.collection('users').update(created.id, { role: 'admin' });
       } catch (err) {
         // Only the partial-unique-index conflict means "another admin already exists";
-        // anything else (PB down, network error) is a real failure and we re-throw
-        // rather than returning a clean 201 that hides a system left without an admin.
+        // anything else (PB down, network error) is a real failure. Roll back the
+        // freshly-committed user record before re-throwing -- otherwise the caller
+        // sees a RegistrationFailedError but the email is now permanently taken and
+        // they can't retry.
         if (!isUniqueIndexConflict(err)) {
           console.error('[auth/register] failed to promote first user to admin', err);
+          try {
+            await pb.collection('users').delete(created.id);
+          } catch (rollbackErr) {
+            console.error('[auth/register] failed to roll back user after promotion failure', { userId: created.id, rollbackErr });
+          }
           throw err;
         }
       }
@@ -82,7 +89,8 @@ class AuthService {
       userPb.authStore.save(token, null);
       const authData = await userPb.collection('users').authRefresh();
       return { token: authData.token, user: toAuthUser(authData.record) };
-    } catch {
+    } catch (err) {
+      console.warn('[auth/refreshFromBearer] token refresh failed', err);
       throw new UnauthorizedError('Invalid or expired token');
     }
   }

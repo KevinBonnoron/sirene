@@ -242,7 +242,7 @@ class GenerationService {
     const presetVoice = catalog.types.includes('preset') ? (options.presetVoice as string | undefined) : undefined;
 
     if (catalog.types.includes('cloning') && !presetVoice) {
-      const rows = await voiceSampleRepository.getAllBy(`voice = "${body.voice}" && enabled = true`, { sort: 'order,created' });
+      const rows = await voiceSampleRepository.getAllBy(pb.filter('voice = {:voiceId} && enabled = true', { voiceId: body.voice }), { sort: 'order,created' });
       if (rows.length === 0) {
         throw new BadRequestError('Voice cloning requires at least one enabled audio sample. Edit the voice to upload or enable a sample.');
       }

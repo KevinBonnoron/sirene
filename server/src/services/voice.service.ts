@@ -5,6 +5,7 @@ import type { Voice, VoiceSample } from '@sirene/shared';
 import JSZip from 'jszip';
 import { BadRequestError, NotFoundError } from '../errors';
 import { config } from '../lib/config';
+import { pb } from '../lib/pocketbase';
 import { voiceRepository, voiceSampleRepository } from '../repositories';
 
 interface ImportedSample {
@@ -247,15 +248,25 @@ class VoiceService {
     }
 
     const buffer = await zip.generateAsync({ type: 'uint8array' });
-    const filename = `voice-${voice.name.replace(/\s+/g, '-').toLowerCase()}.zip`;
+    // Voice names are user-controlled, so anything we drop into the
+    // Content-Disposition header has to be filesystem-safe across browsers.
+    // Strip everything outside [A-Za-z0-9_-] and collapse runs to a single dash.
+    const safeName =
+      voice.name
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'voice';
+    const filename = `voice-${safeName}.zip`;
     return { buffer, filename };
   }
 
   private async dedupeName(userId: string, name: string): Promise<string> {
-    // Match the exact name OR the "name (N)" suffix pattern. PB's `~` is a
-    // substring search, so a plain `name ~ "Alex"` would also collide with
-    // "Alexander" and bump the suffix unnecessarily.
-    const siblings = await voiceRepository.getAllBy(`user = "${userId}" && (name = "${name}" || name ~ "${name} (")`);
+    // `name` is read straight out of the imported voice.json so it's
+    // user-controlled - pb.filter() escapes single quotes / operators that
+    // would otherwise break the predicate. Matches the exact name OR the
+    // "name (N)" suffix pattern; the trailing space + `(` keeps "Alex" from
+    // colliding with "Alexander" through PB's substring `~`.
+    const siblings = await voiceRepository.getAllBy(pb.filter('user = {:userId} && (name = {:name} || name ~ {:prefix})', { userId, name, prefix: `${name} (` }));
     const taken = new Set(siblings.map((v) => v.name));
     if (!taken.has(name)) {
       return name;

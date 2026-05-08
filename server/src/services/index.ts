@@ -1,3 +1,10 @@
+export * from '../errors';
+export { authService, InvalidCredentialsError, RegistrationFailedError } from './auth.service';
+export { generationService } from './generation.service';
 export { inferenceServerService } from './inference-server.service';
 export { modelService } from './model.service';
-export { serverModelsService } from './server-models.service';
+export { sessionService } from './session.service';
+export { settingsService } from './settings.service';
+export { transcribeService } from './transcribe.service';
+export { voiceService } from './voice.service';
+export { voiceDesignerService } from './voice-designer.service';

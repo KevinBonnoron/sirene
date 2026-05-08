@@ -1,12 +1,12 @@
 import type { InferenceServer } from '@sirene/shared';
-import { inferenceServerService } from '../services/inference-server.service';
-import { serverModelsService } from '../services/server-models.service';
-import type { InferenceTarget } from './inference-client';
+import { ServiceUnavailableError } from '../errors';
+import type { InferenceTarget } from '../repositories';
+import { inferenceServerService } from './inference-server.service';
+import { serverModelsService } from './server-models.service';
 
-export class NoInferenceServerError extends Error {
+class NoInferenceServerError extends ServiceUnavailableError {
   public constructor(message = 'No inference server is available') {
     super(message);
-    this.name = 'NoInferenceServerError';
   }
 }
 
@@ -17,25 +17,25 @@ interface PickOptions {
   requireModel?: string;
 }
 
-export function targetOf(server: InferenceServer): InferenceTarget {
-  return { url: server.url, authToken: server.auth_token };
+function targetOf(server: InferenceServer): InferenceTarget {
+  return { url: server.url, authToken: server.authToken };
 }
 
 /** Pick a server for an outgoing call. Strategy:
  *  - Filter to enabled+online (or unknown if nothing online) servers
  *  - If `requireModel` is set, keep only servers that have it installed
  *  - Among candidates: pick the one with the fewest in-flight calls; ties broken by priority */
-export async function pickServer(options: PickOptions = {}): Promise<InferenceServer> {
+async function pickServer(options: PickOptions = {}): Promise<InferenceServer> {
   const all = await inferenceServerService.listEnabled();
   if (all.length === 0) {
     throw new NoInferenceServerError('No inference server is configured. Add one from Settings.');
   }
 
-  let candidates = all.filter((s) => s.last_health_status === 'online');
+  let candidates = all.filter((s) => s.lastHealth.status === 'online');
   if (candidates.length === 0) {
     // Treat 'unknown' as a candidate so a freshly-added server can still be tried before
     // its first health probe completes.
-    candidates = all.filter((s) => !s.last_health_status || s.last_health_status === 'unknown');
+    candidates = all.filter((s) => !s.lastHealth.status || s.lastHealth.status === 'unknown');
   }
   if (candidates.length === 0) {
     throw new NoInferenceServerError('All configured inference servers are offline.');
@@ -68,15 +68,4 @@ export async function pickServer(options: PickOptions = {}): Promise<InferenceSe
 
 export async function pickTarget(options: PickOptions = {}): Promise<InferenceTarget> {
   return targetOf(await pickServer(options));
-}
-
-/** Wrap a server-bound call so we count it in the in-flight tracker.
- *  The router uses this counter to balance load across servers. */
-export async function withServer<T>(server: InferenceServer, fn: (target: InferenceTarget) => Promise<T>): Promise<T> {
-  inFlight.set(server.id, (inFlight.get(server.id) ?? 0) + 1);
-  try {
-    return await fn(targetOf(server));
-  } finally {
-    inFlight.set(server.id, Math.max(0, (inFlight.get(server.id) ?? 1) - 1));
-  }
 }

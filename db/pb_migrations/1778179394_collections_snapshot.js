@@ -697,6 +697,20 @@ migrate((app) => {
         },
         {
           "hidden": false,
+          "id": "select1466534506",
+          "maxSelect": 1,
+          "name": "role",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "select",
+          "values": [
+            "user",
+            "admin"
+          ]
+        },
+        {
+          "hidden": false,
           "id": "autodate2990389176",
           "name": "created",
           "onCreate": true,
@@ -765,7 +779,7 @@ migrate((app) => {
       },
       "system": false,
       "type": "auth",
-      "updateRule": "id = @request.auth.id",
+      "updateRule": "id = @request.auth.id && @request.body.role:isset = false",
       "verificationTemplate": {
         "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
         "subject": "Verify your {APP_NAME} email"
@@ -893,16 +907,6 @@ migrate((app) => {
           "type": "bool"
         },
         {
-          "hidden": false,
-          "id": "autodate2990389176",
-          "name": "created",
-          "onCreate": true,
-          "onUpdate": false,
-          "presentable": false,
-          "system": false,
-          "type": "autodate"
-        },
-        {
           "cascadeDelete": false,
           "collectionId": "_pb_users_auth_",
           "hidden": false,
@@ -914,6 +918,16 @@ migrate((app) => {
           "required": true,
           "system": false,
           "type": "relation"
+        },
+        {
+          "hidden": false,
+          "id": "autodate2990389176",
+          "name": "created",
+          "onCreate": true,
+          "onUpdate": false,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
         },
         {
           "hidden": false,
@@ -1052,52 +1066,6 @@ migrate((app) => {
           "type": "number"
         },
         {
-          "cascadeDelete": true,
-          "collectionId": "pbc_2649858105",
-          "hidden": false,
-          "id": "relation3892009019",
-          "maxSelect": 1,
-          "minSelect": 0,
-          "name": "voice",
-          "presentable": false,
-          "required": true,
-          "system": false,
-          "type": "relation"
-        },
-        {
-          "hidden": false,
-          "id": "autodate2990389176",
-          "name": "created",
-          "onCreate": true,
-          "onUpdate": false,
-          "presentable": false,
-          "system": false,
-          "type": "autodate"
-        },
-        {
-          "hidden": false,
-          "id": "autodate3332085495",
-          "name": "updated",
-          "onCreate": true,
-          "onUpdate": true,
-          "presentable": false,
-          "system": false,
-          "type": "autodate"
-        },
-        {
-          "cascadeDelete": false,
-          "collectionId": "_pb_users_auth_",
-          "hidden": false,
-          "id": "relation_user",
-          "maxSelect": 1,
-          "minSelect": 0,
-          "name": "user",
-          "presentable": false,
-          "required": true,
-          "system": false,
-          "type": "relation"
-        },
-        {
           "hidden": false,
           "id": "select_state",
           "maxSelect": 1,
@@ -1126,7 +1094,7 @@ migrate((app) => {
           "hidden": false,
           "id": "json_ssml",
           "maxSize": 0,
-          "name": "ssml_json",
+          "name": "editorContent",
           "presentable": false,
           "required": false,
           "system": false,
@@ -1140,6 +1108,52 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "cascadeDelete": true,
+          "collectionId": "pbc_2649858105",
+          "hidden": false,
+          "id": "relation3892009019",
+          "maxSelect": 1,
+          "minSelect": 0,
+          "name": "voice",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "relation"
+        },
+        {
+          "cascadeDelete": false,
+          "collectionId": "_pb_users_auth_",
+          "hidden": false,
+          "id": "relation_user",
+          "maxSelect": 1,
+          "minSelect": 0,
+          "name": "user",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "relation"
+        },
+        {
+          "hidden": false,
+          "id": "autodate2990389176",
+          "name": "created",
+          "onCreate": true,
+          "onUpdate": false,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
+        },
+        {
+          "hidden": false,
+          "id": "autodate3332085495",
+          "name": "updated",
+          "onCreate": true,
+          "onUpdate": true,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
         }
       ],
       "id": "pbc_1512514359",
@@ -1320,14 +1334,17 @@ migrate((app) => {
           "type": "text"
         },
         {
+          "cascadeDelete": false,
+          "collectionId": "_pb_users_auth_",
           "hidden": false,
-          "id": "autodate2990389176",
-          "name": "created",
-          "onCreate": true,
-          "onUpdate": false,
+          "id": "relation_user",
+          "maxSelect": 1,
+          "minSelect": 0,
+          "name": "user",
           "presentable": false,
+          "required": true,
           "system": false,
-          "type": "autodate"
+          "type": "relation"
         },
         {
           "hidden": false,
@@ -1340,17 +1357,14 @@ migrate((app) => {
           "type": "autodate"
         },
         {
-          "cascadeDelete": false,
-          "collectionId": "_pb_users_auth_",
           "hidden": false,
-          "id": "relation_user",
-          "maxSelect": 1,
-          "minSelect": 0,
-          "name": "user",
+          "id": "autodate2990389176",
+          "name": "created",
+          "onCreate": true,
+          "onUpdate": false,
           "presentable": false,
-          "required": true,
           "system": false,
-          "type": "relation"
+          "type": "autodate"
         }
       ],
       "id": "pbc_2769025244",
@@ -1397,6 +1411,15 @@ migrate((app) => {
           "type": "text"
         },
         {
+          "hidden": false,
+          "id": "bool_session_public",
+          "name": "public",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
           "cascadeDelete": false,
           "collectionId": "_pb_users_auth_",
           "hidden": false,
@@ -1441,15 +1464,6 @@ migrate((app) => {
           "presentable": false,
           "system": false,
           "type": "autodate"
-        },
-        {
-          "hidden": false,
-          "id": "bool_session_public",
-          "name": "public",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "bool"
         }
       ],
       "id": "pbc_sessions_studio",
@@ -1530,37 +1544,21 @@ migrate((app) => {
         },
         {
           "hidden": false,
-          "id": "date1647300886",
-          "max": "",
-          "min": "",
-          "name": "last_health_at",
+          "id": "json554040482",
+          "maxSize": 0,
+          "name": "lastHealth",
           "presentable": false,
-          "required": false,
+          "required": true,
           "system": false,
-          "type": "date"
-        },
-        {
-          "hidden": false,
-          "id": "select1827008014",
-          "maxSelect": 1,
-          "name": "last_health_status",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "select",
-          "values": [
-            "online",
-            "offline",
-            "unknown"
-          ]
+          "type": "json"
         },
         {
           "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text266923503",
-          "max": 500,
+          "hidden": true,
+          "id": "text2467688526",
+          "max": 200,
           "min": 0,
-          "name": "last_health_error",
+          "name": "authToken",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
@@ -1587,20 +1585,6 @@ migrate((app) => {
           "presentable": false,
           "system": true,
           "type": "autodate"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": true,
-          "id": "text2467688526",
-          "max": 200,
-          "min": 0,
-          "name": "auth_token",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": false,
-          "system": false,
-          "type": "text"
         }
       ],
       "id": "pbc_758574740",

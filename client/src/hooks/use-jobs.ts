@@ -1,5 +1,5 @@
 import type { Job } from '@sirene/shared';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { jobsClient } from '@/clients/jobs.client';
 import { openAuthenticatedStream } from '@/lib/auth-stream';
 import { config } from '@/lib/config';
@@ -90,22 +90,4 @@ export function useJobs() {
     jobs,
     dismiss: (id: string) => store.dismiss(id),
   };
-}
-
-/** Subscribe to a job's terminal state (completed/failed) and run a side effect once. */
-export function useJobCompletion(jobId: string | null, onTerminal: (job: Job) => void) {
-  const { jobs } = useJobs();
-  const firedFor = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!jobId) {
-      firedFor.current = null;
-      return;
-    }
-    const job = jobs.find((j) => j.id === jobId);
-    if (job && job.status !== 'running' && firedFor.current !== job.id) {
-      firedFor.current = job.id;
-      onTerminal(job);
-    }
-  }, [jobId, jobs, onTerminal]);
 }

@@ -1,38 +1,7 @@
-import type { GenerateRequest, GenerationAlignment } from '@sirene/shared';
+import { buildWav, type GenerateRequest, type GenerationAlignment, readPcmStream } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
 import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
-
-function buildWav(pcmChunks: Uint8Array[], totalBytes: number, sampleRate: number): Blob {
-  const headerSize = 44;
-  const buffer = new ArrayBuffer(headerSize + totalBytes);
-  const view = new DataView(buffer);
-  const writeStr = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-  writeStr(0, 'RIFF');
-  view.setUint32(4, 36 + totalBytes, true);
-  writeStr(8, 'WAVE');
-  writeStr(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeStr(36, 'data');
-  view.setUint32(40, totalBytes, true);
-  const out = new Uint8Array(buffer, headerSize);
-  let offset = 0;
-  for (const chunk of pcmChunks) {
-    out.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return new Blob([buffer], { type: 'audio/wav' });
-}
 
 export interface GenerateResult {
   audio: Blob;
@@ -65,20 +34,9 @@ export const generationClient = universalClient(
       if (!body) {
         throw new Error('No response body');
       }
-      const reader = body.getReader();
-      const chunks: Uint8Array[] = [];
-      let totalBytes = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        chunks.push(value);
-        totalBytes += value.length;
-      }
-
-      return { audio: buildWav(chunks, totalBytes, sampleRate), generationId };
+      const { chunks, totalBytes } = await readPcmStream(body);
+      const audio = new Blob([buildWav(chunks, totalBytes, sampleRate)], { type: 'audio/wav' });
+      return { audio, generationId };
     },
 
     align(id: string): Promise<GenerationAlignment> {

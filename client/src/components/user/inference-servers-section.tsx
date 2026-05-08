@@ -31,7 +31,7 @@ const STATUS_TEXT: Record<'online' | 'offline' | 'unknown', string> = {
 };
 
 function statusOf(server: InferenceServer): 'online' | 'offline' | 'unknown' {
-  return server.last_health_status || 'unknown';
+  return server.lastHealth.status || 'unknown';
 }
 
 function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknown>) => string): string {
@@ -147,8 +147,8 @@ function ServerRow({ server }: { server: InferenceServer }) {
           </p>
           <p className="text-xs">
             <span className={cn('font-medium', STATUS_TEXT[status])}>{t(statusKey)}</span>
-            <span className="ml-2 text-muted-foreground">{formatRelative(server.last_health_at, t)}</span>
-            {server.last_health_error && status === 'offline' && <span className="ml-2 text-destructive">— {server.last_health_error}</span>}
+            <span className="ml-2 text-muted-foreground">{formatRelative(server.lastHealth.at, t)}</span>
+            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">— {server.lastHealth.error}</span>}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-8" aria-label={t('inferenceServers.test')}>
@@ -190,7 +190,7 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const enabledId = `${reactId}-enabled`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
-  // PB hides auth_token, so we can't pre-fill the existing value. Treat the field
+  // PB hides authToken, so we can't pre-fill the existing value. Treat the field
   // as "leave blank to keep current; type to overwrite" via the dirty flag.
   const [authToken, setAuthToken] = useState('');
   const [authTokenDirty, setAuthTokenDirty] = useState(false);
@@ -204,7 +204,7 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
     if (saving || !name.trim() || !url.trim()) {
       return;
     }
-    const payload: { name: string; url: string; priority: number; enabled: boolean; auth_token?: string } = {
+    const payload: { name: string; url: string; priority: number; enabled: boolean; authToken?: string } = {
       name: name.trim(),
       url: url.trim().replace(/\/$/, ''),
       priority: Number.parseInt(priority, 10) || 0,
@@ -212,14 +212,14 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
     };
     if (authTokenDirty) {
       // Empty string clears the token server-side; non-empty replaces it.
-      payload.auth_token = authToken.trim();
+      payload.authToken = authToken.trim();
     }
     setSaving(true);
     try {
       if (server) {
         await inferenceServerClient.update(server.id, payload);
       } else {
-        await inferenceServerClient.create({ ...payload, auth_token: payload.auth_token ?? '' });
+        await inferenceServerClient.create({ ...payload, authToken: payload.authToken ?? '' });
       }
       onSaved();
     } catch (e) {

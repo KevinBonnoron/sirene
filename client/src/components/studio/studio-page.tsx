@@ -16,6 +16,7 @@ import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { exportSessionAsZip } from '@/utils/export-session';
+import { asStringArray } from '@/utils/format';
 import { contentToSSML } from '@/utils/ssml';
 import { DeleteSessionAlert } from './delete-session-alert';
 import { generationToTake } from './generation-to-take';
@@ -33,16 +34,6 @@ interface DraftState {
 
 const DEFAULT_TUNING: TakeTuning = { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 };
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
-
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  }
-  if (typeof value === 'string' && value.length > 0) {
-    return [value];
-  }
-  return [];
-}
 
 function makeDraftTake(orderIndex: number, version: number, draft: DraftState): TakeData {
   return {
@@ -188,7 +179,7 @@ export function StudioPage() {
         voice: draft.voiceId,
         input: ssml,
         tuning: draft.tuning,
-        ssmlJson: draft.content as unknown as Record<string, unknown>,
+        editorContent: draft.content as unknown as Record<string, unknown>,
       });
 
       if (generationId) {
@@ -233,7 +224,7 @@ export function StudioPage() {
           voice: take.voiceId,
           input: text,
           tuning,
-          ssmlJson: take.content as unknown as Record<string, unknown>,
+          editorContent: take.content as unknown as Record<string, unknown>,
         });
         if (!generationId) {
           return;
@@ -529,7 +520,7 @@ export function StudioPage() {
                   <Plus className="size-4 shrink-0" />
                   <span className="truncate">
                     {t('studio.addTake')}
-                    <span className="hidden text-muted-foreground/70 sm:inline"> — {t('studio.addTakeHint')}</span>
+                    <span className="hidden text-muted-foreground/70 sm:inline"> - {t('studio.addTakeHint')}</span>
                   </span>
                 </span>
                 <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-[11px] leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>

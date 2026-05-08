@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFieldContext } from '@/lib/form';
+import { useFieldContext } from '@/lib/form-contexts';
 
 interface PasswordFieldProps {
   label: string;

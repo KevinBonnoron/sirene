@@ -27,7 +27,7 @@ class PromptCache:
         self._memory: dict[str, Any] = {}
         self._lock = threading.Lock()
 
-    # ── Key generation ──
+
 
     @staticmethod
     def audio_cache_key(urls: list[str], max_duration: float) -> str:
@@ -45,7 +45,7 @@ class PromptCache:
             h.update(ref_text.encode())
         return f"{backend_name}_{h.hexdigest()[:24]}"
 
-    # ── Level 1: Reference audio files ──
+
 
     def get_audio(self, key: str) -> str | None:
         """Return cached audio file path, or None on miss."""
@@ -63,7 +63,7 @@ class PromptCache:
         logger.debug(f"[cache] L1 stored: {key}")
         return str(dest)
 
-    # ── Level 2: Prompt representations ──
+
 
     def get_prompt(self, key: str) -> Any | None:
         """Return cached prompt from memory or disk, or None on miss."""
@@ -98,7 +98,7 @@ class PromptCache:
         torch.save(prompt, path)
         logger.debug(f"[cache] L2 stored: {key}")
 
-    # ── Maintenance ──
+
 
     def clear_all(self) -> dict:
         """Clear all caches. Returns counts."""

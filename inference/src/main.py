@@ -12,7 +12,7 @@ from .config import settings
 from .routers import backends, cache, generate, health, models, transcribe
 from .services.model_manager import model_manager
 
-# Runtime packages dir (volume-backed in Docker) — add to sys.path so lazily
+# Runtime packages dir (volume-backed in Docker) - add to sys.path so lazily
 # installed backend deps are importable without restarting the process.
 _packages_dir = os.environ.get("PACKAGES_DIR")
 if _packages_dir:
@@ -35,7 +35,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info(f"Sirene Inference starting on {settings.host}:{settings.port}")
     logger.info(f"Device: {settings.device}, Models path: {settings.models_path}")
-    logger.info(f"Prompt cache: {settings.cache_dir} (max {settings.cache_max_disk_mb}MB)")
+    logger.info(
+        f"Prompt cache: {settings.cache_dir} (max {settings.cache_max_disk_mb}MB)"
+    )
     yield
     model_manager.unload_all()
     logger.info("All models unloaded, shutting down")
@@ -69,7 +71,7 @@ async def bearer_auth(request: Request, call_next):
     # Tolerate trailing slashes since reverse proxies and curl users don't always strip them.
     if request.url.path.rstrip("/") == "/health" and request.method in ("GET", "HEAD"):
         return await call_next(request)
-    # Compare against the bearer token only — accept any case for the scheme keyword and
+    # Compare against the bearer token only - accept any case for the scheme keyword and
     # tolerate extra surrounding whitespace, both of which are valid per RFC 6750.
     header = request.headers.get("authorization", "").strip()
     scheme, _, token = header.partition(" ")

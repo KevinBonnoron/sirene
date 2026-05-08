@@ -2,7 +2,7 @@ import { Mark, mergeAttributes, Node } from '@tiptap/core';
 import './ssml-chip.css';
 
 // ---------------------------------------------------------------------------
-// SpeedMark — wraps text, controls rate (slow / fast / xfast)
+// SpeedMark - wraps text, controls rate (slow / fast / xfast)
 // ---------------------------------------------------------------------------
 
 function speedClass(rate: number | null | undefined): string {
@@ -41,7 +41,7 @@ export const SpeedMark = Mark.create({
 });
 
 // ---------------------------------------------------------------------------
-// ToneMark — wraps text, controls emotional tone (sage chip)
+// ToneMark - wraps text, controls emotional tone (sage chip)
 // ---------------------------------------------------------------------------
 
 export const ToneMark = Mark.create({
@@ -70,7 +70,7 @@ export const ToneMark = Mark.create({
 });
 
 // ---------------------------------------------------------------------------
-// EffectNode — inline atom: a sound effect or pause label rendered as a chip.
+// EffectNode - inline atom: a sound effect or pause label rendered as a chip.
 // ---------------------------------------------------------------------------
 
 function effectClass(effect: string): string {

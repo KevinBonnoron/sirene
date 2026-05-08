@@ -33,7 +33,6 @@ export const spec = {
   ],
 
   paths: {
-    // ── Health & Version ──────────────────────────────────────────
     '/health': {
       get: {
         tags: ['Health'],
@@ -63,7 +62,6 @@ export const spec = {
       },
     },
 
-    // ── Generate ──────────────────────────────────────────────────
     '/generate': {
       post: {
         tags: ['Generate'],
@@ -99,7 +97,6 @@ export const spec = {
       },
     },
 
-    // ── Generations ───────────────────────────────────────────────
     '/generations': {
       get: {
         tags: ['Generations'],
@@ -134,7 +131,6 @@ export const spec = {
       },
     },
 
-    // ── Voices ────────────────────────────────────────────────────
     '/voices': {
       get: {
         tags: ['Voices'],
@@ -298,7 +294,6 @@ export const spec = {
       },
     },
 
-    // ── Models ────────────────────────────────────────────────────
     '/models/catalog': {
       get: {
         tags: ['Models'],
@@ -408,7 +403,6 @@ export const spec = {
       },
     },
 
-    // ── Settings ─────────────────────────────────────────────────
     '/settings': {
       get: {
         tags: ['Settings'],
@@ -459,7 +453,6 @@ export const spec = {
       },
     },
 
-    // ── Transcribe ────────────────────────────────────────────────
     '/transcribe': {
       post: {
         tags: ['Transcribe'],

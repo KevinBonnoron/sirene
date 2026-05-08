@@ -3,7 +3,7 @@
  *
  * The Studio surfaces three "global" tuning knobs (speed, pitch, variation), but most TTS
  * backends only honour a subset. We disable the sliders that have no effect rather than
- * pretending — and refuse to fake pitch shift via post-processing (the user explicitly
+ * pretending - and refuse to fake pitch shift via post-processing (the user explicitly
  * called this out).
  */
 export interface VoiceCapabilities {
@@ -13,7 +13,7 @@ export interface VoiceCapabilities {
   pitch: boolean;
   /** Generation-level random variation (Piper's noise_scale, model temperature, etc.). */
   variation: boolean;
-  /** Per-word speed multiplier — needs SSML `<prosody rate>` support or token-level rate. None of our backends do today. */
+  /** Per-word speed multiplier - needs SSML `<prosody rate>` support or token-level rate. None of our backends do today. */
   perWordSpeed: boolean;
 }
 
@@ -36,7 +36,7 @@ const CAPABILITIES: Record<string, VoiceCapabilities> = {
 
 /**
  * Returns the tuning capabilities for a given TTS backend id.
- * Unknown backends default to "speed only" — safest baseline.
+ * Unknown backends default to "speed only" - safest baseline.
  */
 export function getVoiceCapabilities(backend: string | undefined | null): VoiceCapabilities {
   if (!backend) {

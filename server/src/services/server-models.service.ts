@@ -1,6 +1,5 @@
 import type { CatalogModel, InferenceServer } from '@sirene/shared';
-import { getModels } from '../lib/inference-client';
-import { inferenceServerService } from './inference-server.service';
+import { inferenceRepository, inferenceServerRepository } from '../repositories';
 
 const CACHE_TTL_MS = 60_000;
 
@@ -23,11 +22,11 @@ class ServerModelsService {
    *  One slow/timed-out probe must not break visibility for other healthy servers,
    *  so per-server failures are logged and skipped instead of rejecting the batch. */
   public async getInstalledByServer(): Promise<Map<string, Set<string>>> {
-    const servers = await inferenceServerService.listEnabled();
+    const servers = await inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
     const result = new Map<string, Set<string>>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {
-        if (server.last_health_status === 'offline') {
+        if (server.lastHealth.status === 'offline') {
           return null;
         }
         const entry = await this.getEntry(server);
@@ -58,14 +57,14 @@ class ServerModelsService {
   }
 
   /** Aggregated custom (Piper) models across all online servers, deduped by id.
-   *  Same isolation policy as getInstalledByServer — one bad worker doesn't blank
+   *  Same isolation policy as getInstalledByServer - one bad worker doesn't blank
    *  the catalog for everyone else. */
   public async aggregatedCustom(): Promise<CatalogModel[]> {
-    const servers = await inferenceServerService.listEnabled();
+    const servers = await inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
     const seen = new Map<string, CatalogModel>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {
-        if (server.last_health_status === 'offline') {
+        if (server.lastHealth.status === 'offline') {
           return [];
         }
         const entry = await this.getEntry(server);
@@ -87,7 +86,7 @@ class ServerModelsService {
     return Array.from(seen.values());
   }
 
-  /** Force a refresh for one server — call after pulls, deletes, or health recovery. */
+  /** Force a refresh for one server - call after pulls, deletes, or health recovery. */
   public invalidate(serverId: string): void {
     this.cache.delete(serverId);
   }
@@ -97,12 +96,12 @@ class ServerModelsService {
   }
 
   private async getEntry(server: InferenceServer): Promise<CacheEntry> {
-    const fingerprint = `${server.url}|${server.auth_token ?? ''}`;
+    const fingerprint = `${server.url}|${server.authToken ?? ''}`;
     const cached = this.cache.get(server.id);
     if (cached && cached.fingerprint === fingerprint && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached;
     }
-    const { installed, custom } = await getModels({ url: server.url, authToken: server.auth_token });
+    const { installed, custom } = await inferenceRepository({ url: server.url, authToken: server.authToken }).listModels();
     const entry: CacheEntry = { installed: new Set(installed), custom, fetchedAt: Date.now(), fingerprint };
     this.cache.set(server.id, entry);
     return entry;

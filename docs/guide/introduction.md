@@ -31,13 +31,13 @@ Nginx (reverse proxy in production)
 
 ### Responsibilities
 
-**Client (React)** — User interface. Connects to PocketBase via SSE for real-time updates (download progress, generation status). Communicates with the Hono server for actions.
+**Client (React)** - User interface. Connects to PocketBase via SSE for real-time updates (download progress, generation status). Communicates with the Hono server for actions.
 
-**Server (Hono)** — Pure orchestrator, zero inference. Receives requests, validates, resolves voices/parameters, forwards to the Python service for inference, and writes results to PocketBase.
+**Server (Hono)** - Pure orchestrator, zero inference. Receives requests, validates, resolves voices/parameters, forwards to the Python service for inference, and writes results to PocketBase.
 
-**Inference (FastAPI)** — All TTS inference. A single PyTorch runtime, one GPU, lazy-loading models, memory cache. Downloads models on demand into a Docker volume.
+**Inference (FastAPI)** - All TTS inference. A single PyTorch runtime, one GPU, lazy-loading models, memory cache. Downloads models on demand into a Docker volume.
 
-**PocketBase** — SQLite database, file storage (audio samples, generations), real-time SSE subscriptions, admin UI for debugging.
+**PocketBase** - SQLite database, file storage (audio samples, generations), real-time SSE subscriptions, admin UI for debugging.
 
 ## Monorepo Structure
 
@@ -57,10 +57,10 @@ sirene/
 
 | Backend | Voice Cloning | Streaming | Languages |
 |---------|:---:|:---:|---|
-| Kokoro | — | — | EN, FR, JA, KO, ZH |
-| Qwen3-TTS | Yes | — | 10+ languages |
+| Kokoro | - | - | EN, FR, JA, KO, ZH |
+| Qwen3-TTS | Yes | - | 10+ languages |
 | F5-TTS | Yes | Yes | Multilingual |
-| Piper | — | — | 26 languages, 40+ voices |
+| Piper | - | - | 26 languages, 40+ voices |
 | CosyVoice | Yes | Yes (~150ms) | 9 languages |
-| OpenAudio S1 | Yes | — | Multilingual |
-| Chatterbox | Yes | — | EN + 23 languages |
+| OpenAudio S1 | Yes | - | Multilingual |
+| Chatterbox | Yes | - | EN + 23 languages |

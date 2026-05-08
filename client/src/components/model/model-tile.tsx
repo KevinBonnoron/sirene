@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useJobs } from '@/hooks/use-jobs';
 import { cn } from '@/lib/utils';
 import { downloadBlob } from '@/utils/download';
@@ -42,6 +43,10 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   const isMultiServer = !isApi && enabledServers.length > 1;
   const showCoverage = !isApi && status === 'installed' && enabledServers.length > 1 && installedServerIds.length < enabledServers.length;
   const installedNames = installedServerIds.map((id) => enabledServers.find((s) => s.id === id)?.name).filter((n): n is string => !!n);
+  // Mirrors the server-side filter in model.service.ts: 'online' or 'unknown' (never probed)
+  // are eligible; 'offline' is not. Without this, the Install button stays clickable when
+  // every enabled server is down and the API rejects with 503 NoOnlineServerError.
+  const hasOnlineServer = enabledServers.some((s) => s.lastHealth.status !== 'offline');
 
   async function handleRemove(serverId?: string) {
     try {
@@ -84,7 +89,11 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
                 <Download className="size-3.5" />
               </Button>
             )}
-            {isMultiServer ? <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} /> : <SingleServerActions status={status} isCustom={isCustom} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />}
+            {isMultiServer ? (
+              <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} />
+            ) : (
+              <SingleServerActions status={status} isCustom={isCustom} hasOnlineServer={hasOnlineServer} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />
+            )}
           </div>
         )}
       </div>
@@ -132,15 +141,28 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   );
 }
 
-function SingleServerActions({ status, isCustom, onPull, onRemove }: { status: ModelStatus; isCustom: boolean; onPull: () => void; onRemove: () => void }) {
+function SingleServerActions({ status, isCustom, hasOnlineServer, onPull, onRemove }: { status: ModelStatus; isCustom: boolean; hasOnlineServer: boolean; onPull: () => void; onRemove: () => void }) {
   const { t } = useTranslation();
+  const showInstall = (status === 'available' || status === 'error') && !isCustom;
   return (
     <>
-      {(status === 'available' || status === 'error') && !isCustom && (
-        <Button size="icon" variant="outline" className="size-7" onClick={onPull} aria-label={t('model.actionInstall')}>
-          <Download className="size-3.5" />
-        </Button>
-      )}
+      {showInstall &&
+        (hasOnlineServer ? (
+          <Button size="icon" variant="outline" className="size-7" onClick={onPull} aria-label={t('model.actionInstall')}>
+            <Download className="size-3.5" />
+          </Button>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* aria-disabled (not disabled) keeps the button focusable so the tooltip can
+                   open via keyboard. pointerEvents stays enabled so hover triggers it too. */}
+              <Button size="icon" variant="outline" className="size-7 opacity-50" aria-disabled aria-label={t('model.actionInstallNoServer')} onClick={(e) => e.preventDefault()}>
+                <Download className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('model.actionInstallNoServer')}</TooltipContent>
+          </Tooltip>
+        ))}
       {status === 'pulling' && (
         <Button size="icon" variant="outline" className="size-7" disabled aria-label={t('model.actionInstalling')}>
           <Loader2 className="size-3.5 animate-spin" />
@@ -168,9 +190,9 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
       .filter((id): id is string => !!id),
   );
 
-  // Custom (uploaded) models can't be transferred — only show servers where they actually live.
+  // Custom (uploaded) models can't be transferred - only show servers where they actually live.
   const visibleServers = isCustom ? servers.filter((s) => installedSet.has(s.id)) : servers;
-  const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.last_health_status === 'online' && !pullingByServer.has(s.id));
+  const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.lastHealth.status === 'online' && !pullingByServer.has(s.id));
 
   return (
     <>
@@ -186,7 +208,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
           {visibleServers.map((server) => {
             const isInstalled = installedSet.has(server.id);
             const isPulling = pullingByServer.has(server.id);
-            const isOffline = server.last_health_status === 'offline';
+            const isOffline = server.lastHealth.status === 'offline';
             const disabled = isPulling || (isOffline && !isInstalled);
             const ActionIcon = isPulling ? Loader2 : isInstalled ? Trash2 : Download;
             const actionLabel = isPulling ? t('model.actionInstalling') : isInstalled ? t('model.actionRemoveFromServer', { name: server.name }) : t('model.actionInstallOnServer', { name: server.name });
@@ -199,7 +221,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
             };
             return (
               <DropdownMenuItem key={server.id} disabled={disabled} onSelect={action} aria-label={actionLabel} className={cn('gap-2', isInstalled && 'data-[highlighted]:text-destructive')}>
-                <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[server.last_health_status])} aria-hidden />
+                <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[server.lastHealth.status])} aria-hidden />
                 <span className="min-w-0 flex-1 truncate">{server.name}</span>
                 <ActionIcon className={cn('size-3.5 shrink-0', isPulling && 'animate-spin')} aria-hidden />
               </DropdownMenuItem>

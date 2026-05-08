@@ -36,24 +36,24 @@ Then open [http://localhost](http://localhost).
 
 ## Features
 
-- **Multi-backend TTS** — Route requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, OpenAudio, or Chatterbox from a single interface
-- **Voice cloning** — Create custom voices by uploading audio samples with zero-shot cloning
-- **Model management** — Download and manage TTS models on demand from the web UI
-- **Real-time updates** — Track downloads and generation progress via Server-Sent Events
-- **Transcription** — Speech-to-text via Whisper models
-- **Self-hosted** — Two lightweight Docker images: one for the web/API, one for inference
+- **Multi-backend TTS** - Route requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, OpenAudio, or Chatterbox from a single interface
+- **Voice cloning** - Create custom voices by uploading audio samples with zero-shot cloning
+- **Model management** - Download and manage TTS models on demand from the web UI
+- **Real-time updates** - Track downloads and generation progress via Server-Sent Events
+- **Transcription** - Speech-to-text via Whisper models
+- **Self-hosted** - Two lightweight Docker images: one for the web/API, one for inference
 
 ## Supported Backends
 
 | Backend | Voice Cloning | Streaming | Languages |
 |---------|:---:|:---:|---|
-| Kokoro | — | — | EN, FR, JA, KO, ZH |
-| Qwen3-TTS | Yes | — | 10+ languages |
+| Kokoro | - | - | EN, FR, JA, KO, ZH |
+| Qwen3-TTS | Yes | - | 10+ languages |
 | F5-TTS | Yes | Yes | Multilingual |
-| Piper | — | — | 26 languages |
+| Piper | - | - | 26 languages |
 | CosyVoice | Yes | Yes | 9 languages |
-| OpenAudio S1 | Yes | — | Multilingual |
-| Chatterbox | Yes | — | EN + 23 languages |
+| OpenAudio S1 | Yes | - | Multilingual |
+| Chatterbox | Yes | - | EN + 23 languages |
 
 ## Development
 
@@ -65,7 +65,7 @@ Then open [http://localhost](http://localhost).
 
 ### Quick Start
 
-The easiest way is to use the **devcontainer** — open the project in VS Code or GitHub Codespaces and all dependencies are installed automatically.
+The easiest way is to use the **devcontainer** - open the project in VS Code or GitHub Codespaces and all dependencies are installed automatically.
 
 For manual setup:
 

@@ -98,7 +98,7 @@ export function PiperImportDialog() {
     const byId = new Map(enabledServers.map((s) => [s.id, s]));
     return selectedServerIds.filter((id) => {
       const server = byId.get(id);
-      return !!server && server.last_health_status !== 'offline' && !installedOnIds.has(id);
+      return !!server && server.lastHealth.status !== 'offline' && !installedOnIds.has(id);
     });
   }, [enabledServers, installedOnIds, selectedServerIds]);
 
@@ -108,7 +108,7 @@ export function PiperImportDialog() {
       return;
     }
     prevSlugRef.current = slug;
-    const candidates = enabledServers.filter((s) => s.last_health_status === 'online' && !installedOnIds.has(s.id)).map((s) => s.id);
+    const candidates = enabledServers.filter((s) => s.lastHealth.status === 'online' && !installedOnIds.has(s.id)).map((s) => s.id);
     dispatch({ type: 'setSelectedServerIds', ids: candidates });
   }, [slug, enabledServers, installedOnIds]);
 
@@ -168,7 +168,7 @@ export function PiperImportDialog() {
       return effectiveSelectedServerIds.length === 0;
     }
     const onlySrv = enabledServers[0];
-    return onlySrv.last_health_status === 'offline' || installedOnIds.has(onlySrv.id);
+    return onlySrv.lastHealth.status === 'offline' || installedOnIds.has(onlySrv.id);
   })();
 
   async function handleImport() {
@@ -262,7 +262,7 @@ export function PiperImportDialog() {
               <p className="text-sm font-medium">{t('model.installOn')}</p>
               <ul className="space-y-1">
                 {enabledServers.map((server) => {
-                  const status = (server.last_health_status || 'unknown') as 'online' | 'offline' | 'unknown';
+                  const status = (server.lastHealth.status || 'unknown') as 'online' | 'offline' | 'unknown';
                   const alreadyInstalled = installedOnIds.has(server.id);
                   const offline = status === 'offline';
                   const disabled = alreadyInstalled || offline;

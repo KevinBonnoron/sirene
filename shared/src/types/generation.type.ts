@@ -21,7 +21,7 @@ export interface Generation extends PocketBaseRecord {
   user: string;
   state?: GenerationState;
   tuning?: GenerationTuning;
-  ssml_json?: object;
-  /** Denormalised from the parent session — flips when the session is shared/unshared. */
+  editorContent?: object;
+  /** Denormalised from the parent session - flips when the session is shared/unshared. */
   public?: boolean;
 }

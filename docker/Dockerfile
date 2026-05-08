@@ -54,7 +54,7 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Default inference URL — override via INFERENCE_URL env var
+# Default inference URL - override via INFERENCE_URL env var
 ENV INFERENCE_URL=http://inference:8000
 
 EXPOSE 80

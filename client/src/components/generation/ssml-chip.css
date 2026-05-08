@@ -1,11 +1,11 @@
 /*
- * SSML chips — small uppercase mono pills used by the Tiptap marks defined in
+ * SSML chips - small uppercase mono pills used by the Tiptap marks defined in
  * `ssml-mark.ts` to render inline prosody / effect markers.
  *
  * These styles are global by necessity: Tiptap's `renderHTML` outputs raw
  * class names that must resolve at the document level, so CSS modules / scoped
  * styles aren't an option. Keeping them next to the marks makes ownership
- * obvious — the file is imported from `ssml-mark.ts` so wherever the marks
+ * obvious - the file is imported from `ssml-mark.ts` so wherever the marks
  * land in the bundle, the styles travel with them.
  *
  * Visual spec from the design handoff (d6-chip).

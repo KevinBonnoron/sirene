@@ -1,9 +1,20 @@
 import type { InferenceServer, InferenceServerHealthStatus } from '@sirene/shared';
+import { NotFoundError } from '../errors';
 import { config } from '../lib/config';
-import { inferenceServerRepository } from '../repositories';
+import { inferenceRepository, inferenceServerRepository } from '../repositories';
+import { serverModelsService } from './server-models.service';
+
+interface InferenceServerWriteInput {
+  name: string;
+  url: string;
+  enabled: boolean;
+  priority: number;
+  authToken?: string;
+}
+
+type InferenceServerUpdateInput = Partial<InferenceServerWriteInput>;
 
 const HEALTH_INTERVAL_MS = 15_000;
-const HEALTH_TIMEOUT_MS = 5_000;
 
 class InferenceServerService {
   private healthTimer: ReturnType<typeof setInterval> | null = null;
@@ -12,14 +23,39 @@ class InferenceServerService {
     return inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
   }
 
-  /** Probe one server and persist the result. */
-  public async checkOne(id: string): Promise<InferenceServer | null> {
+  /** Probe one server and persist the result. Throws NotFoundError on unknown id. */
+  public async checkOne(id: string): Promise<InferenceServer> {
     const record = await inferenceServerRepository.getOne(id);
     if (!record) {
-      return null;
+      throw new NotFoundError('Server not found');
     }
-    const probed = await probeHealth(record.url, record.auth_token);
-    return this.persistHealth(record, probed);
+    const probed = await probeHealth(record.url, record.authToken);
+    const updated = await this.persistHealth(record, probed);
+    serverModelsService.invalidate(id);
+    return updated;
+  }
+
+  public async create(input: InferenceServerWriteInput): Promise<InferenceServer> {
+    return inferenceServerRepository.create({
+      ...input,
+      url: input.url.replace(/\/$/, ''),
+      lastHealth: { at: '', status: 'unknown', error: '' },
+    });
+  }
+
+  public async update(id: string, input: InferenceServerUpdateInput): Promise<InferenceServer> {
+    const payload = input.url ? { ...input, url: input.url.replace(/\/$/, '') } : input;
+    const updated = await inferenceServerRepository.update(id, payload);
+    // url / authToken / enabled changes invalidate the cached inventory for this
+    // server - without this, routing would keep using the old endpoint for up to
+    // the cache TTL.
+    serverModelsService.invalidate(id);
+    return updated;
+  }
+
+  public async remove(id: string): Promise<void> {
+    await inferenceServerRepository.delete(id);
+    serverModelsService.invalidate(id);
   }
 
   /** Bootstrap a single server from INFERENCE_URL if the registry is empty. */
@@ -30,16 +66,14 @@ class InferenceServerService {
     }
     // Idempotent under concurrent startup: the read above is racy across multiple
     // API instances, and the unique-name/url indexes will reject the loser. Treat
-    // that case as success — by then another instance has already seeded the row.
+    // that case as success - by then another instance has already seeded the row.
     try {
       await inferenceServerRepository.create({
         name: 'Local',
         url: config.inferenceUrl.replace(/\/$/, ''),
         enabled: true,
         priority: 100,
-        last_health_at: '',
-        last_health_status: 'unknown',
-        last_health_error: '',
+        lastHealth: { at: '', status: 'unknown', error: '' },
       });
       console.log(`Seeded inference_servers with ${config.inferenceUrl}`);
     } catch (err) {
@@ -70,7 +104,7 @@ class InferenceServerService {
     await Promise.allSettled(
       records.map(async (record) => {
         try {
-          const probed = await probeHealth(record.url, record.auth_token);
+          const probed = await probeHealth(record.url, record.authToken);
           await this.persistHealth(record, probed);
         } catch (err) {
           console.warn(`[health] ${record.name} (${record.url}) probe failed:`, err);
@@ -79,21 +113,13 @@ class InferenceServerService {
     );
   }
 
-  /** Always advances `last_health_at` so the UI's "last checked" timestamp keeps moving
-   *  while the 15s loop is running. Status/error fields are only written when they
-   *  actually change to keep the PB realtime stream quiet for stable servers. */
+  /** Writes the full health snapshot on every probe. The three fields are atomically
+   *  in sync as a single PB json column; PB realtime fires per-record anyway, so there's
+   *  no traffic gain in updating only the changed sub-keys. */
   private async persistHealth(record: InferenceServer, probed: { status: InferenceServerHealthStatus; error: string }): Promise<InferenceServer> {
-    const currentStatus = (record.last_health_status || 'unknown') as InferenceServerHealthStatus;
-    const currentError = record.last_health_error || '';
-    const statusChanged = currentStatus !== probed.status || currentError !== probed.error;
-    const update: Partial<InferenceServer> = {
-      last_health_at: new Date().toISOString(),
-    };
-    if (statusChanged) {
-      update.last_health_status = probed.status;
-      update.last_health_error = probed.error;
-    }
-    return inferenceServerRepository.update(record.id, update);
+    return inferenceServerRepository.update(record.id, {
+      lastHealth: { at: new Date().toISOString(), status: probed.status, error: probed.error },
+    });
   }
 }
 
@@ -103,15 +129,7 @@ async function probeHealth(url: string, authToken?: string): Promise<{ status: I
     // but if the worker was started in fail-closed mode and the operator decides to
     // require auth on every path, still send the bearer so the probe matches what
     // every other inference call does.
-    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
-    const response = await fetch(`${url}/health`, {
-      method: 'GET',
-      headers,
-      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      return { status: 'offline', error: `HTTP ${response.status}` };
-    }
+    await inferenceRepository({ url, authToken }).health();
     return { status: 'online', error: '' };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Health check failed';

@@ -14,7 +14,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left panel — branding */}
+      {/* Left panel - branding */}
       <div className="relative hidden overflow-hidden bg-bg-elevated lg:flex lg:w-1/2">
         <div className="absolute inset-0 bg-gradient-to-br from-accent-amber/10 via-transparent to-accent-violet/5" />
         <div className="relative z-10 flex flex-1 flex-col justify-between p-12">
@@ -39,12 +39,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           </div>
 
           <p className="font-mono text-[11px] text-dim">
-            {t('nav.appName')} — {t('nav.appSubtitle')}
+            {t('nav.appName')} - {t('nav.appSubtitle')}
           </p>
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel - form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-[420px]">
           {/* Mobile logo */}

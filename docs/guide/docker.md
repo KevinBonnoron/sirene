@@ -2,8 +2,8 @@
 
 Sirene is split into two Docker images:
 
-- **`ghcr.io/kevinbonnoron/sirene`** — Nginx + React client + Hono API + PocketBase
-- **`ghcr.io/kevinbonnoron/sirene-inference`** — Python inference server (FastAPI + uvicorn)
+- **`ghcr.io/kevinbonnoron/sirene`** - Nginx + React client + Hono API + PocketBase
+- **`ghcr.io/kevinbonnoron/sirene-inference`** - Python inference server (FastAPI + uvicorn)
 
 All model management (download, install check, deletion) is handled by the inference server. The server container only needs persistent storage for the PocketBase database.
 
@@ -89,22 +89,22 @@ The script:
 
 Then in Sirene → **Settings → Inference servers → Add server**: paste the URL and the auth token, give it a name, save.
 
-The auth token stays on the worker (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer …` — the worker rejects anything else.
+The auth token stays on the worker (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer …` - the worker rejects anything else.
 
 > **Why not auto-register from the worker?** Sirene calls workers; workers never call Sirene at runtime. Adding a one-time reverse callback for setup convenience would require workers to reach Sirene's URL, which is brittle (private networks, firewalls, dev setups). Pasting two values is simpler.
 
-The same `install.sh` covers all three modes: `INSTALL_MODE=full` (default — server + inference), `INSTALL_MODE=server` (just the app), `INSTALL_MODE=worker` (just the inference).
+The same `install.sh` covers all three modes: `INSTALL_MODE=full` (default - server + inference), `INSTALL_MODE=server` (just the app), `INSTALL_MODE=worker` (just the inference).
 
 ### Remote Inference (RunPod)
 
-Run the server locally (or on a cheap VPS) and offload inference to a [RunPod](https://www.runpod.io/) GPU pod. This avoids needing a local GPU — model files and Python dependencies live entirely on the pod.
+Run the server locally (or on a cheap VPS) and offload inference to a [RunPod](https://www.runpod.io/) GPU pod. This avoids needing a local GPU - model files and Python dependencies live entirely on the pod.
 
 > **Why a Pod and not Serverless?** Sirene's inference service is a long-running HTTP server (FastAPI). RunPod Serverless requires a custom handler format and would cold-start on every request, which is too slow for loading TTS models into GPU memory. A GPU Pod keeps the service running and ready.
 
 #### 1. Create a GPU Pod on RunPod
 
 1. Go to [runpod.io/console/pods](https://www.runpod.io/console/pods) and click **+ GPU Pod**
-2. Pick a GPU (RTX 3090, RTX 4090, A40, etc. — 16 GB+ VRAM recommended)
+2. Pick a GPU (RTX 3090, RTX 4090, A40, etc. - 16 GB+ VRAM recommended)
 3. Under **Container Image**, enter: `ghcr.io/kevinbonnoron/sirene-inference:cuda`
 4. Under **Expose HTTP Ports**, add: `8000`
 5. Under **Environment Variables**, add:
@@ -112,7 +112,7 @@ Run the server locally (or on a cheap VPS) and offload inference to a [RunPod](h
 6. (Recommended) Attach a **Network Volume** mounted at `/app/data` to persist downloaded models and packages across pod restarts
 7. Click **Deploy**
 
-Once the pod is running, RunPod gives you a proxy URL. Find it in the pod's **Connect** tab — it looks like:
+Once the pod is running, RunPod gives you a proxy URL. Find it in the pod's **Connect** tab - it looks like:
 
 ```
 https://{pod-id}-8000.proxy.runpod.net
@@ -150,9 +150,9 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 
 #### Tips
 
-- **Cost** — stop the pod from the RunPod dashboard when you're not using it. Models stored on a Network Volume will still be there when you restart.
-- **Spot pods** — cheaper but can be interrupted. Fine for non-critical usage.
-- **Latency** — audio generation involves large responses. Pick a RunPod region close to your server for best performance.
+- **Cost** - stop the pod from the RunPod dashboard when you're not using it. Models stored on a Network Volume will still be there when you restart.
+- **Spot pods** - cheaper but can be interrupted. Fine for non-critical usage.
+- **Latency** - audio generation involves large responses. Pick a RunPod region close to your server for best performance.
 
 ## Environment Variables
 
@@ -160,8 +160,8 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PB_SUPERUSER_EMAIL` | — | PocketBase admin email (created on first start) |
-| `PB_SUPERUSER_PASSWORD` | — | PocketBase admin password |
+| `PB_SUPERUSER_EMAIL` | - | PocketBase admin email (created on first start) |
+| `PB_SUPERUSER_PASSWORD` | - | PocketBase admin password |
 | `VITE_PB_URL` | `/db` | PocketBase URL as seen by the browser |
 | `VITE_SERVER_URL` | `/api` | API server URL as seen by the browser |
 | `INFERENCE_URL` | `http://inference:8000` | URL of the inference service |
@@ -172,7 +172,7 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 |----------|---------|-------------|
 | `INFERENCE_DEVICE` | `cpu` | `cpu` or `cuda` |
 | `INFERENCE_MODELS_PATH` | `/app/data/models` | Path to model files |
-| `INFERENCE_AUTH_TOKEN` | — | When set, every request (except `/health`) must carry `Authorization: Bearer <token>`. Set automatically by the worker install script; leave unset for trusted-network setups. |
+| `INFERENCE_AUTH_TOKEN` | - | When set, every request (except `/health`) must carry `Authorization: Bearer <token>`. Set automatically by the worker install script; leave unset for trusted-network setups. |
 | `SIRENE_PACKAGES_DIR` | `/app/data/packages` | Persistent dir for lazily installed backend deps |
 
 ## Volumes
@@ -203,4 +203,4 @@ Nginx routes all traffic in the server container:
 - `/db` → PocketBase (port 8090)
 - `/` → React SPA (static files)
 
-The Hono server delegates all model operations (download, install check, deletion) to the inference container via its REST API at `INFERENCE_URL`. Backend Python dependencies (torch, onnxruntime, etc.) are **not** bundled in the image — they are installed on demand into the `sirene-packages` volume the first time a model using that backend is installed.
+The Hono server delegates all model operations (download, install check, deletion) to the inference container via its REST API at `INFERENCE_URL`. Backend Python dependencies (torch, onnxruntime, etc.) are **not** bundled in the image - they are installed on demand into the `sirene-packages` volume the first time a model using that backend is installed.

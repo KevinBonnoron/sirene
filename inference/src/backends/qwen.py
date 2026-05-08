@@ -54,7 +54,9 @@ class QwenBackend(TTSBackend):
         lang_key = language.lower().split("-")[0]
         full_name = LANGUAGE_MAP.get(lang_key)
         if full_name is None:
-            logger.warning(f"[qwen] Language '{language}' not supported, falling back to English")
+            logger.warning(
+                f"[qwen] Language '{language}' not supported, falling back to English"
+            )
             return "English"
         return full_name
 
@@ -67,7 +69,7 @@ class QwenBackend(TTSBackend):
         language = self._resolve_language(params.language)
 
         if params.voice_path:
-            # CustomVoice preset mode — select a pre-trained speaker
+            # CustomVoice preset mode - select a pre-trained speaker
             logger.info(f"[qwen] CustomVoice mode: speaker={params.voice_path}")
             wavs, sr = self._model.generate_custom_voice(
                 text=params.text,
@@ -76,9 +78,11 @@ class QwenBackend(TTSBackend):
                 instruct=params.instruct_text or None,
             )
         elif params.instruct_text and not params.has_reference_audio:
-            # VoiceDesign mode — create voice from text description
+            # VoiceDesign mode - create voice from text description
             gender = params.instruct_gender or "male"
-            logger.info(f"[qwen] VoiceDesign mode: gender={gender}, instruct={params.instruct_text[:80]}")
+            logger.info(
+                f"[qwen] VoiceDesign mode: gender={gender}, instruct={params.instruct_text[:80]}"
+            )
             wavs, sr = self._model.generate_voice_design(
                 text=params.text,
                 language=language,
@@ -86,7 +90,7 @@ class QwenBackend(TTSBackend):
                 gender=gender,
             )
         elif params.has_reference_audio:
-            # Voice cloning mode — use reference audio
+            # Voice cloning mode - use reference audio
             with self._reference_audio(params) as ref_audio_path:
                 ref_text = params.joined_reference_text
                 from ..services.prompt_cache import get_cache
@@ -105,7 +109,9 @@ class QwenBackend(TTSBackend):
                         x_vector_only_mode=x_vector_only,
                     )
                     cache.put_prompt(prompt_key, prompt)
-                    logger.info(f"[qwen] Voice clone prompt computed and cached (x_vector_only={x_vector_only})")
+                    logger.info(
+                        f"[qwen] Voice clone prompt computed and cached (x_vector_only={x_vector_only})"
+                    )
 
                 wavs, sr = self._model.generate_voice_clone(
                     text=params.text,
@@ -113,7 +119,9 @@ class QwenBackend(TTSBackend):
                     voice_clone_prompt=prompt,
                 )
         else:
-            logger.warning("[qwen] No reference audio — Qwen Base requires ref audio for cloning")
+            logger.warning(
+                "[qwen] No reference audio - Qwen Base requires ref audio for cloning"
+            )
             wavs, sr = self._model.generate_voice_clone(
                 text=params.text,
                 language=language,

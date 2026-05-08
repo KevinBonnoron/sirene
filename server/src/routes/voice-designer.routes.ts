@@ -1,11 +1,8 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { generateAudio } from '../lib/inference-client';
-import { NoInferenceServerError, pickTarget } from '../lib/inference-router';
 import type { AuthEnv } from '../middleware';
-import { voiceRepository, voiceSampleRepository } from '../repositories';
-import { modelService } from '../services';
+import { mapServiceError, voiceDesignerService } from '../services';
 
 const previewSchema = z.object({
   modelId: z.string().min(1),
@@ -17,64 +14,57 @@ const previewSchema = z.object({
 
 export const voiceDesignerRoutes = new Hono<AuthEnv>()
   .post('/preview', zValidator('json', previewSchema), async (c) => {
-    const { modelId, text, instructText, gender, language } = c.req.valid('json');
-
-    const fullCatalog = await modelService.getFullCatalog();
-    const catalog = fullCatalog.find((m) => m.id === modelId);
-    if (!catalog) {
-      return c.json({ message: `Model "${modelId}" not found` }, 404);
-    }
-    if (!(await modelService.isModelInstalled(catalog))) {
-      return c.json({ message: `Model "${catalog.name}" is not installed` }, 400);
-    }
-
-    const modelPath = catalog.id;
-
     try {
-      const target = await pickTarget({ requireModel: modelPath });
-      const audioBuffer = await generateAudio(target, {
-        backend: catalog.backend,
-        text,
-        modelPath,
-        instructText,
-        instructGender: gender,
-        language,
-      });
-      return new Response(audioBuffer, {
-        headers: { 'Content-Type': 'audio/wav' },
-      });
-    } catch (e) {
-      if (e instanceof NoInferenceServerError) {
-        return c.json({ message: e.message }, 503);
-      }
-      return c.json({ message: e instanceof Error ? e.message : 'Voice design failed' }, 500);
+      const audio = await voiceDesignerService.preview(c.req.valid('json'));
+      return new Response(audio, { headers: { 'Content-Type': 'audio/wav' } });
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
     }
   })
 
   .post('/save', async (c) => {
     const formData = await c.req.formData();
-    const name = formData.get('name') as string;
-    const description = (formData.get('description') as string) || '';
-    const language = (formData.get('language') as string) || 'en';
-    const model = (formData.get('model') as string) || '';
-    const audioFile = formData.get('audio') as File | null;
-    const transcript = (formData.get('transcript') as string) || '';
-
-    if (!name || !audioFile) {
+    // Each field can come back as string | File | null. Casting File-valued
+    // text fields would silently forward Files (or throw on .trim()), so we
+    // narrow each one explicitly and 400 on any type mismatch.
+    const name = readTextField(formData, 'name')?.trim();
+    const audio = formData.get('audio');
+    if (!name || !(audio instanceof File)) {
       return c.json({ message: 'name and audio are required' }, 400);
     }
+    const description = readTextField(formData, 'description');
+    const language = readTextField(formData, 'language');
+    const model = readTextField(formData, 'model');
+    const transcript = readTextField(formData, 'transcript');
+    if (description === null || language === null || model === null || transcript === null) {
+      return c.json({ message: 'description, language, model and transcript must be text fields' }, 400);
+    }
 
-    const userId = c.get('userId') as string;
-    const voice = await voiceRepository.create({ name, description, language, model, options: {}, user: userId, public: false, tags: [] });
-
-    const sampleForm = new FormData();
-    sampleForm.append('voice', voice.id);
-    sampleForm.append('audio', audioFile);
-    sampleForm.append('transcript', transcript);
-    sampleForm.append('duration', '0');
-    sampleForm.append('order', '0');
-    sampleForm.append('enabled', 'true');
-    await voiceSampleRepository.create(sampleForm);
-
-    return c.json(voice, 201);
+    try {
+      const voice = await voiceDesignerService.save({
+        userId: c.get('userId'),
+        name,
+        description,
+        language,
+        model,
+        transcript,
+        audio,
+      });
+      return c.json(voice, 201);
+    } catch (err) {
+      const { status, body } = mapServiceError(err);
+      return c.json(body, status);
+    }
   });
+
+/** Returns the field as a string, `undefined` when absent, or `null` on a
+ *  type mismatch (the field came back as a File). The caller decides how to
+ *  reject the mismatch case. */
+function readTextField(form: FormData, name: string): string | undefined | null {
+  const value = form.get(name);
+  if (value === null) {
+    return undefined;
+  }
+  return typeof value === 'string' ? value : null;
+}

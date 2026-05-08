@@ -110,7 +110,7 @@
             done
           fi
 
-          # Auto-install Python dependencies on first use (base only — backends installed on demand)
+          # Auto-install Python dependencies on first use (base only - backends installed on demand)
           if [ ! -d "$PWD/.venv" ]; then
             echo "→ Setting up Python virtual environment..."
             uv venv --python 3.11 --seed .venv

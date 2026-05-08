@@ -66,11 +66,14 @@ class VoxtralBackend(TTSBackend):
         external_url = self._detect_external_server()
         if external_url:
             self._server_url = external_url
-            logger.info("[voxtral] Connected to external vLLM-Omni server at %s", self._server_url)
+            logger.info(
+                "[voxtral] Connected to external vLLM-Omni server at %s",
+                self._server_url,
+            )
             self._model = True  # Sentinel so is_loaded() returns True
             return
 
-        # vLLM requires CUDA — fail early with a clear message.
+        # vLLM requires CUDA - fail early with a clear message.
         if not self._device.startswith("cuda"):
             raise RuntimeError(
                 "Voxtral requires a CUDA GPU (≥16 GB VRAM). "
@@ -115,9 +118,12 @@ class VoxtralBackend(TTSBackend):
         self._server_url = f"http://localhost:{port}"
 
         cmd = [
-            "vllm", "serve", str(model_path),
+            "vllm",
+            "serve",
+            str(model_path),
             "--omni",
-            "--port", str(port),
+            "--port",
+            str(port),
             "--trust-remote-code",
             "--enforce-eager",
         ]
@@ -151,7 +157,7 @@ class VoxtralBackend(TTSBackend):
                 pass
             time.sleep(2)
 
-        # Timed out — terminate, wait, then kill if needed.
+        # Timed out - terminate, wait, then kill if needed.
         self._kill_server()
         raise RuntimeError(
             "vLLM-Omni server did not become healthy within 120 seconds. "
@@ -182,9 +188,11 @@ class VoxtralBackend(TTSBackend):
         self._model_path = None
 
         import gc
+
         gc.collect()
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except Exception:
@@ -219,19 +227,22 @@ class VoxtralBackend(TTSBackend):
         if cache_key and cache_key in self._cloned_voices:
             return self._cloned_voices[cache_key]
 
-        # Cache miss with no audio payload — cannot upload.
+        # Cache miss with no audio payload - cannot upload.
         if not params.reference_audio and not params.reference_audio_data:
             return None
 
         with self._reference_audio(params) as ref_audio_path:
             voice_id = self._upload_reference_voice(
-                ref_audio_path, params.joined_reference_text or None,
+                ref_audio_path,
+                params.joined_reference_text or None,
             )
             if cache_key:
                 self._cloned_voices[cache_key] = voice_id
             return voice_id
 
-    def _upload_reference_voice(self, ref_audio_path: str, ref_text: str | None = None) -> str:
+    def _upload_reference_voice(
+        self, ref_audio_path: str, ref_text: str | None = None
+    ) -> str:
         """Upload reference audio to the vLLM-Omni server for voice cloning.
 
         Returns the voice ID that can be used in subsequent generation calls.
@@ -257,7 +268,9 @@ class VoxtralBackend(TTSBackend):
         result = response.json()
         voice_id = result.get("voice_id") or result.get("id")
         if not voice_id:
-            raise RuntimeError(f"Voice cloning response did not contain a voice_id: {result}")
+            raise RuntimeError(
+                f"Voice cloning response did not contain a voice_id: {result}"
+            )
 
         logger.info("[voxtral] Voice cloned successfully: %s", voice_id)
         return voice_id
@@ -297,7 +310,8 @@ class VoxtralBackend(TTSBackend):
 
         logger.info(
             "[voxtral] Generated %.2fs of audio at %dHz",
-            len(audio) / sr, sr,
+            len(audio) / sr,
+            sr,
         )
         return TTSResult(audio=audio, sample_rate=sr)
 
@@ -349,7 +363,10 @@ class VoxtralBackend(TTSBackend):
                     buffer = buffer[chunk_bytes:]
 
                     # Convert 16-bit PCM to float32.
-                    samples = np.frombuffer(chunk_data, dtype=np.int16).astype(np.float32) / 32768.0
+                    samples = (
+                        np.frombuffer(chunk_data, dtype=np.int16).astype(np.float32)
+                        / 32768.0
+                    )
                     samples = self._normalize_audio(samples)
                     yield TTSResult(audio=samples, sample_rate=self._sample_rate)
 
@@ -358,6 +375,11 @@ class VoxtralBackend(TTSBackend):
                 # Ensure even number of bytes for int16.
                 usable = len(buffer) - (len(buffer) % bytes_per_sample)
                 if usable > 0:
-                    samples = np.frombuffer(buffer[:usable], dtype=np.int16).astype(np.float32) / 32768.0
+                    samples = (
+                        np.frombuffer(buffer[:usable], dtype=np.int16).astype(
+                            np.float32
+                        )
+                        / 32768.0
+                    )
                     samples = self._normalize_audio(samples)
                     yield TTSResult(audio=samples, sample_rate=self._sample_rate)

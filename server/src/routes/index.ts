@@ -1,10 +1,12 @@
 export { apiKeyRoutes } from './api-key.routes';
 export { authRoutes } from './auth.routes';
+export { cliAuthProtectedRoutes, cliAuthPublicRoutes } from './cli-auth.routes';
 export { generateRoutes } from './generate.routes';
 export { generationRoutes } from './generation.routes';
 export { healthRoutes, versionRoutes } from './health.routes';
 export { inferenceServerRoutes } from './inference-server.routes';
 export { jobRoutes } from './job.routes';
+export { meRoutes } from './me.routes';
 export { modelRoutes } from './model.routes';
 export { sessionRoutes } from './session.routes';
 export { settingsRoutes } from './settings.routes';

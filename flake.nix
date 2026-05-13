@@ -5,11 +5,62 @@
 
   outputs = { self, nixpkgs }:
     let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      version = "0.0.1";
-      gstPluginPath = pkgs.lib.makeSearchPath "lib/gstreamer-1.0" (with pkgs.gst_all_1; [ gstreamer gst-plugins-base gst-plugins-good ]);
-      desktopLibs = with pkgs; [
+      desktopSystem = "x86_64-linux";
+      desktopPkgs = nixpkgs.legacyPackages.${desktopSystem};
+      desktopVersion = "0.0.1";
+
+      # CLI release pin. The `cli-release` GH Actions workflow opens a PR to
+      # bump these whenever a `cli-v*` tag is pushed.
+      cliVersion = "0.1.0";
+      cliHashes = {
+        "x86_64-linux"   = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        "aarch64-linux"  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        "x86_64-darwin"  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        "aarch64-darwin" = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      };
+      cliAsset = system: {
+        "x86_64-linux"   = "sirene-linux-x64";
+        "aarch64-linux"  = "sirene-linux-arm64";
+        "x86_64-darwin"  = "sirene-darwin-x64";
+        "aarch64-darwin" = "sirene-darwin-arm64";
+      }.${system};
+
+      mkCli = system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+            isLinux = pkgs.stdenv.hostPlatform.isLinux;
+        in pkgs.stdenv.mkDerivation {
+          pname = "sirene-cli";
+          version = cliVersion;
+
+          src = pkgs.fetchurl {
+            url = "https://github.com/KevinBonnoron/sirene/releases/download/cli-v${cliVersion}/${cliAsset system}";
+            hash = cliHashes.${system};
+          };
+
+          dontUnpack = true;
+          # Bun --compile produces a statically-linked binary on macOS but a
+          # dynamically-linked one on Linux. autoPatchelf on Linux only.
+          nativeBuildInputs = pkgs.lib.optional isLinux pkgs.autoPatchelfHook;
+
+          installPhase = ''
+            runHook preInstall
+            install -Dm755 $src $out/bin/sirene
+            runHook postInstall
+          '';
+
+          meta = with pkgs.lib; {
+            description = "Command-line client for Sirene TTS";
+            homepage = "https://github.com/KevinBonnoron/sirene";
+            license = licenses.mit;
+            mainProgram = "sirene";
+            platforms = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+          };
+        };
+
+      cliSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+
+      gstPluginPath = desktopPkgs.lib.makeSearchPath "lib/gstreamer-1.0" (with desktopPkgs.gst_all_1; [ gstreamer gst-plugins-base gst-plugins-good ]);
+      desktopLibs = with desktopPkgs; [
         webkitgtk_4_1
         gtk3
         glib
@@ -31,19 +82,19 @@
         gst_all_1.gst-plugins-base
         gst_all_1.gst-plugins-good
       ];
-    in {
-      packages.${system}.default = pkgs.stdenv.mkDerivation {
-        pname = "sirene";
-        inherit version;
 
-        src = pkgs.fetchurl {
-          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/stable-linux-x64-Sirene.tar.zst";
+      desktopPackage = desktopPkgs.stdenv.mkDerivation {
+        pname = "sirene";
+        version = desktopVersion;
+
+        src = desktopPkgs.fetchurl {
+          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${desktopVersion}/stable-linux-x64-Sirene.tar.zst";
           hash = "sha256-zoIZ25VTl7oAifWNPSGYKmOmmG1aIMH15kZJWPZ7fF4=";
         };
 
         sourceRoot = "Sirene";
 
-        nativeBuildInputs = with pkgs; [ autoPatchelfHook makeWrapper zstd ];
+        nativeBuildInputs = with desktopPkgs; [ autoPatchelfHook makeWrapper zstd ];
         buildInputs = desktopLibs;
         autoPatchelfIgnoreMissingDeps = [ "libcrypt.so.1" ];
 
@@ -65,8 +116,30 @@
         };
       };
 
-      devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
+      forEach = systems: f: builtins.listToAttrs (map (s: { name = s; value = f s; }) systems);
+    in {
+      # Per-system CLI: `nix run github:KevinBonnoron/sirene#cli -- voice list`
+      # works on Linux x64/arm64 and macOS x64/arm64.
+      packages = forEach cliSystems (system: {
+        cli = mkCli system;
+      }) // {
+        ${desktopSystem} = {
+          # Default points at the desktop app on its only supported platform.
+          default = desktopPackage;
+          desktop = desktopPackage;
+          cli = mkCli desktopSystem;
+        };
+      };
+
+      apps = forEach cliSystems (system: {
+        cli = {
+          type = "app";
+          program = "${(mkCli system)}/bin/sirene";
+        };
+      });
+
+      devShells.${desktopSystem}.default = desktopPkgs.mkShell {
+        packages = with desktopPkgs; [
           # runtime
           bun
 
@@ -85,7 +158,7 @@
           patchelf
         ] ++ desktopLibs;
 
-        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (desktopLibs ++ [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.ffmpeg_6-full.lib ]);
+        LD_LIBRARY_PATH = desktopPkgs.lib.makeLibraryPath (desktopLibs ++ [ desktopPkgs.stdenv.cc.cc.lib desktopPkgs.zlib desktopPkgs.ffmpeg_6-full.lib ]);
         GST_PLUGIN_PATH = gstPluginPath;
 
         shellHook = ''

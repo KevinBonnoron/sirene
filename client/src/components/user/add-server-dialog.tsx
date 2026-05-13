@@ -20,7 +20,7 @@ interface Props {
 // the dialog hint; once a worker-capable release exists this should switch back
 // to a fetched-version-based pin (the /version endpoint is already wired).
 const INSTALL_REF = 'main';
-const INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/install.sh | INSTALL_MODE=worker bash`;
+const INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/scripts/install.sh | INSTALL_MODE=worker bash`;
 
 export function AddServerDialog({ open, onOpenChange }: Props) {
   const { t } = useTranslation();

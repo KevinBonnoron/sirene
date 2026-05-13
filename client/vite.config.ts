@@ -23,5 +23,11 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+    // Mirror prod's same-origin layout: in prod nginx forwards /api -> backend,
+    // here Vite does the same. Means the CLI / dev fetch code only ever needs
+    // one URL (the UI's), instead of juggling API on :3000 and UI on :5173.
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
   },
 });

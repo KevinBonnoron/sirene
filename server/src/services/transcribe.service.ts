@@ -1,4 +1,4 @@
-import { BadRequestError } from '../errors';
+import { BadRequestError, GatewayTimeoutError } from '../errors';
 import { inferenceRepository } from '../repositories';
 import { modelService } from './model.service';
 import { pickTarget } from './router.service';
@@ -22,7 +22,16 @@ class TranscribeService {
     form.append('audio', audio);
     form.append('model_path', modelPath);
 
-    return inferenceRepository(target).transcribe(form, AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS));
+    try {
+      return await inferenceRepository(target).transcribe(form, AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS));
+    } catch (err) {
+      // AbortSignal.timeout() throws a DOMException with name 'TimeoutError';
+      // surface as a typed 504 so the route doesn't need to special-case it.
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        throw new GatewayTimeoutError('transcribe.timeout', 'Transcription timed out');
+      }
+      throw err;
+    }
   }
 
   private async resolveWhisperModel(): Promise<string> {
@@ -33,7 +42,7 @@ class TranscribeService {
         return model.id;
       }
     }
-    throw new BadRequestError('No Whisper model installed. Please install one from the Models page.');
+    throw new BadRequestError('model.whisperNotInstalled', 'No Whisper model installed. Please install one from the Models page.');
   }
 }
 

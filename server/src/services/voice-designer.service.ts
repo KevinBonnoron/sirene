@@ -29,10 +29,10 @@ class VoiceDesignerService {
   public async preview({ modelId, text, instructText, gender, language }: PreviewParams): Promise<Buffer> {
     const catalog = await modelService.getFullCatalog().then((c) => c.find((m) => m.id === modelId));
     if (!catalog) {
-      throw new NotFoundError(`Model "${modelId}" not found`);
+      throw new NotFoundError('model.notFound', `Model "${modelId}" not found`);
     }
     if (!(await modelService.isModelInstalled(catalog))) {
-      throw new BadRequestError(`Model "${catalog.name}" is not installed`);
+      throw new BadRequestError('model.notInstalled', `Model "${catalog.name}" is not installed`);
     }
 
     const target = await pickTarget({ requireModel: catalog.id });

@@ -24,7 +24,7 @@ class ElevenlabsService {
   private async requireApiKey(userId: string): Promise<string> {
     const apiKey = await settingsService.get('elevenlabs_api_key', userId);
     if (!apiKey) {
-      throw new BadRequestError('ElevenLabs API key not configured. Go to Settings to add it.');
+      throw new BadRequestError('elevenlabs.keyNotConfigured', 'ElevenLabs API key not configured. Go to Settings to add it.');
     }
     return apiKey;
   }

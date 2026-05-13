@@ -1,8 +1,8 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AuthEnv } from '../middleware';
-import { generationService, mapServiceError } from '../services';
+import { type AuthEnv, requireScope } from '../middleware';
+import { generationService } from '../services';
 
 const tuningSchema = z
   .object({
@@ -21,43 +21,33 @@ const generateSchema = z.object({
 });
 
 export const generateRoutes = new Hono<AuthEnv>()
+  .use(requireScope('generate'))
   .post('', zValidator('json', generateSchema), async (c) => {
-    try {
-      const result = await generationService.generateBuffered(c.req.valid('json'), c.get('userId'));
-      return new Response(result.audio, {
-        headers: {
-          'Content-Type': result.contentType,
-          'X-Generation-Id': result.generationId,
-        },
-      });
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+    const result = await generationService.generateBuffered(c.req.valid('json'), c.get('userId'));
+    return new Response(result.audio, {
+      headers: {
+        'Content-Type': result.contentType,
+        'X-Generation-Id': result.generationId,
+      },
+    });
   })
-
   .post('/stream', zValidator('json', generateSchema), async (c) => {
-    try {
-      const result = await generationService.generateStreaming(c.req.valid('json'), c.get('userId'));
-      if (result.type === 'streaming') {
-        return new Response(result.stream, {
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'X-Sample-Rate': String(result.sampleRate),
-            'X-Channels': '1',
-            'X-Bits-Per-Sample': '16',
-            'X-Generation-Id': result.generationId,
-          },
-        });
-      }
-      return new Response(result.audio, {
+    const result = await generationService.generateStreaming(c.req.valid('json'), c.get('userId'));
+    if (result.type === 'streaming') {
+      return new Response(result.stream, {
         headers: {
-          'Content-Type': result.contentType,
+          'Content-Type': 'application/octet-stream',
+          'X-Sample-Rate': String(result.sampleRate),
+          'X-Channels': '1',
+          'X-Bits-Per-Sample': '16',
           'X-Generation-Id': result.generationId,
         },
       });
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
     }
+    return new Response(result.audio, {
+      headers: {
+        'Content-Type': result.contentType,
+        'X-Generation-Id': result.generationId,
+      },
+    });
   });

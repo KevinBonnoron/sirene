@@ -18,8 +18,9 @@ dependencies = [
 
 [project.optional-dependencies]
 backends = [
-    "torch>=2.5.0,<2.8",
-    "torchaudio>=2.5.0,<2.8",
+    "torch>=2.10.0,<2.11",
+    "torchaudio>=2.10.0,<2.11",
+    "torchvision>=0.25.0,<0.26",
     "transformers>=4.47.0",
     "qwen-tts>=0.1.0",
     "f5-tts>=1.1.15,<1.2",

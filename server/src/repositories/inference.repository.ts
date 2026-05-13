@@ -1,58 +1,21 @@
 import type { CatalogModel } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
-import { UpstreamError } from '../errors';
-
-// Each `InferenceTarget` points at one inference worker. The router gives us a
-// freshly resolved target per call (least-loaded among healthy servers), so the
-// repository is a *factory*: callers get a typed client bound to that worker.
-
-export interface InferenceTarget {
-  url: string;
-  authToken?: string;
-}
-
-export interface InferenceRequest {
-  backend: string;
-  text: string;
-  modelPath: string;
-  voicePath?: string;
-  referenceAudio?: string[];
-  referenceAudioData?: string[]; // base64 data URIs, sent on cache miss retry
-  referenceCacheKey?: string;
-  referenceText?: string[];
-  instructText?: string;
-  instructGender?: string;
-  speed?: number;
-  /** Generation-level noise / variation. Only Piper consumes this today (maps to noise_scale). */
-  noiseScale?: number;
-  language?: string;
-}
-
-interface StreamingAudioResponse {
-  body: ReadableStream<Uint8Array>;
-  sampleRate: number;
-}
-
-interface PullModelOptions {
-  backend: string;
-  modelId: string;
-  files: { url: string; path: string }[];
-  totalSize: number;
-  hfToken?: string;
-}
-
-/** Sentinel raised on HTTP 412 from /generate{,/stream}: the worker rejected
- *  the request because we sent a `referenceCacheKey` it doesn't have. The
- *  caller is expected to re-send the call with full `referenceAudioData`. */
-export class CacheMissError extends Error {
-  public constructor() {
-    super('Reference audio cache miss');
-    this.name = 'CacheMissError';
-  }
-}
+import { CacheMissError, UpstreamError } from '../errors';
+import type { InferenceRequest, InferenceTarget, PullModelOptions, StreamingAudioResponse } from '../types';
 
 function authHeaders(target: InferenceTarget): Record<string, string> {
   return target.authToken ? { Authorization: `Bearer ${target.authToken}` } : {};
+}
+
+/** Log the upstream body server-side and throw an `UpstreamError` carrying a
+ *  generic, client-safe message. The route layer eventually serializes
+ *  `ServiceError.message` to the API consumer, and raw worker payloads can
+ *  contain backend tracebacks, internal paths, or model identifiers that
+ *  shouldn't escape the trust boundary. */
+async function throwUpstream(op: string, response: Response): Promise<never> {
+  const body = await response.text().catch(() => '');
+  console.warn(`[inference/${op}] upstream ${response.status}`, { status: response.status, body });
+  throw new UpstreamError('upstream.inference', `${op} failed (HTTP ${response.status})`);
 }
 
 function buildInferenceBody(request: InferenceRequest) {
@@ -97,6 +60,9 @@ async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncGenerat
   }
 }
 
+/** Inference workers come and go; the router gives us a fresh `InferenceTarget`
+ *  per call (least-loaded among healthy ones), so this repository is a
+ *  *factory*: callers get a typed client bound to that one worker. */
 export function inferenceRepository(target: InferenceTarget) {
   const headers = authHeaders(target);
 
@@ -112,7 +78,7 @@ export function inferenceRepository(target: InferenceTarget) {
           signal: AbortSignal.timeout(10_000),
         });
         if (!response.ok) {
-          throw new UpstreamError(`listModels HTTP ${response.status}`);
+          await throwUpstream('listModels', response);
         }
         return response.json() as Promise<{ installed: string[]; custom: CatalogModel[] }>;
       },
@@ -124,8 +90,7 @@ export function inferenceRepository(target: InferenceTarget) {
           signal: AbortSignal.timeout(10_000),
         });
         if (!response.ok) {
-          const body = await response.text();
-          throw new UpstreamError(`Delete model failed (${response.status}): ${body}`);
+          await throwUpstream('deleteModel', response);
         }
       },
 
@@ -156,10 +121,9 @@ export function inferenceRepository(target: InferenceTarget) {
           },
         );
         if (!response.ok || !response.body) {
-          const body = await response.text();
-          throw new UpstreamError(`Pull model failed (${response.status}): ${body}`);
+          await throwUpstream('pullModel', response);
         }
-        yield* parseSseStream(response.body);
+        yield* parseSseStream(response.body as ReadableStream<Uint8Array>);
       },
 
       async importPiperModel(formData: FormData): Promise<{ id: string; message: string }> {
@@ -169,10 +133,12 @@ export function inferenceRepository(target: InferenceTarget) {
           signal: AbortSignal.timeout(30_000),
         });
         if (!response.ok) {
-          const body = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
-          // Preserve the upstream status on the error for the route layer to map; for
-          // now route code only cares about the message, but the status hint stays.
-          const err = Object.assign(new UpstreamError(body.detail ?? 'Import failed'), { status: response.status });
+          // Log the upstream detail server-side, but keep the user-facing
+          // message generic. The status hint stays on the thrown error for
+          // the route layer to map if needed.
+          const body = (await response.json().catch(() => ({}))) as { detail?: string };
+          console.warn('[inference/importPiperModel] upstream', { status: response.status, detail: body.detail });
+          const err = Object.assign(new UpstreamError('upstream.inference', `Piper import failed (HTTP ${response.status})`), { status: response.status });
           throw err;
         }
         return response.json() as Promise<{ id: string; message: string }>;
@@ -187,8 +153,7 @@ export function inferenceRepository(target: InferenceTarget) {
           throw new CacheMissError();
         }
         if (!response.ok) {
-          const body = await response.text();
-          throw new UpstreamError(`Inference failed (${response.status}): ${body}`);
+          await throwUpstream('generate', response);
         }
         const arrayBuffer = await response.arrayBuffer();
         return Buffer.from(arrayBuffer);
@@ -203,11 +168,10 @@ export function inferenceRepository(target: InferenceTarget) {
           throw new CacheMissError();
         }
         if (!response.ok) {
-          const body = await response.text();
-          throw new UpstreamError(`Inference streaming failed (${response.status}): ${body}`);
+          await throwUpstream('generateStream', response);
         }
         if (!response.body) {
-          throw new UpstreamError('No response body for streaming');
+          throw new UpstreamError('upstream.inference', 'No response body for streaming');
         }
         return {
           body: response.body as ReadableStream<Uint8Array>,
@@ -224,8 +188,7 @@ export function inferenceRepository(target: InferenceTarget) {
           signal,
         });
         if (!response.ok) {
-          const body = await response.text();
-          throw new UpstreamError(`Transcription failed: ${body}`);
+          await throwUpstream('transcribe', response);
         }
         return response.json() as Promise<{ text: string; language?: string }>;
       },
@@ -240,7 +203,7 @@ export function inferenceRepository(target: InferenceTarget) {
           signal: AbortSignal.timeout(5_000),
         });
         if (!response.ok) {
-          throw new UpstreamError(`HTTP ${response.status}`);
+          throw new UpstreamError('upstream.inference', `HTTP ${response.status}`);
         }
         return response.json().catch(() => ({}));
       },

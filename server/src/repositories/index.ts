@@ -1,7 +1,7 @@
 export { apiKeyRepository } from './api-key.repository';
 export { elevenlabsRepository } from './elevenlabs.repository';
 export { generationRepository } from './generation.repository';
-export { CacheMissError, type InferenceRequest, type InferenceTarget, inferenceRepository } from './inference.repository';
+export { inferenceRepository } from './inference.repository';
 export { inferenceServerRepository } from './inference-server.repository';
 export { OPENAI_VOICES, openAITtsRepository } from './openai-tts.repository';
 export { sessionRepository } from './session.repository';

@@ -3,10 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Voice, VoiceSample } from '@sirene/shared';
 import JSZip from 'jszip';
-import { BadRequestError, NotFoundError } from '../errors';
-import { config } from '../lib/config';
-import { pb } from '../lib/pocketbase';
+import { BadRequestError, NotFoundError, ServiceError } from '../errors';
 import { voiceRepository, voiceSampleRepository } from '../repositories';
+import { pbFilesService } from './pb-files.service';
 
 interface ImportedSample {
   file: string;
@@ -33,7 +32,7 @@ interface ExportedVoice {
 
 class VoiceService {
   public async listForUser(userId: string): Promise<Voice[]> {
-    return voiceRepository.getAllBy(`user = "${userId}" || (public = true && user != "")`) as Promise<Voice[]>;
+    return voiceRepository.findAllBy('user = {:userId} || (public = true && user != "")', { params: { userId } }) as Promise<Voice[]>;
   }
 
   /** Read access: the owner, or any user when the voice is public. */
@@ -54,14 +53,14 @@ class VoiceService {
 
   public async listSamples(voiceId: string, userId: string): Promise<VoiceSample[]> {
     await this.requireReadable(voiceId, userId);
-    return voiceSampleRepository.getAllBy(`voice = "${voiceId}"`, { sort: 'order,created' }) as Promise<VoiceSample[]>;
+    return voiceSampleRepository.findAllBy('voice = {:voiceId}', { params: { voiceId }, sort: 'order,created' }) as Promise<VoiceSample[]>;
   }
 
   /** Adds a new sample to an existing voice, computing its duration with ffprobe
    *  so the UI can display it without a second pass. Owner-only. */
   public async addSample(voiceId: string, userId: string, audio: File, transcript: string): Promise<VoiceSample> {
     await this.requireOwned(voiceId, userId);
-    const existing = await voiceSampleRepository.getAllBy(`voice = "${voiceId}"`);
+    const existing = await voiceSampleRepository.findAllBy('voice = {:voiceId}', { params: { voiceId } });
     const duration = await getAudioDuration(await audio.arrayBuffer());
 
     const sampleForm = new FormData();
@@ -78,9 +77,9 @@ class VoiceService {
    *  Returns NotFoundError on cross-user reads of private voices so the id
    *  space can't be probed. */
   private async requireReadable(id: string, userId: string): Promise<Voice> {
-    const voice = (await voiceRepository.getOne(id)) as Voice | null;
+    const voice = (await voiceRepository.findOne(id)) as Voice | null;
     if (!voice || (voice.user !== userId && !voice.public)) {
-      throw new NotFoundError('Voice not found');
+      throw new NotFoundError('voice.notFound', 'Voice not found');
     }
     return voice;
   }
@@ -88,9 +87,9 @@ class VoiceService {
   /** Loads a voice and ensures the caller owns it. Used for write paths
    *  (update, addSample) where the public flag must not unlock mutations. */
   private async requireOwned(id: string, userId: string): Promise<Voice> {
-    const voice = (await voiceRepository.getOne(id)) as Voice | null;
+    const voice = (await voiceRepository.findOne(id)) as Voice | null;
     if (!voice || voice.user !== userId) {
-      throw new NotFoundError('Voice not found');
+      throw new NotFoundError('voice.notFound', 'Voice not found');
     }
     return voice;
   }
@@ -101,16 +100,16 @@ class VoiceService {
     const zip = await JSZip.loadAsync(zipBytes);
     const voiceFile = zip.file('voice.json');
     if (!voiceFile) {
-      throw new BadRequestError('Invalid archive: missing voice.json');
+      throw new BadRequestError('voice.archiveMissing', 'Invalid archive: missing voice.json');
     }
     let data: VoiceArchive;
     try {
       data = JSON.parse(await voiceFile.async('text')) as VoiceArchive;
     } catch {
-      throw new BadRequestError('Invalid archive: voice.json is not valid JSON');
+      throw new BadRequestError('voice.archiveInvalidJson', 'Invalid archive: voice.json is not valid JSON');
     }
     if (typeof data?.name !== 'string' || data.name.length === 0) {
-      throw new BadRequestError('Invalid archive: voice.json is missing a "name" field');
+      throw new BadRequestError('voice.archiveMissingName', 'Invalid archive: voice.json is missing a "name" field');
     }
 
     const voiceName = await this.dedupeName(userId, data.name);
@@ -161,7 +160,17 @@ class VoiceService {
       }
     } catch (err) {
       await this.rollbackImport(created.id, insertedSampleIds);
-      throw err instanceof BadRequestError || err instanceof NotFoundError ? err : new BadRequestError('Invalid archive: failed to import samples');
+      // Only re-wrap as `archiveInvalidJson` if we genuinely hit a JSON error
+      // while parsing voice.json earlier; the rest of the try body covers
+      // storage/network/repository errors that should keep their own shape so
+      // operators can diagnose them. Service errors propagate unchanged.
+      if (err instanceof ServiceError) {
+        throw err;
+      }
+      if (err instanceof SyntaxError) {
+        throw new BadRequestError('voice.archiveInvalidJson', 'Invalid archive: voice.json is not valid JSON');
+      }
+      throw err;
     }
 
     return created;
@@ -186,7 +195,7 @@ class VoiceService {
    *  read access model as getById: owner OR public. */
   public async exportToZip(id: string, userId: string): Promise<ExportedVoice> {
     const voice = await this.requireReadable(id, userId);
-    const samples = (await voiceSampleRepository.getAllBy(`voice = "${id}"`, { sort: 'order,created' })) as VoiceSample[];
+    const samples = (await voiceSampleRepository.findAllBy('voice = {:voiceId}', { params: { voiceId: id }, sort: 'order,created' })) as VoiceSample[];
 
     const zip = new JSZip();
     const samplesDir = zip.folder('samples') as JSZip;
@@ -196,7 +205,7 @@ class VoiceService {
       const ext = sample.audio.split('.').pop() ?? 'wav';
       const filename = `sample-${String(i + 1).padStart(3, '0')}.${ext}`;
 
-      const audioUrl = `${config.pb.url}/api/files/voice_samples/${sample.id}/${sample.audio}`;
+      const audioUrl = pbFilesService.url('voice_samples', sample.id, sample.audio);
       let audioResponse: Response;
       try {
         audioResponse = await fetchWithTimeout(audioUrl);
@@ -236,7 +245,7 @@ class VoiceService {
     zip.file('voice.json', JSON.stringify(archive, null, 2));
 
     if (voice.avatar) {
-      const avatarUrl = `${config.pb.url}/api/files/voices/${id}/${voice.avatar}`;
+      const avatarUrl = pbFilesService.url('voices', id, voice.avatar);
       try {
         const avatarResponse = await fetchWithTimeout(avatarUrl);
         if (avatarResponse.ok) {
@@ -266,7 +275,7 @@ class VoiceService {
     // would otherwise break the predicate. Matches the exact name OR the
     // "name (N)" suffix pattern; the trailing space + `(` keeps "Alex" from
     // colliding with "Alexander" through PB's substring `~`.
-    const siblings = await voiceRepository.getAllBy(pb.filter('user = {:userId} && (name = {:name} || name ~ {:prefix})', { userId, name, prefix: `${name} (` }));
+    const siblings = await voiceRepository.findAllBy('user = {:userId} && (name = {:name} || name ~ {:prefix})', { params: { userId, name, prefix: `${name} (` } });
     const taken = new Set(siblings.map((v) => v.name));
     if (!taken.has(name)) {
       return name;

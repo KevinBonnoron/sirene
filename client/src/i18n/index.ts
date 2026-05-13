@@ -1,5 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+// Side-effect type import: forces the locale `errors.*` maps to stay in sync
+// with the server's `ErrorCode` union (compile error if a code is missing).
+import './error-codes.guard';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
 

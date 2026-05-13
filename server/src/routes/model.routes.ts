@@ -2,8 +2,9 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
-import { type AuthEnv, authMiddleware } from '../middleware';
-import { mapServiceError, modelService } from '../services';
+import { BadRequestError, NotFoundError } from '../errors';
+import { type AuthEnv, authMiddleware, requireScope } from '../middleware';
+import { modelService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -35,62 +36,27 @@ const modelSseRoutes = new Hono().get('/events', async (c) => {
 
 const modelProtectedRoutes = new Hono<AuthEnv>()
   .use(authMiddleware)
-
-  .get('/catalog', async (c) => {
-    try {
-      return c.json(await modelService.getFullCatalog(c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+  .get('/catalog', requireScope('models:read'), async (c) => c.json(await modelService.getFullCatalog(c.get('userId'))))
+  .get('/installed', requireScope('models:read'), async (c) => {
+    const catalog = await modelService.getFullCatalog(c.get('userId'));
+    return c.json(await modelService.getInstallations(catalog));
   })
-
-  .get('/installed', async (c) => {
-    try {
-      const catalog = await modelService.getFullCatalog(c.get('userId'));
-      return c.json(await modelService.getInstallations(catalog));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+  .get('/:id/voices', requireScope('models:read'), zValidator('param', idParamSchema), async (c) => c.json(await modelService.listPresetVoicesFor(c.req.valid('param').id, c.get('userId'))))
+  .delete('/:id', requireScope('models:write'), zValidator('param', idParamSchema), async (c) => {
+    await modelService.removeModelFiles(c.req.valid('param').id, c.req.query('serverId'));
+    return c.body(null, 204);
   })
-
-  .get('/:id/voices', zValidator('param', idParamSchema), async (c) => {
-    try {
-      return c.json(await modelService.listPresetVoicesFor(c.req.valid('param').id, c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
+  .post('/:id/pull', requireScope('models:write'), zValidator('param', idParamSchema), zValidator('json', z.object({ serverIds: z.array(z.string().min(1)).optional() })), async (c) => {
+    const userId = c.get('userId');
+    const fullCatalog = await modelService.getFullCatalog(userId);
+    const catalog = fullCatalog.find((m) => m.id === c.req.valid('param').id);
+    if (!catalog) {
+      throw new NotFoundError('model.notInCatalog', `Model "${c.req.valid('param').id}" not found in catalog`);
     }
+    const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, c.req.valid('json').serverIds);
+    return c.json({ jobIds }, alreadyRunning ? 200 : 202);
   })
-
-  .delete('/:id', zValidator('param', idParamSchema), async (c) => {
-    try {
-      await modelService.removeModelFiles(c.req.valid('param').id, c.req.query('serverId'));
-      return c.body(null, 204);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .post('/:id/pull', zValidator('param', idParamSchema), zValidator('json', z.object({ serverIds: z.array(z.string().min(1)).optional() })), async (c) => {
-    try {
-      const userId = c.get('userId');
-      const fullCatalog = await modelService.getFullCatalog(userId);
-      const catalog = fullCatalog.find((m) => m.id === c.req.valid('param').id);
-      if (!catalog) {
-        return c.json({ message: 'Model not found in catalog' }, 404);
-      }
-      const { jobIds, alreadyRunning } = await modelService.startModelDownload(catalog, c.req.valid('json').serverIds);
-      return c.json({ jobIds }, alreadyRunning ? 200 : 202);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .post('/piper/import', async (c) => {
+  .post('/piper/import', requireScope('models:write'), async (c) => {
     const formData = await c.req.formData();
     // FormData entries can be string or File. A `name=...&onnx=foo` payload would
     // pass an `as File` cast and only blow up when we try to read its bytes,
@@ -99,7 +65,7 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
     const configFile = formData.get('config');
     const nameRaw = formData.get('name');
     if (!(onnxFile instanceof File) || !(configFile instanceof File) || typeof nameRaw !== 'string') {
-      return c.json({ message: 'Fields "onnx", "config", and "name" are required' }, 400);
+      throw new BadRequestError('model.piperFieldsRequired', 'Fields "onnx", "config", and "name" are required');
     }
     // serverIds is sent as a JSON array string from the dialog; absent = all online.
     // Any non-empty value that fails to parse as a string[] is rejected - silently
@@ -112,37 +78,26 @@ const modelProtectedRoutes = new Hono<AuthEnv>()
       try {
         parsed = JSON.parse(serverIdsRaw);
       } catch {
-        return c.json({ message: 'serverIds must be a JSON array of strings' }, 400);
+        throw new BadRequestError('model.serverIdsNotJson', 'serverIds must be a JSON array of strings');
       }
       if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === 'string' && v.length > 0)) {
-        return c.json({ message: 'serverIds must be a JSON array of non-empty strings' }, 400);
+        throw new BadRequestError('model.serverIdsInvalid', 'serverIds must be a JSON array of non-empty strings');
       }
       serverIds = parsed as string[];
     }
 
-    try {
-      const { slug, jobIds } = await modelService.importPiperFromUpload({ name: nameRaw, onnxFile, configFile, serverIds });
-      return c.json({ id: slug, jobIds }, 202);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+    const { slug, jobIds } = await modelService.importPiperFromUpload({ name: nameRaw, onnxFile, configFile, serverIds });
+    return c.json({ id: slug, jobIds }, 202);
   })
-
-  .get('/:id/export', zValidator('param', idParamSchema), async (c) => {
+  .get('/:id/export', requireScope('models:read'), zValidator('param', idParamSchema), async (c) => {
     const { id: modelId } = c.req.valid('param');
-    try {
-      const upstream = await modelService.exportCustomModel(modelId);
-      return new Response(upstream.body, {
-        headers: {
-          'Content-Type': 'application/zip',
-          'Content-Disposition': `attachment; filename="piper-${modelId}.zip"`,
-        },
-      });
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+    const upstream = await modelService.exportCustomModel(modelId);
+    return new Response(upstream.body, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="piper-${modelId}.zip"`,
+      },
+    });
   });
 
 export const modelRoutes = new Hono().route('/', modelSseRoutes).route('/', modelProtectedRoutes);

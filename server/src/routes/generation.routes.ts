@@ -1,8 +1,8 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AuthEnv } from '../middleware';
-import { generationService, mapServiceError } from '../services';
+import { type AuthEnv, requireScope } from '../middleware';
+import { generationService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 const listQuerySchema = z.object({
@@ -11,39 +11,10 @@ const listQuerySchema = z.object({
 });
 
 export const generationRoutes = new Hono<AuthEnv>()
-  .get('', zValidator('query', listQuerySchema), async (c) => {
-    try {
-      return c.json(await generationService.listForUser(c.get('userId'), c.req.valid('query')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .get('/:id', zValidator('param', idParamSchema), async (c) => {
-    try {
-      return c.json(await generationService.getById(c.req.valid('param').id, c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .get('/:id/align', zValidator('param', idParamSchema), async (c) => {
-    try {
-      return c.json(await generationService.getAlignment(c.req.valid('param').id, c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .delete('/:id', zValidator('param', idParamSchema), async (c) => {
-    try {
-      await generationService.delete(c.req.valid('param').id, c.get('userId'));
-      return c.body(null, 204);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+  .get('', requireScope('generations:read'), zValidator('query', listQuerySchema), async (c) => c.json(await generationService.listForUser(c.get('userId'), c.req.valid('query'))))
+  .get('/:id', requireScope('generations:read'), zValidator('param', idParamSchema), async (c) => c.json(await generationService.getById(c.req.valid('param').id, c.get('userId'))))
+  .get('/:id/align', requireScope('generations:read'), zValidator('param', idParamSchema), async (c) => c.json(await generationService.getAlignment(c.req.valid('param').id, c.get('userId'))))
+  .delete('/:id', requireScope('generations:write'), zValidator('param', idParamSchema), async (c) => {
+    await generationService.delete(c.req.valid('param').id, c.get('userId'));
+    return c.body(null, 204);
   });

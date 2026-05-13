@@ -14,13 +14,13 @@ interface UpdateSessionInput {
 
 class SessionService {
   public async listForUser(userId: string): Promise<Session[]> {
-    return sessionRepository.getAllBy(`user = "${userId}"`, { sort: '-updated' }) as Promise<Session[]>;
+    return sessionRepository.findAllBy('user = {:userId}', { params: { userId }, sort: '-updated' }) as Promise<Session[]>;
   }
 
   public async getOwned(id: string, userId: string): Promise<Session> {
-    const session = (await sessionRepository.getOne(id)) as Session | null;
+    const session = (await sessionRepository.findOne(id)) as Session | null;
     if (!session || session.user !== userId) {
-      throw new NotFoundError('Session not found');
+      throw new NotFoundError('session.notFound', 'Session not found');
     }
     return session;
   }

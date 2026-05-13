@@ -5,7 +5,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { spec } from './lib/openapi';
 import { initPocketBase } from './lib/pocketbase';
-import { authMiddleware } from './middleware';
+import { authMiddleware, errorHandler } from './middleware';
 import { apiKeyRoutes, authRoutes, cliAuthProtectedRoutes, cliAuthPublicRoutes, generateRoutes, generationRoutes, healthRoutes, inferenceServerRoutes, jobRoutes, meRoutes, modelRoutes, sessionRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
 import { inferenceServerService, modelService } from './services';
 
@@ -58,4 +58,8 @@ export const app = new Hono()
   .route('/sessions', sessionRoutes)
   .route('/transcribe', transcribeRoutes)
   .route('/settings', settingsRoutes)
-  .route('/voice-designer', voiceDesignerRoutes);
+  .route('/voice-designer', voiceDesignerRoutes)
+  // Catches every `ServiceError` thrown out of a route handler and maps it
+  // through the standard `{ message }` envelope, so routes don't have to wrap
+  // every service call in try/catch.
+  .onError(errorHandler);

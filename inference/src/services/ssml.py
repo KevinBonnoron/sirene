@@ -13,7 +13,7 @@ PAUSE_DURATIONS: dict[str, float] = {
 # ---------------------------------------------------------------------------
 # Tone → instruct_text mapping
 # Maps short tone keys to natural language instructions understood by
-# instruct-capable backends (CosyVoice, Qwen, HiggsAudio, …).
+# instruct-capable backends (CosyVoice, Qwen, HiggsAudio, ...).
 # ---------------------------------------------------------------------------
 
 TONE_INSTRUCTIONS: dict[str, str] = {
@@ -47,7 +47,7 @@ class SSMLSegment:
     text: str = ""
     rate: float = 1.0
     tone: str | None = None
-    # Non-None means this is an atomic effect (pause, laughing, …) rather than text
+    # Non-None means this is an atomic effect (pause, laughing, ...) rather than text
     effect: str | None = None
 
 
@@ -87,11 +87,11 @@ def parse_ssml_segments(text: str, base_speed: float = 1.0) -> list[SSMLSegment]
       <prosody tone="Y">text</prosody>          - tone only
       <prosody rate="X" tone="Y">text</prosody> - combined
       [pause] / [long pause]                    - silence effect
-      [laughing] / [sighing] / …               - sound effect
+      [laughing] / [sighing] / ...               - sound effect
     """
     segments: list[SSMLSegment] = []
 
-    # Matches <prosody …>…</prosody>  OR  [effect-token]
+    # Matches <prosody ...>...</prosody>  OR  [effect-token]
     pattern = re.compile(
         r"<prosody\b([^>]*)>(.*?)</prosody>|\[([^\]]+)\]",
         re.IGNORECASE | re.DOTALL,
@@ -104,7 +104,7 @@ def parse_ssml_segments(text: str, base_speed: float = 1.0) -> list[SSMLSegment]
             segments.append(SSMLSegment(text=before, rate=base_speed))
 
         if match.group(0).startswith("<"):
-            # <prosody …>content</prosody>
+            # <prosody ...>content</prosody>
             attrs_str = match.group(1)
             content = match.group(2).strip()
 

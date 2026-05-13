@@ -23,7 +23,7 @@ class OpenAITtsService {
   private async requireApiKey(userId: string): Promise<string> {
     const apiKey = await settingsService.get('openai_api_key', userId);
     if (!apiKey) {
-      throw new BadRequestError('OpenAI API key not configured. Go to Settings to add it.');
+      throw new BadRequestError('openai.keyNotConfigured', 'OpenAI API key not configured. Go to Settings to add it.');
     }
     return apiKey;
   }

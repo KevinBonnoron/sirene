@@ -22,7 +22,7 @@ class ServerModelsService {
    *  One slow/timed-out probe must not break visibility for other healthy servers,
    *  so per-server failures are logged and skipped instead of rejecting the batch. */
   public async getInstalledByServer(): Promise<Map<string, Set<string>>> {
-    const servers = await inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
+    const servers = await inferenceServerRepository.findAllBy('enabled = true', { sort: '-priority' });
     const result = new Map<string, Set<string>>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {
@@ -60,7 +60,7 @@ class ServerModelsService {
    *  Same isolation policy as getInstalledByServer - one bad worker doesn't blank
    *  the catalog for everyone else. */
   public async aggregatedCustom(): Promise<CatalogModel[]> {
-    const servers = await inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
+    const servers = await inferenceServerRepository.findAllBy('enabled = true', { sort: '-priority' });
     const seen = new Map<string, CatalogModel>();
     const settled = await Promise.allSettled(
       servers.map(async (server) => {

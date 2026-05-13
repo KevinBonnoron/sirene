@@ -1,8 +1,8 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AuthEnv } from '../middleware';
-import { mapServiceError, sessionService } from '../services';
+import { type AuthEnv, requireScope } from '../middleware';
+import { sessionService } from '../services';
 
 const idParamSchema = z.object({ id: z.string().min(1) });
 
@@ -21,57 +21,12 @@ const shareSchema = z.object({
 });
 
 export const sessionRoutes = new Hono<AuthEnv>()
-  .get('', async (c) => {
-    try {
-      return c.json(await sessionService.listForUser(c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+  .get('', requireScope('sessions:read'), async (c) => c.json(await sessionService.listForUser(c.get('userId'))))
+  .get('/:id', requireScope('sessions:read'), zValidator('param', idParamSchema), async (c) => c.json(await sessionService.getOwned(c.req.valid('param').id, c.get('userId'))))
+  .post('', requireScope('sessions:write'), zValidator('json', createSchema), async (c) => c.json(await sessionService.create(c.get('userId'), c.req.valid('json')), 201))
+  .patch('/:id', requireScope('sessions:write'), zValidator('param', idParamSchema), zValidator('json', updateSchema), async (c) => c.json(await sessionService.update(c.req.valid('param').id, c.get('userId'), c.req.valid('json'))))
+  .delete('/:id', requireScope('sessions:write'), zValidator('param', idParamSchema), async (c) => {
+    await sessionService.delete(c.req.valid('param').id, c.get('userId'));
+    return c.body(null, 204);
   })
-
-  .get('/:id', zValidator('param', idParamSchema), async (c) => {
-    try {
-      return c.json(await sessionService.getOwned(c.req.valid('param').id, c.get('userId')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .post('', zValidator('json', createSchema), async (c) => {
-    try {
-      return c.json(await sessionService.create(c.get('userId'), c.req.valid('json')), 201);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .patch('/:id', zValidator('param', idParamSchema), zValidator('json', updateSchema), async (c) => {
-    try {
-      return c.json(await sessionService.update(c.req.valid('param').id, c.get('userId'), c.req.valid('json')));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .delete('/:id', zValidator('param', idParamSchema), async (c) => {
-    try {
-      await sessionService.delete(c.req.valid('param').id, c.get('userId'));
-      return c.body(null, 204);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  })
-
-  .patch('/:id/share', zValidator('param', idParamSchema), zValidator('json', shareSchema), async (c) => {
-    try {
-      return c.json(await sessionService.setPublic(c.req.valid('param').id, c.get('userId'), c.req.valid('json').public));
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
-  });
+  .patch('/:id/share', requireScope('sessions:write'), zValidator('param', idParamSchema), zValidator('json', shareSchema), async (c) => c.json(await sessionService.setPublic(c.req.valid('param').id, c.get('userId'), c.req.valid('json').public)));

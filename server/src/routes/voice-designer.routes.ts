@@ -1,8 +1,9 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AuthEnv } from '../middleware';
-import { mapServiceError, voiceDesignerService } from '../services';
+import { BadRequestError } from '../errors';
+import { type AuthEnv, requireScope } from '../middleware';
+import { voiceDesignerService } from '../services';
 
 const previewSchema = z.object({
   modelId: z.string().min(1),
@@ -13,17 +14,11 @@ const previewSchema = z.object({
 });
 
 export const voiceDesignerRoutes = new Hono<AuthEnv>()
-  .post('/preview', zValidator('json', previewSchema), async (c) => {
-    try {
-      const audio = await voiceDesignerService.preview(c.req.valid('json'));
-      return new Response(audio, { headers: { 'Content-Type': 'audio/wav' } });
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+  .post('/preview', requireScope('generate'), zValidator('json', previewSchema), async (c) => {
+    const audio = await voiceDesignerService.preview(c.req.valid('json'));
+    return new Response(audio, { headers: { 'Content-Type': 'audio/wav' } });
   })
-
-  .post('/save', async (c) => {
+  .post('/save', requireScope('voices:write'), async (c) => {
     const formData = await c.req.formData();
     // Each field can come back as string | File | null. Casting File-valued
     // text fields would silently forward Files (or throw on .trim()), so we
@@ -31,31 +26,26 @@ export const voiceDesignerRoutes = new Hono<AuthEnv>()
     const name = readTextField(formData, 'name')?.trim();
     const audio = formData.get('audio');
     if (!name || !(audio instanceof File)) {
-      return c.json({ message: 'name and audio are required' }, 400);
+      throw new BadRequestError('voiceDesigner.nameAudioRequired', 'name and audio are required');
     }
     const description = readTextField(formData, 'description');
     const language = readTextField(formData, 'language');
     const model = readTextField(formData, 'model');
     const transcript = readTextField(formData, 'transcript');
     if (description === null || language === null || model === null || transcript === null) {
-      return c.json({ message: 'description, language, model and transcript must be text fields' }, 400);
+      throw new BadRequestError('voiceDesigner.textFieldsExpected', 'description, language, model and transcript must be text fields');
     }
 
-    try {
-      const voice = await voiceDesignerService.save({
-        userId: c.get('userId'),
-        name,
-        description,
-        language,
-        model,
-        transcript,
-        audio,
-      });
-      return c.json(voice, 201);
-    } catch (err) {
-      const { status, body } = mapServiceError(err);
-      return c.json(body, status);
-    }
+    const voice = await voiceDesignerService.save({
+      userId: c.get('userId'),
+      name,
+      description,
+      language,
+      model,
+      transcript,
+      audio,
+    });
+    return c.json(voice, 201);
   });
 
 /** Returns the field as a string, `undefined` when absent, or `null` on a

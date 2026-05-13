@@ -1,5 +1,7 @@
 export * from './alignment.type';
+export * from './api-key.type';
 export * from './base.type';
+export * from './error.type';
 export * from './generate.type';
 export * from './generation.type';
 export * from './inference-server.type';

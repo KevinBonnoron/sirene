@@ -1,3 +1,4 @@
+export { apiKeyRepository } from './api-key.repository';
 export { elevenlabsRepository } from './elevenlabs.repository';
 export { generationRepository } from './generation.repository';
 export { CacheMissError, type InferenceRequest, type InferenceTarget, inferenceRepository } from './inference.repository';

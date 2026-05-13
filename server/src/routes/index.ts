@@ -1,3 +1,4 @@
+export { apiKeyRoutes } from './api-key.routes';
 export { authRoutes } from './auth.routes';
 export { generateRoutes } from './generate.routes';
 export { generationRoutes } from './generation.routes';

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ApiKeysSection } from './api-keys-section';
 import { InferenceServersSection } from './inference-servers-section';
 
 const KEYS = [
@@ -150,6 +151,7 @@ export function SettingsPage() {
       <SectionTopbar label={t('nav.settings')} subtitle={t('settings.subtitle')} />
       <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
         <InferenceServersSection />
+        <ApiKeysSection />
         {isLoading ? (
           <Skeleton className="h-48" />
         ) : (

@@ -6,7 +6,7 @@ import { logger } from 'hono/logger';
 import { spec } from './lib/openapi';
 import { initPocketBase } from './lib/pocketbase';
 import { authMiddleware } from './middleware';
-import { authRoutes, generateRoutes, generationRoutes, healthRoutes, inferenceServerRoutes, jobRoutes, modelRoutes, sessionRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
+import { apiKeyRoutes, authRoutes, generateRoutes, generationRoutes, healthRoutes, inferenceServerRoutes, jobRoutes, modelRoutes, sessionRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
 import { inferenceServerService, modelService } from './services';
 
 const bootstrapPromise = (async () => {
@@ -46,6 +46,7 @@ export const app = new Hono()
   .route('/models', modelRoutes)
   // Protected routes (auth required)
   .use(authMiddleware)
+  .route('/api-keys', apiKeyRoutes)
   .route('/jobs', jobRoutes)
   .route('/inference-servers', inferenceServerRoutes)
   .route('/generate', generateRoutes)

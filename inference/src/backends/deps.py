@@ -13,7 +13,11 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
-_TORCH = ["torch>=2.5.0,<2.8", "torchaudio>=2.5.0,<2.8"]
+# Pinned together because torch / torchaudio / torchvision share native bindings
+# (e.g. `torchvision::nms` is registered against a specific libtorch ABI). vllm
+# 0.18.0 pulls torchvision 0.25 which pairs with torch 2.10; mixing this with an
+# older torch yields "operator does not exist" runtime errors at import time.
+_TORCH = ["torch>=2.10.0,<2.11", "torchaudio>=2.10.0,<2.11", "torchvision>=0.25.0,<0.26"]
 
 
 @dataclass
@@ -38,33 +42,37 @@ _REGISTRY: dict[str, BackendDeps] = {
         check_modules=["onnxruntime", "misaki.en"],
         packages=["onnxruntime>=1.20.0", "misaki[en,zh]>=0.7.0"],
     ),
+    # `torch` (and friends) listed in `check_modules` so a partial install
+    # (wheel resolution failed mid-way, leaving the wrapper package importable
+    # but its native deps broken) is detected by `is_installed()` rather than
+    # surfacing as a runtime ImportError on the first generation.
     "qwen": BackendDeps(
-        check_modules=["qwen_tts"],
+        check_modules=["torch", "qwen_tts"],
         packages=[*_TORCH, "transformers>=4.47.0", "qwen-tts>=0.1.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "f5-tts": BackendDeps(
-        check_modules=["f5_tts"],
+        check_modules=["torch", "torchaudio", "f5_tts"],
         packages=[*_TORCH, "f5-tts>=1.1.15,<1.2", "transformers>=4.47.0", "resemble-perth>=1.0.0", "loralib>=0.1.2", "onnx>=1.17.0,<1.21"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "cosyvoice": BackendDeps(
-        check_modules=["cosyvoice"],
+        check_modules=["torch", "torchaudio", "cosyvoice"],
         packages=[*_TORCH, "cosyvoice>=0.0.8", "transformers>=4.47.0", "pyworld>=0.3.4", "wetext>=0.0.4", "pykakasi>=2.0.0", "spacy-pkuseg>=1.0.0", "onnx>=1.17.0,<1.21"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "chatterbox": BackendDeps(
-        check_modules=["chatterbox"],
+        check_modules=["torch", "torchaudio", "chatterbox"],
         packages=[*_TORCH, "transformers>=4.47.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "higgs_audio": BackendDeps(
-        check_modules=["boson_multimodal"],
+        check_modules=["torch", "boson_multimodal"],
         packages=[*_TORCH, "boson-multimodal>=0.1.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "openaudio": BackendDeps(
-        check_modules=["fish_speech"],
+        check_modules=["torch", "torchaudio", "fish_speech"],
         packages=[*_TORCH, "transformers>=4.47.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),

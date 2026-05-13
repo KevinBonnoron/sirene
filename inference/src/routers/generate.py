@@ -41,9 +41,17 @@ async def _auto_install_deps(backend: str) -> None:
     logger.info(f"Auto-installing missing dependencies for backend '{backend}'...")
     async for event in install_backend_deps(backend, device=settings.device):
         if event.get("status") == "error":
-            raise HTTPException(status_code=500, detail=event.get("message", f"Failed to install {backend} dependencies"))
+            raise HTTPException(
+                status_code=500,
+                detail=event.get(
+                    "message", f"Failed to install {backend} dependencies"
+                ),
+            )
     importlib.invalidate_caches()
-    logger.info(f"Dependencies for '{backend}' installed successfully, retrying generation")
+    logger.info(
+        "Dependencies for '%s' installed successfully, retrying generation",
+        backend,
+    )
 
 
 _POLL_INTERVAL = 0.1
@@ -89,7 +97,9 @@ def _build_params(req: GenerateRequest) -> GenerateParams:
     )
 
 
-def _check_reference_cache(req: GenerateRequest, backend_name: str, model_path: str) -> None:
+def _check_reference_cache(
+    req: GenerateRequest, backend_name: str, model_path: str
+) -> None:
     """Raise 412 if cloning voice cache is missing and no audio data was provided."""
     if not req.reference_cache_key and not req.reference_audio:
         return
@@ -97,6 +107,7 @@ def _check_reference_cache(req: GenerateRequest, backend_name: str, model_path: 
         return
 
     from ..services.model_manager import model_manager as mm
+
     try:
         backend = mm.get_backend(backend_name, model_path)
     except Exception:
@@ -112,7 +123,7 @@ def _generate_ssml(req: GenerateRequest, model_path: str) -> TTSResult:
 
     Handles three kinds of segments:
       - Pause effects ([pause], [long pause]) → silence numpy array
-      - Sound effects ([laughing], [sighing], …) → passed as literal text so
+      - Sound effects ([laughing], [sighing], ...) → passed as literal text so
         backends that recognise bracket tokens (e.g. Fish Audio / HiggsAudio)
         can process them; other backends will attempt to speak them.
       - Regular text (with optional rate / tone) → normal TTS generation
@@ -132,7 +143,7 @@ def _generate_ssml(req: GenerateRequest, model_path: str) -> TTSResult:
                 # Unknown sound effect: pass the marker as literal text so
                 # backends that support bracket tokens can handle it.
                 params = GenerateParams(
-                    text=f'[{seg.effect}]',
+                    text=f"[{seg.effect}]",
                     voice_path=req.voice_path,
                     reference_audio=_normalize_to_list(req.reference_audio),
                     reference_audio_data=req.reference_audio_data,

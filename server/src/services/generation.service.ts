@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { Generation, GenerationAlignment, WordAlignment } from '@sirene/shared';
 import { buildWav, readPcmStream } from '@sirene/shared';
-import { BadRequestError, NotFoundError } from '../errors';
-import { config } from '../lib/config';
-import { pb } from '../lib/pocketbase';
-import { CacheMissError, generationRepository, type InferenceRequest, inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
+import { BadRequestError, CacheMissError, NotFoundError } from '../errors';
+import { generationRepository, inferenceRepository, voiceRepository, voiceSampleRepository } from '../repositories';
+import type { InferenceRequest } from '../types';
 import { elevenlabsService } from './elevenlabs.service';
 import { modelService } from './model.service';
 import { openAITtsService } from './openai-tts.service';
+import { pbFilesService } from './pb-files.service';
 import { pickTarget } from './router.service';
 
 interface ListGenerationsFilter {
@@ -76,7 +76,7 @@ class GenerationService {
       parts.push('model = {:model}');
       params.model = filter.model;
     }
-    return generationRepository.getAllBy(pb.filter(parts.join(' && '), params)) as Promise<Generation[]>;
+    return generationRepository.findAllBy(parts.join(' && '), { params }) as Promise<Generation[]>;
   }
 
   public async getById(id: string, userId: string): Promise<Generation> {
@@ -100,9 +100,9 @@ class GenerationService {
    *  same NotFoundError for "missing" and "not yours" prevents probing the
    *  id space to learn whether other users' generations exist. */
   private async requireOwned(id: string, userId: string): Promise<Generation> {
-    const generation = (await generationRepository.getOne(id)) as Generation | null;
+    const generation = (await generationRepository.findOne(id)) as Generation | null;
     if (!generation || generation.user !== userId) {
-      throw new NotFoundError('Generation not found');
+      throw new NotFoundError('generation.notFound', 'Generation not found');
     }
     return generation;
   }
@@ -185,22 +185,22 @@ class GenerationService {
   }
 
   private async resolve(body: GenerateInput, userId: string): Promise<ResolvedGeneration> {
-    const voice = await voiceRepository.getOne(body.voice);
+    const voice = await voiceRepository.findOne(body.voice);
     if (!voice) {
-      throw new NotFoundError('Voice not found');
+      throw new NotFoundError('voice.notFound', 'Voice not found');
     }
     if (!voice.model) {
-      throw new BadRequestError('Voice has no model assigned');
+      throw new BadRequestError('voice.noModel', 'Voice has no model assigned');
     }
 
     const fullCatalog = await modelService.getFullCatalog(userId);
     const catalog = fullCatalog.find((m) => m.id === voice.model);
     if (!catalog) {
-      throw new NotFoundError(`Model "${voice.model}" not found in catalog`);
+      throw new NotFoundError('model.notInCatalog', `Model "${voice.model}" not found in catalog`);
     }
 
     if (!(await modelService.isModelInstalled(catalog))) {
-      throw new BadRequestError(`Model "${catalog.name}" is not installed`);
+      throw new BadRequestError('model.notInstalled', `Model "${catalog.name}" is not installed`);
     }
 
     const options = (voice.options ?? {}) as Record<string, unknown>;
@@ -225,7 +225,7 @@ class GenerationService {
     if (catalog.backend === 'elevenlabs') {
       const voiceId = options.presetVoice as string;
       if (!voiceId) {
-        throw new BadRequestError('ElevenLabs voice requires a preset voice ID. Edit the voice and select one.');
+        throw new BadRequestError('voice.elevenLabsPresetRequired', 'ElevenLabs voice requires a preset voice ID. Edit the voice and select one.');
       }
       return { type: 'elevenlabs', voiceId, speed: effectiveSpeed, meta };
     }
@@ -233,7 +233,7 @@ class GenerationService {
     if (catalog.backend === 'openai') {
       const voiceId = options.presetVoice as string;
       if (!voiceId) {
-        throw new BadRequestError('OpenAI TTS voice requires a preset voice ID. Edit the voice and select one.');
+        throw new BadRequestError('voice.openAiPresetRequired', 'OpenAI TTS voice requires a preset voice ID. Edit the voice and select one.');
       }
       return { type: 'openai', voiceId, speed: effectiveSpeed, meta };
     }
@@ -242,9 +242,9 @@ class GenerationService {
     const presetVoice = catalog.types.includes('preset') ? (options.presetVoice as string | undefined) : undefined;
 
     if (catalog.types.includes('cloning') && !presetVoice) {
-      const rows = await voiceSampleRepository.getAllBy(pb.filter('voice = {:voiceId} && enabled = true', { voiceId: body.voice }), { sort: 'order,created' });
+      const rows = await voiceSampleRepository.findAllBy('voice = {:voiceId} && enabled = true', { params: { voiceId: body.voice }, sort: 'order,created' });
       if (rows.length === 0) {
-        throw new BadRequestError('Voice cloning requires at least one enabled audio sample. Edit the voice to upload or enable a sample.');
+        throw new BadRequestError('voice.cloningRequiresSample', 'Voice cloning requires at least one enabled audio sample. Edit the voice to upload or enable a sample.');
       }
       const samples: VoiceSampleRef[] = rows.map((s) => ({ id: s.id, audio: s.audio as string }));
       const cacheKey = createHash('sha256')
@@ -307,8 +307,7 @@ class GenerationService {
   private async fetchSamplesAsBase64(samples: VoiceSampleRef[]): Promise<string[]> {
     return Promise.all(
       samples.map(async (s) => {
-        const url = `${config.pb.url}/api/files/voice_samples/${s.id}/${s.audio}`;
-        const response = await fetch(url, { headers: { Authorization: pb.authStore.token } });
+        const response = await pbFilesService.fetchAuthed('voice_samples', s.id, s.audio);
         if (!response.ok) {
           throw new Error(`Failed to fetch voice sample ${s.id}: ${response.status}`);
         }

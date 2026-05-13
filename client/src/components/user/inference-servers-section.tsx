@@ -148,7 +148,7 @@ function ServerRow({ server }: { server: InferenceServer }) {
           <p className="text-xs">
             <span className={cn('font-medium', STATUS_TEXT[status])}>{t(statusKey)}</span>
             <span className="ml-2 text-muted-foreground">{formatRelative(server.lastHealth.at, t)}</span>
-            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">— {server.lastHealth.error}</span>}
+            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">- {server.lastHealth.error}</span>}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-8" aria-label={t('inferenceServers.test')}>

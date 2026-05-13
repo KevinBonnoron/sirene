@@ -30,6 +30,7 @@ export const spec = {
     { name: 'Models', description: 'Model catalog and installation' },
     { name: 'Transcribe', description: 'Speech-to-text' },
     { name: 'Settings', description: 'API key and configuration management' },
+    { name: 'API Keys', description: 'Long-lived API keys for external clients (CLI, integrations)' },
   ],
 
   paths: {
@@ -453,6 +454,66 @@ export const spec = {
       },
     },
 
+    '/api-keys': {
+      get: {
+        tags: ['API Keys'],
+        summary: 'List API keys',
+        description: 'Returns all API keys belonging to the authenticated user. The secret itself is never returned after creation.',
+        responses: {
+          200: {
+            description: 'OK',
+            content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ApiKeySummary' } } } },
+          },
+          401: { $ref: '#/components/responses/Error' },
+          403: { $ref: '#/components/responses/Error' },
+        },
+      },
+      post: {
+        tags: ['API Keys'],
+        summary: 'Create API key',
+        description: 'Creates a new API key. The full secret is returned **once** in the response and cannot be retrieved again.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', minLength: 1, maxLength: 120 },
+                  scopes: {
+                    type: 'array',
+                    nullable: true,
+                    description: 'Capability set the key is restricted to. Pass `null` (or omit) for full access; an empty array is rejected.',
+                    items: { $ref: '#/components/schemas/ApiKeyScope' },
+                  },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Created', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiKeyCreated' } } } },
+          400: { $ref: '#/components/responses/Error' },
+          401: { $ref: '#/components/responses/Error' },
+          403: { $ref: '#/components/responses/Error' },
+        },
+      },
+    },
+    '/api-keys/{id}': {
+      delete: {
+        tags: ['API Keys'],
+        summary: 'Revoke API key',
+        parameters: [idParam],
+        responses: {
+          204: { description: 'Revoked' },
+          401: { $ref: '#/components/responses/Error' },
+          403: { $ref: '#/components/responses/Error' },
+          404: { $ref: '#/components/responses/Error' },
+        },
+      },
+    },
+
     '/transcribe': {
       post: {
         tags: ['Transcribe'],
@@ -563,6 +624,38 @@ export const spec = {
           progress: { type: 'number', minimum: 0, maximum: 100 },
           error: { type: 'string' },
         },
+      },
+      ApiKeyScope: {
+        type: 'string',
+        description: 'A single capability granted to an API key.',
+        enum: ['generate', 'transcribe', 'voices:read', 'voices:write', 'models:read', 'models:write', 'generations:read', 'generations:write', 'sessions:read', 'sessions:write', 'inference-servers:read', 'inference-servers:write', 'settings:read', 'settings:write'],
+      },
+      ApiKeySummary: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          prefix: { type: 'string', description: 'First characters of the key, for display' },
+          scopes: {
+            type: 'array',
+            nullable: true,
+            description: 'Capabilities the key is restricted to. `null` means full access (no restriction).',
+            items: { $ref: '#/components/schemas/ApiKeyScope' },
+          },
+          lastUsedAt: { type: 'string', format: 'date-time' },
+          created: { type: 'string', format: 'date-time' },
+        },
+        required: ['id', 'name', 'prefix', 'scopes', 'created'],
+      },
+      ApiKeyCreated: {
+        allOf: [
+          { $ref: '#/components/schemas/ApiKeySummary' },
+          {
+            type: 'object',
+            properties: { secret: { type: 'string', description: 'Full secret, returned only once' } },
+            required: ['secret'],
+          },
+        ],
       },
       Error: {
         type: 'object',

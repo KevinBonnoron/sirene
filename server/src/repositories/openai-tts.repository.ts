@@ -59,7 +59,7 @@ export const openAITtsRepository = universalClient(
           }
         })();
         const message = parsed?.error?.message ?? `OpenAI TTS error (${response.status}): ${body}`;
-        throw new UpstreamError(message);
+        throw new UpstreamError('upstream.openai', message);
       }
       return response.arrayBuffer();
     },

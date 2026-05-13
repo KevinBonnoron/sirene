@@ -1,29 +1,39 @@
 import type { RecordModel } from 'pocketbase';
 import { pb } from '../lib/pocketbase';
-import type { DatabaseRepository } from '../types';
+import type { DatabaseRepository, FilterParams } from '../types';
 
 interface DatabaseRepositoryFactoryOptions {
   expand?: string;
+}
+
+/** Apply `pb.filter()` lazily so services can pass templated filters like
+ *  `"user = {:userId}"` with a separate params dict, and never need to import
+ *  PocketBase themselves. Returns the filter unchanged when no params given. */
+function applyParams(filter: string | undefined, params: FilterParams | undefined): string | undefined {
+  if (!filter || !params) {
+    return filter;
+  }
+  return pb.filter(filter, params);
 }
 
 export function databaseRepositoryFactory<T extends RecordModel>(collectionName: string, { expand }: DatabaseRepositoryFactoryOptions = {}): DatabaseRepository<T> {
   const recordService = pb.collection<T>(collectionName);
 
   return {
-    async getOne(id) {
+    async findOne(id) {
       return recordService.getOne(id, { expand }).catch(() => null);
     },
 
-    async getOneBy(filter) {
-      return recordService.getFirstListItem(filter, { expand }).catch(() => null);
+    async findBy(filter, { params } = {}) {
+      return recordService.getFirstListItem(applyParams(filter, params) ?? filter, { expand }).catch(() => null);
     },
 
-    async getAllBy(filter, options) {
-      return recordService.getFullList({ filter, sort: options?.sort ?? '-created', expand }).catch(() => []);
+    async findAllBy(filter, { params, sort = '-created' } = {}) {
+      return recordService.getFullList({ filter: applyParams(filter, params), sort, expand }).catch(() => []);
     },
 
-    async getOrCreate(record, filter) {
-      const existingRecord = await this.getOneBy(filter);
+    async getOrCreate(record, filter, options) {
+      const existingRecord = await this.findBy(filter, options);
       if (existingRecord) {
         return existingRecord;
       }

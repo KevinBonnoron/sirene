@@ -30,7 +30,7 @@ class SettingsService {
       return cached.value;
     }
 
-    const record = await settingRepository.getOneBy(`key = "${key}" && user = "${userId}"`);
+    const record = await settingRepository.findBy('key = {:key} && user = {:userId}', { params: { key, userId } });
     if (record?.value) {
       this.cache.set(cacheKey, { value: record.value, expires: Date.now() + CACHE_TTL_MS });
       return record.value;
@@ -44,7 +44,7 @@ class SettingsService {
     // the unique-(key,user) race. Treat the conflict as an update on retry; the
     // alternative would be a real PB upsert hook, but that's out of scope.
     try {
-      const existing = await settingRepository.getOneBy(`key = "${key}" && user = "${userId}"`);
+      const existing = await settingRepository.findBy('key = {:key} && user = {:userId}', { params: { key, userId } });
       if (existing) {
         await settingRepository.update(existing.id, { key, value });
       } else {
@@ -52,7 +52,7 @@ class SettingsService {
       }
     } catch (err) {
       if (isUniqueConflict(err)) {
-        const existing = await settingRepository.getOneBy(`key = "${key}" && user = "${userId}"`);
+        const existing = await settingRepository.findBy('key = {:key} && user = {:userId}', { params: { key, userId } });
         if (existing) {
           await settingRepository.update(existing.id, { key, value });
         } else {
@@ -67,7 +67,7 @@ class SettingsService {
 
   public async delete(key: string, userId: string): Promise<void> {
     this.assertValidKey(key);
-    const existing = await settingRepository.getOneBy(`key = "${key}" && user = "${userId}"`);
+    const existing = await settingRepository.findBy('key = {:key} && user = {:userId}', { params: { key, userId } });
     if (existing) {
       await settingRepository.delete(existing.id);
     }
@@ -75,13 +75,13 @@ class SettingsService {
   }
 
   public async listMaskedFor(userId: string): Promise<MaskedSetting[]> {
-    const records = await settingRepository.getAllBy(`user = "${userId}"`);
+    const records = await settingRepository.findAllBy('user = {:userId}', { params: { userId } });
     return records.map((r) => ({ key: r.key, maskedValue: maskValue(r.value) }));
   }
 
   private assertValidKey(key: string): void {
     if (!VALID_KEY.test(key)) {
-      throw new BadRequestError(`Invalid setting key "${key}".`);
+      throw new BadRequestError('settings.invalidKey', `Invalid setting key "${key}".`);
     }
   }
 

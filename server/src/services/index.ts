@@ -1,10 +1,11 @@
 export * from '../errors';
 export { apiKeyService } from './api-key.service';
-export { authService, InvalidCredentialsError, RegistrationFailedError } from './auth.service';
+export { authService } from './auth.service';
 export { cliAuthService } from './cli-auth.service';
 export { generationService } from './generation.service';
 export { inferenceServerService } from './inference-server.service';
 export { modelService } from './model.service';
+export { pbFilesService } from './pb-files.service';
 export { sessionService } from './session.service';
 export { settingsService } from './settings.service';
 export { transcribeService } from './transcribe.service';

@@ -38,7 +38,7 @@ export const elevenlabsRepository = universalClient(
         format: 'raw',
       });
       if (!response.ok) {
-        throw new UpstreamError(await explainError(response, 'ElevenLabs API error'));
+        throw new UpstreamError('upstream.elevenlabs', await explainError(response, 'ElevenLabs API error'));
       }
       const data = (await response.json()) as VoicesResponse;
       return data.voices.map((v) => ({ id: v.voice_id, ...parseVoiceLabel(v.name) }));
@@ -62,7 +62,7 @@ export const elevenlabsRepository = universalClient(
         },
       );
       if (!response.ok) {
-        throw new UpstreamError(await explainError(response, 'ElevenLabs API error'));
+        throw new UpstreamError('upstream.elevenlabs', await explainError(response, 'ElevenLabs API error'));
       }
       return response.arrayBuffer();
     },

@@ -7,7 +7,7 @@ interface StreamHandle {
 }
 
 /** Minimal fetch-based SSE client. Used instead of EventSource when the server gates
- *  the endpoint with the standard `Authorization: Bearer …` header — EventSource has
+ *  the endpoint with the standard `Authorization: Bearer ...` header - EventSource has
  *  no header support, and pushing the token through a query param would leak it into
  *  proxy/server access logs. */
 export function openAuthenticatedStream(url: string, handler: SSEHandler): StreamHandle {

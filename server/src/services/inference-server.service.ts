@@ -20,14 +20,14 @@ class InferenceServerService {
   private healthTimer: ReturnType<typeof setInterval> | null = null;
 
   public async listEnabled(): Promise<InferenceServer[]> {
-    return inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
+    return inferenceServerRepository.findAllBy('enabled = true', { sort: '-priority' });
   }
 
   /** Probe one server and persist the result. Throws NotFoundError on unknown id. */
   public async checkOne(id: string): Promise<InferenceServer> {
-    const record = await inferenceServerRepository.getOne(id);
+    const record = await inferenceServerRepository.findOne(id);
     if (!record) {
-      throw new NotFoundError('Server not found');
+      throw new NotFoundError('inferenceServer.notFound', 'Inference server not found');
     }
     const probed = await probeHealth(record.url, record.authToken);
     const updated = await this.persistHealth(record, probed);
@@ -60,7 +60,7 @@ class InferenceServerService {
 
   /** Bootstrap a single server from INFERENCE_URL if the registry is empty. */
   public async bootstrapFromEnv(): Promise<void> {
-    const records = await inferenceServerRepository.getAllBy('', { sort: 'created' });
+    const records = await inferenceServerRepository.findAllBy('', { sort: 'created' });
     if (records.length > 0) {
       return;
     }
@@ -98,7 +98,7 @@ class InferenceServerService {
   private async runHealthRound(): Promise<void> {
     // Skip disabled records: the user explicitly turned the server off, so we
     // shouldn't keep firing outbound HTTP probes at it (privacy + bandwidth).
-    const records = await inferenceServerRepository.getAllBy('enabled = true', { sort: '-priority' });
+    const records = await inferenceServerRepository.findAllBy('enabled = true', { sort: '-priority' });
     // allSettled so one server's probe/persist error doesn't tear down the whole round
     // and leak as an unhandled rejection from the timer callback.
     await Promise.allSettled(

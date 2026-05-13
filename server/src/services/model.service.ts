@@ -10,15 +10,6 @@ import { pickTarget } from './router.service';
 import { serverModelsService } from './server-models.service';
 import { settingsService } from './settings.service';
 
-/** Thrown when no inference server is online; HTTP route maps to 503. */
-class NoOnlineServerError extends ServiceUnavailableError {}
-
-/** Thrown when the caller passed serverIds that don't match online servers; route maps to 400. */
-class InvalidServerSelectionError extends BadRequestError {}
-
-/** Thrown when the model is already installed on every requested server; route maps to 409. */
-class ModelAlreadyInstalledError extends ConflictError {}
-
 const HF_BASE = 'https://huggingface.co';
 
 const API_KEY_MAP: Record<string, string> = {
@@ -104,7 +95,7 @@ class ModelService {
     // mark the record 'offline' explicitly, so this can't accept a known-bad server.
     const onlineServers = servers.filter((s) => s.lastHealth.status === 'online' || !s.lastHealth.status || s.lastHealth.status === 'unknown');
     if (onlineServers.length === 0) {
-      throw new NoOnlineServerError('No online inference server available to pull this model.');
+      throw new ServiceUnavailableError('model.noOnlineServer', 'No online inference server available to pull this model.');
     }
 
     // Dedupe so a payload like ["srv1","srv1"] doesn't make the length check fail
@@ -113,13 +104,13 @@ class ModelService {
     const requested = uniqueServerIds ? onlineServers.filter((s) => uniqueServerIds.includes(s.id)) : onlineServers;
     if (uniqueServerIds && requested.length !== uniqueServerIds.length) {
       const missing = uniqueServerIds.filter((id) => !onlineServers.some((s) => s.id === id));
-      throw new InvalidServerSelectionError(`Servers not online or not found: ${missing.join(', ')}`);
+      throw new BadRequestError('model.invalidServerSelection', `Servers not online or not found: ${missing.join(', ')}`);
     }
 
     const byServer = await serverModelsService.getInstalledByServer();
     const targets = requested.filter((s) => !byServer.get(s.id)?.has(catalog.id));
     if (targets.length === 0) {
-      throw new ModelAlreadyInstalledError('Model is already installed on every selected server.');
+      throw new ConflictError('model.alreadyInstalled', 'Model is already installed on every selected server.');
     }
 
     const jobIds: string[] = [];
@@ -187,20 +178,20 @@ class ModelService {
     const servers = await inferenceServerService.listEnabled();
     const onlineServers = servers.filter((s) => s.lastHealth.status === 'online' || !s.lastHealth.status || s.lastHealth.status === 'unknown');
     if (onlineServers.length === 0) {
-      throw new NoOnlineServerError('No online inference server available to import this model.');
+      throw new ServiceUnavailableError('model.noOnlineServer', 'No online inference server available to import this model.');
     }
 
     const uniqueServerIds = serverIds ? Array.from(new Set(serverIds)) : undefined;
     const requested = uniqueServerIds ? onlineServers.filter((s) => uniqueServerIds.includes(s.id)) : onlineServers;
     if (uniqueServerIds && requested.length !== uniqueServerIds.length) {
       const missing = uniqueServerIds.filter((id) => !onlineServers.some((s) => s.id === id));
-      throw new InvalidServerSelectionError(`Servers not online or not found: ${missing.join(', ')}`);
+      throw new BadRequestError('model.invalidServerSelection', `Servers not online or not found: ${missing.join(', ')}`);
     }
 
     const byServer = await serverModelsService.getInstalledByServer();
     const targets = requested.filter((s) => !byServer.get(s.id)?.has(slug));
     if (targets.length === 0) {
-      throw new ModelAlreadyInstalledError('Model is already installed on every selected server.');
+      throw new ConflictError('model.alreadyInstalled', 'Model is already installed on every selected server.');
     }
 
     const jobIds: string[] = [];
@@ -252,7 +243,7 @@ class ModelService {
     if (serverId) {
       targets = targets.filter((s) => s.id === serverId);
       if (targets.length === 0) {
-        throw new NotFoundError(`Model is not installed on server "${serverId}".`);
+        throw new NotFoundError('model.notInstalledOnServer', `Model is not installed on server "${serverId}".`);
       }
     }
 
@@ -269,7 +260,7 @@ class ModelService {
     );
     this.notifyListeners();
     if (errors.length > 0) {
-      throw new UpstreamError(`Failed to delete on ${errors.length} server(s): ${errors.join('; ')}`);
+      throw new UpstreamError('model.deleteFailed', `Failed to delete on ${errors.length} server(s): ${errors.join('; ')}`);
     }
   }
 
@@ -279,7 +270,7 @@ class ModelService {
   public async listPresetVoicesFor(modelId: string, userId: string): Promise<PresetVoice[]> {
     const catalog = (await this.getFullCatalog(userId)).find((m) => m.id === modelId);
     if (!catalog) {
-      throw new NotFoundError('Model not found');
+      throw new NotFoundError('model.notFound', 'Model not found');
     }
     if (catalog.backend === 'elevenlabs') {
       return elevenlabsService.listVoices(userId);
@@ -298,7 +289,7 @@ class ModelService {
     const { name: rawName, onnxFile, configFile, serverIds } = input;
     const name = rawName.trim();
     if (!name) {
-      throw new BadRequestError('Fields "onnx", "config", and "name" are required');
+      throw new BadRequestError('model.piperFieldsRequired', 'Fields "onnx", "config", and "name" are required');
     }
 
     const configText = await configFile.text();
@@ -306,10 +297,10 @@ class ModelService {
     try {
       configData = JSON.parse(configText) as Record<string, unknown>;
     } catch {
-      throw new BadRequestError('Config file is not valid JSON');
+      throw new BadRequestError('model.configInvalidJson', 'Config file is not valid JSON');
     }
     if (!configData.espeak || !configData.phoneme_id_map) {
-      throw new BadRequestError('Config must contain "espeak" and "phoneme_id_map" fields (Piper format)');
+      throw new BadRequestError('model.configNotPiper', 'Config must contain "espeak" and "phoneme_id_map" fields (Piper format)');
     }
 
     const espeakVoice = (configData.espeak as Record<string, string>).voice ?? '';
@@ -322,13 +313,13 @@ class ModelService {
       .replace(/\s+/g, '_')
       .replace(/[^a-z0-9_]/g, '');
     if (!speakerSlug) {
-      throw new BadRequestError('Invalid model name');
+      throw new BadRequestError('model.invalidName', 'Invalid model name');
     }
     const slug = `piper-${locale}-${speakerSlug}-${quality}`;
 
     const catalogIds = new Set(modelsCatalog.map((m) => m.id));
     if (catalogIds.has(slug)) {
-      throw new ConflictError(`Name "${slug}" conflicts with an existing catalog model`);
+      throw new ConflictError('model.nameConflict', `Name "${slug}" conflicts with an existing catalog model`);
     }
 
     // Read the file bytes once on Hono so we can fan out to multiple inference servers
@@ -357,12 +348,12 @@ class ModelService {
   public async exportCustomModel(modelId: string): Promise<Response> {
     const customs = await this.scanCustomModels();
     if (!customs.find((m) => m.id === modelId)) {
-      throw new NotFoundError('Custom model not found');
+      throw new NotFoundError('model.customNotFound', 'Custom model not found');
     }
     const target = await pickTarget({ requireModel: modelId });
     const response = await inferenceRepository(target).fetchExport(modelId);
     if (!response.ok) {
-      throw new UpstreamError('Export failed');
+      throw new UpstreamError('model.exportFailed', 'Export failed');
     }
     return response;
   }

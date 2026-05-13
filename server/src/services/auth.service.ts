@@ -1,7 +1,7 @@
 import PocketBase, { type RecordModel } from 'pocketbase';
-import { UnauthorizedError } from '../errors';
+import { BadRequestError, UnauthorizedError } from '../errors';
 import { config } from '../lib/config';
-import { pb } from '../lib/pocketbase';
+import { userRepository } from '../repositories';
 
 interface AuthUser {
   id: string;
@@ -23,16 +23,6 @@ interface RegisterParams {
   name?: string;
 }
 
-/** Thrown by `register` when the email already exists or PB rejects the payload. */
-export class RegistrationFailedError extends Error {
-  public readonly code = 'registrationFailed';
-}
-
-/** Thrown by `login` for any failure that should map to 401 invalidCredentials. */
-export class InvalidCredentialsError extends Error {
-  public readonly code = 'invalidCredentials';
-}
-
 class AuthService {
   public async login(email: string, password: string): Promise<AuthResult> {
     try {
@@ -44,42 +34,52 @@ class AuthService {
       // only ever gets a `code: 'invalidCredentials'` envelope so the user-facing
       // story stays the same.
       console.warn('[auth/login] authWithPassword failed', err);
-      throw new InvalidCredentialsError();
+      throw new UnauthorizedError('auth.invalidCredentials', 'Invalid email or password');
     }
   }
 
   public async register(params: RegisterParams): Promise<AuthResult> {
+    // Always create as a regular user. Promotion to admin happens in a second step
+    // gated by a partial unique index (`idx_users_single_admin`) that allows only
+    // one row to hold role = 'admin'. Two concurrent registrations on a fresh
+    // install will both try to promote themselves; the DB guarantees only one wins.
+    const userPb = new PocketBase(config.pb.url);
+    let created: RecordModel;
     try {
-      // Always create as a regular user. Promotion to admin happens in a second step
-      // gated by a partial unique index (`idx_users_single_admin`) that allows only
-      // one row to hold role = 'admin'. Two concurrent registrations on a fresh
-      // install will both try to promote themselves; the DB guarantees only one wins.
-      const userPb = new PocketBase(config.pb.url);
-      const created = await userPb.collection('users').create({ ...params, role: 'user' });
-      try {
-        await pb.collection('users').update(created.id, { role: 'admin' });
-      } catch (err) {
-        // Only the partial-unique-index conflict means "another admin already exists";
-        // anything else (PB down, network error) is a real failure. Roll back the
-        // freshly-committed user record before re-throwing -- otherwise the caller
-        // sees a RegistrationFailedError but the email is now permanently taken and
-        // they can't retry.
-        if (!isUniqueIndexConflict(err)) {
-          console.error('[auth/register] failed to promote first user to admin', err);
-          try {
-            await pb.collection('users').delete(created.id);
-          } catch (rollbackErr) {
-            console.error('[auth/register] failed to roll back user after promotion failure', { userId: created.id, rollbackErr });
-          }
-          throw err;
-        }
-      }
-      const authData = await userPb.collection('users').authWithPassword(params.email, params.password);
-      return { token: authData.token, user: toAuthUser(authData.record) };
+      created = await userPb.collection('users').create({ ...params, role: 'user' });
     } catch (err) {
-      console.warn('[auth/register] PocketBase rejected the registration', err);
-      throw new RegistrationFailedError();
+      // PB rejects with a 400 for validation issues (duplicate email, weak
+      // password, etc.) which are genuine client errors. Anything else (PB
+      // unreachable, 5xx) must propagate as a generic server error so the
+      // operator gets paged instead of the user seeing "Registration failed".
+      const status = (err as { status?: unknown })?.status;
+      if (status === 400) {
+        console.warn('[auth/register] PocketBase rejected the registration', err);
+        throw new BadRequestError('auth.registrationFailed', 'Registration failed');
+      }
+      console.error('[auth/register] PocketBase create failed', err);
+      throw err;
     }
+    try {
+      await userRepository.update(created.id, { role: 'admin' });
+    } catch (err) {
+      // Only the partial-unique-index conflict means "another admin already exists";
+      // anything else (PB down, network error) is a real failure. Roll back the
+      // freshly-committed user record before re-throwing, otherwise the caller
+      // sees a server error but the email is now permanently taken and they
+      // can't retry.
+      if (!isUniqueIndexConflict(err)) {
+        console.error('[auth/register] failed to promote first user to admin', err);
+        try {
+          await userRepository.delete(created.id);
+        } catch (rollbackErr) {
+          console.error('[auth/register] failed to roll back user after promotion failure', { userId: created.id, rollbackErr });
+        }
+        throw err;
+      }
+    }
+    const authData = await userPb.collection('users').authWithPassword(params.email, params.password);
+    return { token: authData.token, user: toAuthUser(authData.record) };
   }
 
   public async refreshFromBearer(authorization: string | undefined): Promise<AuthResult> {
@@ -91,7 +91,7 @@ class AuthService {
       return { token: authData.token, user: toAuthUser(authData.record) };
     } catch (err) {
       console.warn('[auth/refreshFromBearer] token refresh failed', err);
-      throw new UnauthorizedError('Invalid or expired token');
+      throw new UnauthorizedError('auth.invalidToken', 'Invalid or expired token');
     }
   }
 
@@ -103,7 +103,7 @@ class AuthService {
 
 function extractBearer(authorization: string | undefined): string {
   if (!authorization?.startsWith('Bearer ')) {
-    throw new UnauthorizedError();
+    throw new UnauthorizedError('auth.required', 'Authentication required');
   }
   return authorization.slice(7);
 }

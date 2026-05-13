@@ -3,15 +3,16 @@ set -euo pipefail
 
 # ── Sirene installer ────────────────────────────────────────────────────────
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
 #
 # Modes (interactive prompt by default; skip with INSTALL_MODE):
 #   full    - server + inference on this machine [default]
 #   server  - just the app, configure inference workers via the UI
 #   worker  - just the inference, prints URL + auth token
+#   cli     - just the `sirene` command-line client binary
 #
 # Optional env vars:
-#   INSTALL_MODE   full|server|worker
+#   INSTALL_MODE   full|server|worker|cli
 #   DEVICE         cpu|cuda                (full / worker only - auto-detected if unset)
 #   INFERENCE_URL  http://...               (server mode only - seeds the registry at boot)
 #   PORT           default 8000             (worker mode only)
@@ -19,6 +20,8 @@ set -euo pipefail
 #   IMAGE          override the inference image (worker mode only)
 #   DATA_DIR       override where models/packages live on disk
 #                  default: <install dir>/data
+#   VERSION        pin a specific release tag (cli mode only - default: latest)
+#   PREFIX         install dir for the CLI (cli mode only - default: $HOME/.local/bin)
 # ─────────────────────────────────────────────────────────────────────────────
 
 REPO="ghcr.io/kevinbonnoron/sirene"
@@ -46,14 +49,8 @@ printf "  ${CYAN}│${RESET}${DIM}          Multi-backend TTS Router           $
 printf "  ${CYAN}└${BORDER}┘${RESET}\n"
 printf "\n"
 
-# ── Privilege ───────────────────────────────────────────────────────────────
-
-if [ "$(id -u)" -eq 0 ]; then
-  SUDO=""
-else
-  command -v sudo >/dev/null 2>&1 || die "this script needs root or sudo"
-  SUDO="sudo"
-fi
+# ── Privilege (set later: only the server modes always need sudo) ───────────
+SUDO=""
 
 # ── Distro / GPU detection ──────────────────────────────────────────────────
 
@@ -135,19 +132,138 @@ if [ -z "$INSTALL_MODE" ]; then
   printf "  ${CYAN}1)${RESET} Sirene             ${DIM}server + inference on this machine (default)${RESET}\n"
   printf "  ${CYAN}2)${RESET} Sirene server      ${DIM}just the app, add inference via the UI${RESET}\n"
   printf "  ${CYAN}3)${RESET} Inference worker   ${DIM}extend an existing Sirene with another inference${RESET}\n"
+  printf "  ${CYAN}4)${RESET} CLI                ${DIM}command-line client (no Docker required)${RESET}\n"
   printf "${YELLOW}Choice [1]:${RESET} "
   read -r CHOICE </dev/tty
   case "$CHOICE" in
     2) INSTALL_MODE="server" ;;
     3) INSTALL_MODE="worker" ;;
+    4) INSTALL_MODE="cli" ;;
     *) INSTALL_MODE="full" ;;
   esac
 fi
 
 case "$INSTALL_MODE" in
-  full|server|worker) ;;
-  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / worker" ;;
+  full|server|worker|cli) ;;
+  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / worker / cli" ;;
 esac
+
+# ── CLI mode short-circuit ──────────────────────────────────────────────────
+# The CLI is a single binary - it doesn't need Docker, GPU, prompts, or root.
+# Done as an early exit so the rest of the script stays focused on the Docker
+# server / worker setup it was originally designed for.
+if [ "$INSTALL_MODE" = "cli" ]; then
+  GH_REPO="KevinBonnoron/sirene"
+  CLI_BINARY="sirene"
+
+  OS_RAW="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  ARCH_RAW="$(uname -m)"
+  case "$OS_RAW" in
+    linux)  OS="linux" ;;
+    darwin) OS="darwin" ;;
+    msys*|mingw*|cygwin*) OS="windows" ;;
+    *) die "Unsupported OS: $OS_RAW" ;;
+  esac
+  case "$ARCH_RAW" in
+    x86_64|amd64) ARCH="x64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) die "Unsupported architecture: $ARCH_RAW" ;;
+  esac
+
+  ASSET="${CLI_BINARY}-${OS}-${ARCH}"
+  [ "$OS" = "windows" ] && ASSET="${ASSET}.exe"
+
+  CLI_VERSION="${VERSION:-latest}"
+  if [ "$CLI_VERSION" = "latest" ]; then
+    info "Resolving latest release"
+    CLI_VERSION=$(curl -fsSL "https://api.github.com/repos/${GH_REPO}/releases/latest" \
+                  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)
+    [ -z "$CLI_VERSION" ] && die "Could not determine latest release - is the repo published?"
+  fi
+  info "Version: $CLI_VERSION"
+
+  # Pick install prefix: prefer ~/.local/bin (no sudo) when writable; fall back
+  # to /usr/local/bin (sudo) only if the user can't / doesn't want a per-user
+  # install. PREFIX env wins.
+  if [ -z "${PREFIX:-}" ]; then
+    if mkdir -p "$HOME/.local/bin" 2>/dev/null && [ -w "$HOME/.local/bin" ]; then
+      PREFIX="$HOME/.local/bin"
+    else
+      PREFIX="/usr/local/bin"
+    fi
+  fi
+  mkdir -p "$PREFIX" 2>/dev/null || true
+  DEST="$PREFIX/$CLI_BINARY"
+
+  URL="https://github.com/${GH_REPO}/releases/download/${CLI_VERSION}/${ASSET}"
+  SUMS_URL="https://github.com/${GH_REPO}/releases/download/${CLI_VERSION}/SHA256SUMS.txt"
+  TMP="$(mktemp -d)"
+  trap 'rm -rf "$TMP"' EXIT
+  info "Downloading $URL"
+  curl -fL --progress-bar -o "$TMP/$ASSET" "$URL" \
+    || die "Download failed. Check that release ${CLI_VERSION} exposes asset ${ASSET}."
+
+  # Verify the binary against the release's signed checksum file. Skipping
+  # this would let a man-in-the-middle (or a compromised CDN) ship arbitrary
+  # code from a URL that looks like a Sirene release.
+  info "Verifying checksum"
+  if ! curl -fsSL -o "$TMP/SHA256SUMS.txt" "$SUMS_URL"; then
+    die "Could not fetch SHA256SUMS.txt for ${CLI_VERSION}. Refusing to install an unverified binary."
+  fi
+  EXPECTED=$(awk -v asset="$ASSET" '$2 == asset { print $1 }' "$TMP/SHA256SUMS.txt")
+  if [ -z "$EXPECTED" ]; then
+    die "${ASSET} is not listed in SHA256SUMS.txt for ${CLI_VERSION}."
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "$TMP/$ASSET" | awk '{ print $1 }')
+  elif command -v shasum >/dev/null 2>&1; then
+    ACTUAL=$(shasum -a 256 "$TMP/$ASSET" | awk '{ print $1 }')
+  else
+    die "No sha256sum / shasum available; cannot verify download integrity."
+  fi
+  if [ "$EXPECTED" != "$ACTUAL" ]; then
+    die "Checksum mismatch for $ASSET: expected $EXPECTED, got $ACTUAL"
+  fi
+  ok "Checksum OK"
+
+  mv "$TMP/$ASSET" "$TMP/$CLI_BINARY"
+  chmod +x "$TMP/$CLI_BINARY"
+  if [ -w "$PREFIX" ]; then
+    mv "$TMP/$CLI_BINARY" "$DEST"
+  else
+    info "Need sudo to write to $PREFIX"
+    command -v sudo >/dev/null 2>&1 || die "no write access to $PREFIX and no sudo"
+    sudo mv "$TMP/$CLI_BINARY" "$DEST"
+  fi
+  ok "Installed $DEST"
+
+  if command -v "$CLI_BINARY" >/dev/null 2>&1; then
+    ok "$CLI_BINARY is on your PATH"
+    "$CLI_BINARY" --version || true
+  else
+    printf "\n${YELLOW}!${RESET} %s is not on your PATH yet.\n" "$DEST"
+    printf "  Add to your shell rc:\n"
+    printf "    export PATH=\"%s:\$PATH\"\n\n" "$PREFIX"
+  fi
+
+  cat <<EOF
+
+Next steps:
+  $CLI_BINARY auth login --url https://your-sirene-server.example.com/api
+  $CLI_BINARY voice list
+  $CLI_BINARY generate "Hello world" --voice <id>
+EOF
+  exit 0
+fi
+
+# ── Privilege (server modes need root or sudo) ──────────────────────────────
+
+if [ "$(id -u)" -eq 0 ]; then
+  SUDO=""
+else
+  command -v sudo >/dev/null 2>&1 || die "this script needs root or sudo"
+  SUDO="sudo"
+fi
 
 # ── Pick device (full / worker only) ────────────────────────────────────────
 

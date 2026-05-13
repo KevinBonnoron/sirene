@@ -17,7 +17,7 @@ On first launch, Sirene will set up its inference environment automatically.
 The quickest way to run Sirene as a server:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
 ```
 
 > **Supply-chain note.** The bootstrap script is fetched from `main`. For production deployments review the [latest release](https://github.com/KevinBonnoron/sirene/releases) and replace `main` with the corresponding tag once a release that supports your installation mode is published.
@@ -37,7 +37,7 @@ If you have a separate Linux machine with a GPU, you can add it as an inference 
 1. On the worker machine, run:
 
    ```bash
-   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=worker bash
+   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | INSTALL_MODE=worker bash
    ```
 
 2. The script prints a **URL** and an **auth token** when it finishes

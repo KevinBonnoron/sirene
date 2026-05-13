@@ -13,7 +13,10 @@ function AppLayoutRoute() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate({ to: '/login' });
+      // Preserve where the user was heading so /login can bounce them back
+      // after auth (used by the CLI device-code flow on /cli-auth).
+      const target = `${window.location.pathname}${window.location.search}`;
+      navigate({ to: '/login', search: { redirect: target } });
     }
   }, [user, isLoading, navigate]);
 

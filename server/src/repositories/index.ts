@@ -6,5 +6,6 @@ export { inferenceServerRepository } from './inference-server.repository';
 export { OPENAI_VOICES, openAITtsRepository } from './openai-tts.repository';
 export { sessionRepository } from './session.repository';
 export { settingRepository } from './setting.repository';
+export { userRepository } from './user.repository';
 export { voiceRepository } from './voice.repository';
 export { voiceSampleRepository } from './voice-sample.repository';

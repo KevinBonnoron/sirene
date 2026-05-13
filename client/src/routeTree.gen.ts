@@ -19,6 +19,7 @@ import { Route as AppVoicesRouteImport } from './routes/_app/voices'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppModelsRouteImport } from './routes/_app/models'
 import { Route as AppHistoryRouteImport } from './routes/_app/history'
+import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -68,8 +69,14 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCliAuthRoute = AppCliAuthRouteImport.update({
+  id: '/cli-auth',
+  path: '/cli-auth',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/cli-auth': typeof AppCliAuthRoute
   '/history': typeof AppHistoryRoute
   '/models': typeof AppModelsRoute
   '/settings': typeof AppSettingsRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
+  '/cli-auth': typeof AppCliAuthRoute
   '/history': typeof AppHistoryRoute
   '/models': typeof AppModelsRoute
   '/settings': typeof AppSettingsRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/cli-auth': typeof AppCliAuthRoute
   '/_app/history': typeof AppHistoryRoute
   '/_app/models': typeof AppModelsRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -105,6 +114,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/cli-auth'
     | '/history'
     | '/models'
     | '/settings'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/cli-auth'
     | '/history'
     | '/models'
     | '/settings'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/cli-auth'
     | '/_app/history'
     | '/_app/models'
     | '/_app/settings'
@@ -215,10 +227,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHistoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cli-auth': {
+      id: '/_app/cli-auth'
+      path: '/cli-auth'
+      fullPath: '/cli-auth'
+      preLoaderRoute: typeof AppCliAuthRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppCliAuthRoute: typeof AppCliAuthRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppModelsRoute: typeof AppModelsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -227,6 +247,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCliAuthRoute: AppCliAuthRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppModelsRoute: AppModelsRoute,
   AppSettingsRoute: AppSettingsRoute,

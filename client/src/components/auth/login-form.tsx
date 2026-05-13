@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useValidators } from '@/hooks/use-validators';
 import { useAppForm, zodValidator } from '@/lib/form';
+import { safeRedirect } from '@/lib/safe-redirect';
 import { useAuth } from '@/providers/auth-provider';
 
 export function LoginForm() {
@@ -25,6 +26,13 @@ export function LoginForm() {
       setServerError('');
       try {
         await login(value.email, value.password);
+        const params = new URLSearchParams(window.location.search);
+        const redirect = safeRedirect(params.get('redirect'));
+        if (redirect) {
+          window.location.replace(redirect);
+          return;
+        }
+
         navigate({ to: '/' });
       } catch (err) {
         setServerError(t([`login.${err instanceof Error ? err.message : ''}`, 'login.failed']));

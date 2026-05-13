@@ -12,7 +12,7 @@ All model management (download, install check, deletion) is handled by the infer
 The install script sets up everything automatically:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
 ```
 
 It will:
@@ -78,7 +78,7 @@ Same as above but the inference service uses the CUDA image and requires the [NV
 Once Sirene is running, you can add **additional inference workers** to the fleet. On a fresh Linux machine (root or sudo required), run:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=worker bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | INSTALL_MODE=worker bash
 ```
 
 The script:
@@ -89,7 +89,7 @@ The script:
 
 Then in Sirene → **Settings → Inference servers → Add server**: paste the URL and the auth token, give it a name, save.
 
-The auth token stays on the worker (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer …` - the worker rejects anything else.
+The auth token stays on the worker (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer ...` - the worker rejects anything else.
 
 > **Why not auto-register from the worker?** Sirene calls workers; workers never call Sirene at runtime. Adding a one-time reverse callback for setup convenience would require workers to reach Sirene's URL, which is brittle (private networks, firewalls, dev setups). Pasting two values is simpler.
 

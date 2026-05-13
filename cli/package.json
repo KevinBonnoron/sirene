@@ -1,0 +1,27 @@
+{
+  "name": "@sirene/cli",
+  "version": "0.1.0",
+  "description": "Command-line client for Sirene TTS",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "sirene": "dist/sirene"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --compile --outfile dist/sirene",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sirene/shared": "workspace:*",
+    "citty": "^0.1.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

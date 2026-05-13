@@ -6,7 +6,7 @@ import { logger } from 'hono/logger';
 import { spec } from './lib/openapi';
 import { initPocketBase } from './lib/pocketbase';
 import { authMiddleware } from './middleware';
-import { apiKeyRoutes, authRoutes, generateRoutes, generationRoutes, healthRoutes, inferenceServerRoutes, jobRoutes, modelRoutes, sessionRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
+import { apiKeyRoutes, authRoutes, cliAuthProtectedRoutes, cliAuthPublicRoutes, generateRoutes, generationRoutes, healthRoutes, inferenceServerRoutes, jobRoutes, meRoutes, modelRoutes, sessionRoutes, settingsRoutes, transcribeRoutes, versionRoutes, voiceDesignerRoutes, voiceRoutes } from './routes';
 import { inferenceServerService, modelService } from './services';
 
 const bootstrapPromise = (async () => {
@@ -43,9 +43,12 @@ export const app = new Hono()
   .route('/health', healthRoutes)
   .route('/version', versionRoutes)
   .route('/auth', authRoutes)
+  .route('/auth/cli', cliAuthPublicRoutes)
   .route('/models', modelRoutes)
   // Protected routes (auth required)
   .use(authMiddleware)
+  .route('/auth/cli', cliAuthProtectedRoutes)
+  .route('/me', meRoutes)
   .route('/api-keys', apiKeyRoutes)
   .route('/jobs', jobRoutes)
   .route('/inference-servers', inferenceServerRoutes)

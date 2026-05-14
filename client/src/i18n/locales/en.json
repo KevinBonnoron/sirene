@@ -309,9 +309,16 @@
   },
   "settings": {
     "title": "Settings",
-    "subtitle": "Manage API keys and configuration.",
-    "apiKeys": "API Keys",
-    "apiKeysDescription": "Configure API keys for cloud-based services. Keys are stored securely and never displayed in full after saving.",
+    "subtitle": "Manage inference servers, API keys, and cloud integrations.",
+    "tabs": {
+      "inferenceServers": "Inference servers",
+      "apiKeys": "API keys",
+      "cloudKeys": "Cloud integrations"
+    },
+    "cloudKeys": {
+      "title": "Cloud integrations",
+      "description": "Keys for third-party providers (OpenAI, ElevenLabs, HuggingFace). Stored securely and never displayed in full after saving."
+    },
     "openAIKey": "OpenAI API Key",
     "elevenLabsKey": "ElevenLabs API Key",
     "hfToken": "HuggingFace Token",

@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { Eye, EyeOff, Loader2, Pencil, Save, Trash2 } from 'lucide-react';
 import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ApiKeysSection } from './api-keys-section';
 import { InferenceServersSection } from './inference-servers-section';
@@ -19,6 +21,12 @@ const KEYS = [
   { key: 'elevenlabs_api_key', labelKey: 'settings.elevenLabsKey', placeholder: 'sk-...' },
   { key: 'hf_token', labelKey: 'settings.hfToken', placeholder: 'hf_...' },
 ] as const;
+
+/** Tab identifiers used both in the page and in the route's search-param
+ *  validator. Adding a tab is a compile-time event in both places. */
+export const SETTINGS_TABS = ['inference-servers', 'api-keys', 'cloud-keys'] as const;
+export type SettingsTab = (typeof SETTINGS_TABS)[number];
+const DEFAULT_TAB: SettingsTab = 'inference-servers';
 
 type ApiKeyState = { editing: boolean; value: string; visible: boolean; saving: boolean; deleting: boolean };
 type ApiKeyAction = { type: 'startEdit' } | { type: 'setValue'; value: string } | { type: 'toggleVisible' } | { type: 'startSave' } | { type: 'saveDone' } | { type: 'startDelete' } | { type: 'deleteDone' };
@@ -138,35 +146,67 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
   );
 }
 
-export function SettingsPage() {
+function CloudKeysSection() {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsClient.getAll(),
   });
 
+  if (isLoading) {
+    return <Skeleton className="h-48" />;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('settings.cloudKeys.title')}</CardTitle>
+        <CardDescription>{t('settings.cloudKeys.description')}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {KEYS.map((keyDef) => (
+          <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SettingsPage() {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate({ from: '/settings' });
+  const search = useSearch({ from: '/_app/settings' }) as { tab?: SettingsTab };
+  const activeTab: SettingsTab = search.tab ?? DEFAULT_TAB;
+
   return (
     <div className="flex h-full flex-col">
       <SectionTopbar label={t('nav.settings')} subtitle={t('settings.subtitle')} />
       <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
-        <InferenceServersSection />
-        <ApiKeysSection />
-        {isLoading ? (
-          <Skeleton className="h-48" />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('settings.apiKeys')}</CardTitle>
-              <CardDescription>{t('settings.apiKeysDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {KEYS.map((keyDef) => (
-                <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <Tabs
+          value={activeTab}
+          onValueChange={(next) => {
+            // Drop the search param entirely when the user lands back on the
+            // default so the URL stays clean (`/settings` vs `/settings?tab=inference-servers`).
+            navigate({ search: next === DEFAULT_TAB ? {} : { tab: next as SettingsTab }, replace: true });
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="inference-servers">{t('settings.tabs.inferenceServers')}</TabsTrigger>
+            <TabsTrigger value="api-keys">{t('settings.tabs.apiKeys')}</TabsTrigger>
+            <TabsTrigger value="cloud-keys">{t('settings.tabs.cloudKeys')}</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inference-servers">
+            <InferenceServersSection />
+          </TabsContent>
+          <TabsContent value="api-keys">
+            <ApiKeysSection />
+          </TabsContent>
+          <TabsContent value="cloud-keys">
+            <CloudKeysSection />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

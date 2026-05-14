@@ -345,9 +345,16 @@
   },
   "settings": {
     "title": "Param\u00e8tres",
-    "subtitle": "G\u00e9rez les cl\u00e9s API et la configuration.",
-    "apiKeys": "Cl\u00e9s API",
-    "apiKeysDescription": "Configurez les cl\u00e9s API pour les services cloud. Les cl\u00e9s sont stock\u00e9es de mani\u00e8re s\u00e9curis\u00e9e et ne sont jamais affich\u00e9es en entier apr\u00e8s enregistrement.",
+    "subtitle": "G\u00e9rez les serveurs d'inf\u00e9rence, les cl\u00e9s API et les int\u00e9grations cloud.",
+    "tabs": {
+      "inferenceServers": "Serveurs d'inf\u00e9rence",
+      "apiKeys": "Cl\u00e9s API",
+      "cloudKeys": "Int\u00e9grations cloud"
+    },
+    "cloudKeys": {
+      "title": "Int\u00e9grations cloud",
+      "description": "Cl\u00e9s pour les fournisseurs tiers (OpenAI, ElevenLabs, HuggingFace). Stock\u00e9es de mani\u00e8re s\u00e9curis\u00e9e et jamais affich\u00e9es en entier apr\u00e8s enregistrement."
+    },
     "openAIKey": "Cl\u00e9 API OpenAI",
     "elevenLabsKey": "Cl\u00e9 API ElevenLabs",
     "hfToken": "Token HuggingFace",

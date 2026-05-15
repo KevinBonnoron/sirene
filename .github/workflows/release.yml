@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      # Bun's --compile cross-compiles every supported target from a single
+      # host, so we don't need a build matrix - one ubuntu-latest job produces
+      # all five binaries.
+      - name: Build CLI binaries
+        working-directory: cli
+        run: |
+          mkdir -p dist
+          bun build src/index.ts --compile --target=bun-linux-x64    --outfile dist/sirene-linux-x64
+          bun build src/index.ts --compile --target=bun-linux-arm64  --outfile dist/sirene-linux-arm64
+          bun build src/index.ts --compile --target=bun-darwin-x64   --outfile dist/sirene-darwin-x64
+          bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/sirene-darwin-arm64
+          bun build src/index.ts --compile --target=bun-windows-x64  --outfile dist/sirene-windows-x64.exe
+          cd dist && sha256sum sirene-* > SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-dist
+          path: cli/dist/
+
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build client
+        run: bun run -F @sirene/client build
+        env:
+          VITE_PB_URL: __VITE_PB_URL_PLACEHOLDER__
+          VITE_SERVER_URL: __VITE_SERVER_URL_PLACEHOLDER__
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist/
+
+  package-desktop:
+    needs: build-client
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-latest
+            platform: macos-arm64
+          - os: windows-latest
+            platform: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Fix electrobun version detection
+        working-directory: desktop
+        shell: bash
+        run: |
+          rm -rf node_modules/electrobun
+          cp -r ../node_modules/electrobun node_modules/electrobun
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist/
+
+      - name: Build desktop
+        working-directory: desktop
+        run: bun run build:release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: desktop/artifacts/
+
+  release:
+    needs: [build-cli, package-desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+
+  update-flake:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: cachix/install-nix-action@v27
+
+      - name: Recompute hashes and bump flake.nix
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          BASE="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}"
+
+          declare -A CLI_ASSETS=(
+            [x86_64-linux]=sirene-linux-x64
+            [aarch64-linux]=sirene-linux-arm64
+            [x86_64-darwin]=sirene-darwin-x64
+            [aarch64-darwin]=sirene-darwin-arm64
+          )
+          for sys in "${!CLI_ASSETS[@]}"; do
+            asset="${CLI_ASSETS[$sys]}"
+            wget -q "$BASE/$asset" -O "$asset"
+            hash=$(nix hash file --sri --type sha256 "$asset")
+            sed -i "s|\"${sys}\"[[:space:]]*=[[:space:]]*\"sha256-[^\"]*\";|\"${sys}\" = \"${hash}\";|" flake.nix
+          done
+
+          wget -q "$BASE/stable-linux-x64-Sirene.tar.zst" -O desktop.tar.zst
+          DESKTOP_HASH=$(nix hash file --sri --type sha256 desktop.tar.zst)
+
+          sed -i "s|version = \"[^\"]*\";|version = \"${VERSION}\";|" flake.nix
+          sed -i "s|hash = \"sha256-[^\"]*\";|hash = \"${DESKTOP_HASH}\";|" flake.nix
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          if git diff --cached --quiet; then
+            echo "flake.nix already up to date"
+          else
+            git commit -m "chore: update flake.nix for ${GITHUB_REF_NAME}"
+            git push
+          fi

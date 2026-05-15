@@ -1,7 +1,7 @@
 # Sirene
 
 [![Docker](https://github.com/KevinBonnoron/sirene/actions/workflows/docker.yml/badge.svg)](https://github.com/KevinBonnoron/sirene/actions/workflows/docker.yml)
-[![Desktop](https://github.com/KevinBonnoron/sirene/actions/workflows/desktop.yml/badge.svg)](https://github.com/KevinBonnoron/sirene/actions/workflows/desktop.yml)
+[![Release](https://github.com/KevinBonnoron/sirene/actions/workflows/release.yml/badge.svg)](https://github.com/KevinBonnoron/sirene/actions/workflows/release.yml)
 [![Docs](https://github.com/KevinBonnoron/sirene/actions/workflows/docs.yml/badge.svg)](https://kevinbonnoron.github.io/sirene/)
 
 Self-hosted multi-backend text-to-speech platform with voice cloning and a modern web UI.

@@ -7,11 +7,7 @@
     let
       desktopSystem = "x86_64-linux";
       desktopPkgs = nixpkgs.legacyPackages.${desktopSystem};
-      desktopVersion = "0.0.1";
-
-      # CLI release pin. The `cli-release` GH Actions workflow opens a PR to
-      # bump these whenever a `cli-v*` tag is pushed.
-      cliVersion = "0.1.0";
+      version = "0.0.1";
       cliHashes = {
         "x86_64-linux"   = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
         "aarch64-linux"  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -30,10 +26,10 @@
             isLinux = pkgs.stdenv.hostPlatform.isLinux;
         in pkgs.stdenv.mkDerivation {
           pname = "sirene-cli";
-          version = cliVersion;
+          inherit version;
 
           src = pkgs.fetchurl {
-            url = "https://github.com/KevinBonnoron/sirene/releases/download/cli-v${cliVersion}/${cliAsset system}";
+            url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/${cliAsset system}";
             hash = cliHashes.${system};
           };
 
@@ -85,10 +81,10 @@
 
       desktopPackage = desktopPkgs.stdenv.mkDerivation {
         pname = "sirene";
-        version = desktopVersion;
+        inherit version;
 
         src = desktopPkgs.fetchurl {
-          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${desktopVersion}/stable-linux-x64-Sirene.tar.zst";
+          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/stable-linux-x64-Sirene.tar.zst";
           hash = "sha256-zoIZ25VTl7oAifWNPSGYKmOmmG1aIMH15kZJWPZ7fF4=";
         };
 

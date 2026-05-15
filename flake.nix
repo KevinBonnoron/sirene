@@ -7,12 +7,12 @@
     let
       desktopSystem = "x86_64-linux";
       desktopPkgs = nixpkgs.legacyPackages.${desktopSystem};
-      version = "0.0.1";
+      version = "0.0.2";
       cliHashes = {
-        "x86_64-linux"   = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-        "aarch64-linux"  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-        "x86_64-darwin"  = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-        "aarch64-darwin" = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        "x86_64-linux" = "sha256-zi9Y8h/2EMIcKmFrHuBbgluHPx/r5TDREPl4YxN6Tmk=";
+        "aarch64-linux" = "sha256-71PxAFjZDJOEQrTy614gNqLXVJwx1ALrKDPwlgW7UEQ=";
+        "x86_64-darwin" = "sha256-jduW0n3QZOjk9SvuETwjgTcwjDs368MO+FQWQDLAvhQ=";
+        "aarch64-darwin" = "sha256-Z2P33cs7zvQZgMaVIZCqqbeXtUy+iLkueizuyYvYeJ8=";
       };
       cliAsset = system: {
         "x86_64-linux"   = "sirene-linux-x64";
@@ -85,7 +85,7 @@
 
         src = desktopPkgs.fetchurl {
           url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/stable-linux-x64-Sirene.tar.zst";
-          hash = "sha256-zoIZ25VTl7oAifWNPSGYKmOmmG1aIMH15kZJWPZ7fF4=";
+          hash = "sha256-YBwIBJFNITcNQ5LadL93zWVEuHsHRomqu0Q0gswLncA=";
         };
 
         sourceRoot = "Sirene";

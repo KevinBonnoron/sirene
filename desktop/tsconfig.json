@@ -3,7 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["bun-types"]
+    "types": ["bun-types"],
+    // Match Bun's resolution: @sirene/server's exports map sends "bun" to the
+    // TS source and "default" to the dist .js (only emitted on build). Without
+    // this, TS resolves the default branch and reports an implicit any.
+    "customConditions": ["bun"]
   },
   "include": ["src/**/*", "electrobun.config.ts"]
 }

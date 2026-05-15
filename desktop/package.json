@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "predev": "bash scripts/download-pocketbase.sh",
-    "dev": "electrobun dev",
-    "prebuild": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh && bun build src/bun/server.ts --outfile vendor/server.js --target bun --minify",
-    "build": "electrobun build",
-    "prebuild:release": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh && bun build src/bun/server.ts --outfile vendor/server.js --target bun --minify",
-    "build:release": "electrobun build --env=stable"
+    "dev": "bun run -F @sirene/client build && electrobun dev",
+    "dev:watch": "electrobun dev --watch",
+    "prebuild": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh",
+    "build": "bun run -F @sirene/client build && electrobun build",
+    "prebuild:release": "bash scripts/download-pocketbase.sh && bash scripts/setup-inference.sh",
+    "build:release": "bun run -F @sirene/client build && electrobun build --env=stable"
   },
   "dependencies": {
     "@sirene/server": "workspace:*",

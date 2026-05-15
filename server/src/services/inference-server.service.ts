@@ -58,29 +58,47 @@ class InferenceServerService {
     serverModelsService.invalidate(id);
   }
 
-  /** Bootstrap a single server from INFERENCE_URL if the registry is empty. */
+  /** Bootstrap a single "Local" server from INFERENCE_URL. Idempotent: if a "Local"
+   *  record already exists we just realign its URL with the current env, which keeps
+   *  the desktop dev launcher working when ports change every boot. */
   public async bootstrapFromEnv(): Promise<void> {
+    const url = config.inferenceUrl.replace(/\/$/, '');
+
+    const existing = await inferenceServerRepository.findBy("name = 'Local'");
+    if (existing) {
+      if (existing.url !== url) {
+        await inferenceServerRepository.update(existing.id, { url });
+        console.log(`Updated 'Local' inference_server url to ${url}`);
+      }
+      return;
+    }
+
+    // User may have renamed the auto-seeded entry. Skip seeding if any record
+    // exists at all - we don't want to keep recreating "Local" alongside it.
     const records = await inferenceServerRepository.findAllBy('', { sort: 'created' });
     if (records.length > 0) {
       return;
     }
-    // Idempotent under concurrent startup: the read above is racy across multiple
-    // API instances, and the unique-name/url indexes will reject the loser. Treat
-    // that case as success - by then another instance has already seeded the row.
+
+    // Unique-name/url races across concurrent instances are still handled below.
     try {
       await inferenceServerRepository.create({
         name: 'Local',
-        url: config.inferenceUrl.replace(/\/$/, ''),
+        url,
         enabled: true,
         priority: 100,
         lastHealth: { at: '', status: 'unknown', error: '' },
       });
-      console.log(`Seeded inference_servers with ${config.inferenceUrl}`);
+      console.log(`Seeded inference_servers with ${url}`);
     } catch (err) {
-      const message = String((err as { message?: unknown })?.message ?? '').toLowerCase();
-      if (message.includes('unique') || message.includes('already exists')) {
+      if (isUniqueViolation(err)) {
         return;
       }
+      // PB's `ClientResponseError` puts the structured rejection in `response.data`,
+      // and the default error inspector truncates it to `[Object ...]`. Log the body
+      // explicitly so bootstrap failures are diagnosable instead of cryptic.
+      const response = (err as { response?: unknown })?.response;
+      console.error('Failed to seed inference_servers:', JSON.stringify(response, null, 2));
       throw err;
     }
   }
@@ -121,6 +139,24 @@ class InferenceServerService {
       lastHealth: { at: new Date().toISOString(), status: probed.status, error: probed.error },
     });
   }
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  const message = String((err as { message?: unknown })?.message ?? '').toLowerCase();
+  if (message.includes('unique') || message.includes('already exists')) {
+    return true;
+  }
+  // PB JS SDK exposes structured validation errors at `response.data` keyed by
+  // field name. The unique-constraint code is `validation_not_unique`.
+  const data = (err as { response?: { data?: Record<string, { code?: string }> } })?.response?.data;
+  if (data && typeof data === 'object') {
+    for (const entry of Object.values(data)) {
+      if (entry?.code === 'validation_not_unique') {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 async function probeHealth(url: string, authToken?: string): Promise<{ status: InferenceServerHealthStatus; error: string }> {

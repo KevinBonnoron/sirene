@@ -17,7 +17,6 @@ export default {
       [process.platform === 'win32' ? './vendor/pocketbase.exe' : './vendor/pocketbase']: 'Resources/pocketbase',
       '../inference/src': 'Resources/inference/src',
       './vendor/python': 'Resources/python',
-      './vendor/server.js': 'Resources/server.js',
     },
   },
 } satisfies ElectrobunConfig;

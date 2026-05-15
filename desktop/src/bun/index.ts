@@ -1,12 +1,37 @@
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow } from 'electrobun/bun';
 
-const PORT = 3000;
+// Pre-allocate a port for child processes (uvicorn) that need --port up front.
+// The Hono server doesn't need this - Bun.serve({port:0}) returns the actual
+// port via server.port after bind.
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address();
+      if (addr && typeof addr === 'object') {
+        const port = addr.port;
+        srv.close(() => resolve(port));
+      } else {
+        srv.close();
+        reject(new Error('Failed to allocate port'));
+      }
+    });
+  });
+}
+
+// PB stays on a fixed port because the SPA reaches it directly via the
+// PocketBase JS SDK (realtime, file URLs) - making it dynamic would require
+// injecting the URL into the client bundle. Inference is dynamic because only
+// the in-process Hono server talks to it, via INFERENCE_URL env.
 const PB_PORT = 8090;
-const INFERENCE_PORT = 8000;
+const INFERENCE_PORT = await getFreePort();
 
 // In the build output, this file is at Resources/app/bun/index.js
 const RESOURCES_DIR = join(import.meta.dir, '../Resources');
@@ -22,8 +47,6 @@ const PB_BINARY = join(RESOURCES_DIR, 'pocketbase');
 const INFERENCE_DIR = join(RESOURCES_DIR, 'inference');
 const PYTHON_DIR = join(RESOURCES_DIR, 'python');
 const PYTHON_BIN = join(PYTHON_DIR, 'bin/python3');
-const SERVER_SCRIPT = join(RESOURCES_DIR, 'server.js');
-const BUN_BINARY = process.argv0;
 
 const PB_SUPERUSER_EMAIL = 'admin@sirene.local';
 const PB_SUPERUSER_PASSWORD = 'changeme123';
@@ -106,6 +129,10 @@ if (existsSync(PYTHON_BIN)) {
       MODELS_PATH: MODELS_DIR,
       PACKAGES_DIR: PACKAGES_DIR,
       DEVICE: 'cpu',
+      // Bundled inference is loopback-only and trusted by the local server;
+      // matches install.sh full-mode (which also runs unauthenticated on the
+      // internal docker network).
+      INFERENCE_ALLOW_NO_AUTH: 'true',
     },
   });
   inferenceProcess.on('error', (err) => console.error('Inference server failed to start:', err));
@@ -124,22 +151,36 @@ if (inferenceAvailable) {
   await waitForService(`http://127.0.0.1:${INFERENCE_PORT}/health`, 'Inference', 150);
 }
 
-// --- Start Hono server as a separate Bun process ---
-const serverProcess = spawn(BUN_BINARY, ['run', SERVER_SCRIPT], {
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    SIRENE_PORT: String(PORT),
-    SIRENE_CLIENT_DIR: CLIENT_DIR,
-    POCKETBASE_URL: `http://127.0.0.1:${PB_PORT}`,
-    PB_SUPERUSER_EMAIL,
-    PB_SUPERUSER_PASSWORD,
-    INFERENCE_URL: `http://127.0.0.1:${INFERENCE_PORT}`,
-    MODELS_PATH: MODELS_DIR,
+// --- Start Hono server in-process ---
+// Env must be set before importing @sirene/server: config.ts reads
+// POCKETBASE_URL / INFERENCE_URL at module-load time.
+process.env.POCKETBASE_URL = `http://127.0.0.1:${PB_PORT}`;
+process.env.PB_SUPERUSER_EMAIL = PB_SUPERUSER_EMAIL;
+process.env.PB_SUPERUSER_PASSWORD = PB_SUPERUSER_PASSWORD;
+process.env.INFERENCE_URL = `http://127.0.0.1:${INFERENCE_PORT}`;
+process.env.MODELS_PATH = MODELS_DIR;
+
+const { app } = await import('@sirene/server');
+
+const server = Bun.serve({
+  port: 0,
+  hostname: '127.0.0.1',
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api')) {
+      return app.fetch(request);
+    }
+    const file = Bun.file(join(CLIENT_DIR, url.pathname));
+    if (await file.exists()) {
+      return new Response(file);
+    }
+    return new Response(Bun.file(join(CLIENT_DIR, 'index.html')));
   },
+  idleTimeout: 255,
 });
-serverProcess.on('error', (err) => console.error('Server failed to start:', err));
-childProcesses.push(serverProcess);
+
+const PORT = server.port;
+console.log(`Sirene server listening on http://127.0.0.1:${PORT}`);
 
 await waitForService(`http://127.0.0.1:${PORT}/api/health`, 'Server');
 
@@ -157,8 +198,8 @@ const win = new BrowserWindow({
 
 win.show();
 
-// Clean up all child processes on exit
 function cleanup() {
+  server.stop(true);
   for (const proc of childProcesses) {
     proc.kill();
   }

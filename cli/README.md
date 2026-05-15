@@ -7,7 +7,7 @@ Command-line client for [Sirene](https://github.com/KevinBonnoron/sirene). Talks
 ### One-liner installer (recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | INSTALL_MODE=cli bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=cli bash
 ```
 
 Auto-detects platform, downloads the matching binary from the latest release, installs to `~/.local/bin` (or `/usr/local/bin` if not writable) and verifies it's on `$PATH`.
@@ -36,7 +36,7 @@ bun run --cwd cli build
 # Binary is in cli/dist/sirene
 ```
 
-Cross-platform binaries are produced by the `cli-release` GitHub Actions workflow on `cli-v*` tags.
+Cross-platform binaries are produced by the `release` GitHub Actions workflow on `v*` tags.
 
 ## First run
 

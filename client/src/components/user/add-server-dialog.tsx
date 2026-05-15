@@ -15,12 +15,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-// Worker mode landed after the v0.0.1 tag was cut, so there is no tagged release
-// the installer can be pinned to today. Use `main` and surface a security note in
-// the dialog hint; once a worker-capable release exists this should switch back
-// to a fetched-version-based pin (the /version endpoint is already wired).
+// Inference mode landed after the v0.0.1 tag was cut, so there is no tagged
+// release the installer can be pinned to today. Use `main` and surface a
+// security note in the dialog hint; once an inference-capable release exists
+// this should switch back to a fetched-version-based pin (the /version
+// endpoint is already wired).
 const INSTALL_REF = 'main';
-const INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/scripts/install.sh | INSTALL_MODE=worker bash`;
+const INSTALL_COMMAND = `curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/install.sh | INSTALL_MODE=inference bash`;
 
 export function AddServerDialog({ open, onOpenChange }: Props) {
   const { t } = useTranslation();

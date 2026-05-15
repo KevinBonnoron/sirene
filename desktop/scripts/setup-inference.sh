@@ -42,7 +42,8 @@ if [ ! -f "$PYTHON_BIN" ]; then
 
   echo "Downloading from: $URL"
   curl -fsSL "$URL" -o "$VENDOR_DIR/python.tar.gz"
-  tar -xzf "$VENDOR_DIR/python.tar.gz" -C "$VENDOR_DIR"
+  # Relative path: absolute Windows paths trigger GNU tar's host:path handling.
+  ( cd "$VENDOR_DIR" && tar -xzf python.tar.gz )
   rm "$VENDOR_DIR/python.tar.gz"
   echo "Python downloaded"
 fi

@@ -42,5 +42,5 @@ These variables are used by the Docker entrypoint to initialize PocketBase on fi
 | `INFERENCE_DEVICE` | `cpu` | Inference device (`cpu` or `cuda`) |
 
 ::: tip
-The `install.sh` script generates these automatically. See the [Docker guide](./docker.md) for details.
+The `install.sh` script at the repo root generates these automatically. See the [Docker guide](./docker.md) for details.
 :::

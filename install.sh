@@ -3,24 +3,24 @@ set -euo pipefail
 
 # ── Sirene installer ────────────────────────────────────────────────────────
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 #
 # Modes (interactive prompt by default; skip with INSTALL_MODE):
-#   full    - server + inference on this machine [default]
-#   server  - just the app, configure inference workers via the UI
-#   worker  - just the inference, prints URL + auth token
-#   cli     - just the `sirene` command-line client binary
+#   full       - server + inference on this machine [default]
+#   server     - just the app, register inference servers later via the UI
+#   inference  - just an inference server, prints URL + auth token
+#   cli        - just the `sirene` command-line client binary
 #
 # Optional env vars:
-#   INSTALL_MODE   full|server|worker|cli
-#   DEVICE         cpu|cuda                (full / worker only - auto-detected if unset)
+#   INSTALL_MODE   full|server|inference|cli
+#   DEVICE         cpu|cuda                (full / inference only - auto-detected if unset)
 #   INFERENCE_URL  http://...               (server mode only - seeds the registry at boot)
-#   PORT           default 8000             (worker mode only)
-#   SERVER_URL     default detected via hostname -I (worker mode only)
-#   IMAGE          override the inference image (worker mode only)
+#   PORT           default 8000             (inference mode only)
+#   SERVER_URL     default detected via hostname -I (inference mode only)
+#   IMAGE          override the inference image (inference mode only)
 #   DATA_DIR       override where models/packages live on disk
 #                  default: <install dir>/data
-#   VERSION        pin a specific release tag (cli mode only - default: latest)
+#   CLI_VERSION    pin a specific release tag (cli mode only - default: latest)
 #   PREFIX         install dir for the CLI (cli mode only - default: $HOME/.local/bin)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -54,13 +54,22 @@ SUDO=""
 
 # ── Distro / GPU detection ──────────────────────────────────────────────────
 
-DISTRO_ID=""
-DISTRO_LIKE=""
-if [ -f /etc/os-release ]; then
-  . /etc/os-release
-  DISTRO_ID="${ID:-}"
-  DISTRO_LIKE="${ID_LIKE:-}"
-fi
+# Don't source: /etc/os-release on NixOS sets VERSION, which collides with ours.
+read_os_release() {
+  local key="$1"
+  [ -f /etc/os-release ] || return 0
+  awk -F= -v k="$key" '
+    $1 == k {
+      sub(/^[^=]*=/, "")
+      gsub(/^["'\'']|["'\'']$/, "")
+      print
+      exit
+    }
+  ' /etc/os-release
+}
+
+DISTRO_ID=$(read_os_release ID)
+DISTRO_LIKE=$(read_os_release ID_LIKE)
 
 is_debian_like() {
   case "${DISTRO_ID}${DISTRO_LIKE}" in
@@ -130,28 +139,28 @@ INSTALL_MODE="${INSTALL_MODE:-}"
 if [ -z "$INSTALL_MODE" ]; then
   printf "${BOLD}What do you want to install?${RESET}\n"
   printf "  ${CYAN}1)${RESET} Sirene             ${DIM}server + inference on this machine (default)${RESET}\n"
-  printf "  ${CYAN}2)${RESET} Sirene server      ${DIM}just the app, add inference via the UI${RESET}\n"
-  printf "  ${CYAN}3)${RESET} Inference worker   ${DIM}extend an existing Sirene with another inference${RESET}\n"
+  printf "  ${CYAN}2)${RESET} Sirene server      ${DIM}just the app, register inference servers via the UI${RESET}\n"
+  printf "  ${CYAN}3)${RESET} Inference server   ${DIM}standalone inference, registered to a remote Sirene${RESET}\n"
   printf "  ${CYAN}4)${RESET} CLI                ${DIM}command-line client (no Docker required)${RESET}\n"
   printf "${YELLOW}Choice [1]:${RESET} "
   read -r CHOICE </dev/tty
   case "$CHOICE" in
     2) INSTALL_MODE="server" ;;
-    3) INSTALL_MODE="worker" ;;
+    3) INSTALL_MODE="inference" ;;
     4) INSTALL_MODE="cli" ;;
     *) INSTALL_MODE="full" ;;
   esac
 fi
 
 case "$INSTALL_MODE" in
-  full|server|worker|cli) ;;
-  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / worker / cli" ;;
+  full|server|inference|cli) ;;
+  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / inference / cli" ;;
 esac
 
 # ── CLI mode short-circuit ──────────────────────────────────────────────────
 # The CLI is a single binary - it doesn't need Docker, GPU, prompts, or root.
 # Done as an early exit so the rest of the script stays focused on the Docker
-# server / worker setup it was originally designed for.
+# server / inference setup it was originally designed for.
 if [ "$INSTALL_MODE" = "cli" ]; then
   GH_REPO="KevinBonnoron/sirene"
   CLI_BINARY="sirene"
@@ -173,7 +182,7 @@ if [ "$INSTALL_MODE" = "cli" ]; then
   ASSET="${CLI_BINARY}-${OS}-${ARCH}"
   [ "$OS" = "windows" ] && ASSET="${ASSET}.exe"
 
-  CLI_VERSION="${VERSION:-latest}"
+  CLI_VERSION="${CLI_VERSION:-latest}"
   if [ "$CLI_VERSION" = "latest" ]; then
     info "Resolving latest release"
     CLI_VERSION=$(curl -fsSL "https://api.github.com/repos/${GH_REPO}/releases/latest" \
@@ -265,10 +274,10 @@ else
   SUDO="sudo"
 fi
 
-# ── Pick device (full / worker only) ────────────────────────────────────────
+# ── Pick device (full / inference only) ─────────────────────────────────────
 
 DEVICE="${DEVICE:-}"
-if [ "$INSTALL_MODE" = "full" ] || [ "$INSTALL_MODE" = "worker" ]; then
+if [ "$INSTALL_MODE" = "full" ] || [ "$INSTALL_MODE" = "inference" ]; then
   if [ -z "$DEVICE" ]; then
     DEFAULT_DEVICE=$([ $HAS_GPU -eq 1 ] && echo cuda || echo cpu)
     printf "${BOLD}Inference device?${RESET}\n"
@@ -318,9 +327,9 @@ case "$RAW_DATA_DIR" in
   *)  DATA_DIR_ABS="$(pwd)/$RAW_DATA_DIR" ;;
 esac
 
-# ── Mode: worker ────────────────────────────────────────────────────────────
+# ── Mode: inference ─────────────────────────────────────────────────────────
 
-if [ "$INSTALL_MODE" = "worker" ]; then
+if [ "$INSTALL_MODE" = "inference" ]; then
   mkdir -p "$DATA_DIR_ABS/models" "$DATA_DIR_ABS/packages"
 
   IMAGE="${IMAGE:-${REPO}-inference:$([ "$DEVICE" = "cuda" ] && echo cuda || echo latest)}"
@@ -328,9 +337,9 @@ if [ "$INSTALL_MODE" = "worker" ]; then
   remove_container sirene-inference
 
   # Reuse the existing token on reinstall so server entries already registered
-  # with this worker keep working - rotating here would silently break every
-  # server pointing at this URL. A non-empty file with only whitespace would
-  # otherwise produce an empty AUTH_TOKEN and boot the worker fail-closed.
+  # against this inference URL keep working - rotating here would silently break
+  # every Sirene pointing at us. A non-empty file with only whitespace would
+  # otherwise produce an empty AUTH_TOKEN and boot fail-closed.
   if [ -s auth_token ]; then
     AUTH_TOKEN=$(tr -d '\n\r' < auth_token)
   fi
@@ -388,7 +397,7 @@ if [ "$INSTALL_MODE" = "worker" ]; then
   fi
 
   echo
-  printf "  ${GREEN}${BOLD}Worker installed.${RESET}\n"
+  printf "  ${GREEN}${BOLD}Inference server installed.${RESET}\n"
   printf "  ${DIM}Paste these into Sirene → Settings → Inference servers → Add server:${RESET}\n"
   echo
   printf "    ${YELLOW}URL${RESET}        %s\n" "$SERVER_URL"

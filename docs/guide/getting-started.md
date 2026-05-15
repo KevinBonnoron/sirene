@@ -17,7 +17,7 @@ On first launch, Sirene will set up its inference environment automatically.
 The quickest way to run Sirene as a server:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 ```
 
 > **Supply-chain note.** The bootstrap script is fetched from `main`. For production deployments review the [latest release](https://github.com/KevinBonnoron/sirene/releases) and replace `main` with the corresponding tag once a release that supports your installation mode is published.
@@ -30,21 +30,21 @@ See the [Docker guide](./docker.md) for more options.
 2. Go to the **Models** page and install the model of your choice (e.g. Kokoro v1.0)
 3. You're ready to generate speech
 
-## Adding more inference workers
+## Adding more inference servers
 
-If you have a separate Linux machine with a GPU, you can add it as an inference worker:
+If you have a separate Linux machine with a GPU, you can add it as an inference server:
 
-1. On the worker machine, run:
+1. On that machine, run:
 
    ```bash
-   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | INSTALL_MODE=worker bash
+   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=inference bash
    ```
 
 2. The script prints a **URL** and an **auth token** when it finishes
 3. In Sirene → **Settings → Inference servers → Add server**, paste both, give it a name, save
 
-> **Keep the auth token secret.** It grants full control of your worker's inference. Do not paste it into chats, screenshots, or logs, and rotate it if you suspect it has leaked.
+> **Keep the auth token secret.** It grants full control of the inference server. Do not paste it into chats, screenshots, or logs, and rotate it if you suspect it has leaked.
 >
-> **Rotating a token.** Delete `auth_token` on the worker, rerun the worker installer to mint a new value, then update the matching server entry in Sirene → **Settings → Inference servers** with the new token. Until the server entry is updated, every request to that worker will return 401.
+> **Rotating a token.** Delete `auth_token` on the inference host, rerun the installer to mint a new value, then update the matching entry in Sirene → **Settings → Inference servers** with the new token. Until the entry is updated, every request to that inference server will return 401.
 
-See the [Docker guide](./docker.md#worker-servers-script-install) for details.
+See the [Docker guide](./docker.md#standalone-inference-script-install) for details.

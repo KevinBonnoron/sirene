@@ -29,7 +29,7 @@ Self-hosted multi-backend text-to-speech platform with voice cloning and a moder
 ## Quick Start
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 ```
 
 Then open [http://localhost](http://localhost).

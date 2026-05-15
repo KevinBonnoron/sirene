@@ -37,6 +37,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+.automaker
 
 # Python
 __pycache__

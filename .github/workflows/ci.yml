@@ -1,0 +1,113 @@
+name: CI
+
+# Everything that checks, and nothing that publishes. The branch ruleset makes
+# these binding: a pull request cannot merge unless it is up to date with main
+# and every one of these has passed.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Biome
+        run: bunx biome ci .
+      - name: Type-check and build client
+        run: bun run -F @sirene/client build
+      - name: Type-check CLI
+        run: bun run -F @sirene/cli type-check
+
+  # Server and desktop share the Go module; the desktop needs the GTK headers
+  # because Wails binds the system webview through cgo.
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - name: Install GTK and WebKitGTK headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Formatting
+        run: test -z "$(gofmt -l server desktop)" || { gofmt -l server desktop; exit 1; }
+      - name: Vet
+        run: go vet -tags gtk3 ./...
+      - name: Test
+        run: go test -tags gtk3 ./...
+      - name: Build server
+        run: CGO_ENABLED=0 go build -o /tmp/sirene ./server/cmd/sirene
+      - name: Build desktop
+        run: |
+          mkdir -p desktop/internal/launcher/inference_src
+          cp -r inference/src desktop/internal/launcher/inference_src/src
+          cp inference/pyproject.toml inference/overrides.txt desktop/internal/launcher/inference_src/
+          CGO_ENABLED=1 go build -tags gtk3 -o /tmp/sirene-desktop ./desktop
+
+  # Not filtered on docs/**: the build is short, and a dead link can be
+  # introduced by a page that moves as easily as by the page that points at it.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run -F @sirene/docs build
+
+  # One architecture, no push: this only asks whether the image still builds.
+  # The release workflow builds both architectures and publishes them.
+  docker:
+    needs: [client, go]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+  # The inference image is heavy, so it is only rebuilt when its inputs change.
+  docker-inference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            inference:
+              - 'inference/**'
+              - 'docker/Dockerfile.inference'
+      - if: steps.changes.outputs.inference == 'true'
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - if: steps.changes.outputs.inference == 'true'
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ./docker/Dockerfile.inference
+          push: false
+          platforms: linux/amd64
+          build-args: INFERENCE_VARIANT=cpu
+          cache-from: type=gha,scope=inference-cpu
+          cache-to: type=gha,mode=max,scope=inference-cpu

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  profile: assertive
+  path_filters:
+    # Generated or vendored: nothing to review by hand.
+    - "!**/*.lock"
+    - "!go.sum"
+    - "!client/src/routeTree.gen.ts"
+    - "!server/internal/catalog/models.json"
+    - "!server/internal/openapi/openapi.json"
+    - "!server/migrations/collections_snapshot.json"
+    - "!client/src/i18n/locales/**"
+    - "!desktop/build/**/*.png"
+    - "!desktop/build/**/*.icns"
+    - "!desktop/build/**/*.ico"
+    # Legacy trees removed by the Go migration.
+    - "!server/src/**"
+    - "!db/pb_migrations/**"

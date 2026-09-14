@@ -1,0 +1,439 @@
+package inference
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/KevinBonnoron/sirene/server/internal/apierr"
+	"github.com/KevinBonnoron/sirene/server/internal/catalog"
+	"github.com/KevinBonnoron/sirene/server/internal/sse"
+)
+
+// ErrCacheMiss is the worker's 412: it no longer holds the reference audio
+// for a cache key and wants the samples resent inline.
+var ErrCacheMiss = errors.New("reference audio cache miss")
+
+const (
+	listTimeout       = 10 * time.Second
+	deleteTimeout     = 10 * time.Second
+	exportTimeout     = 60 * time.Second
+	pullTimeout       = time.Hour
+	importTimeout     = 30 * time.Second
+	generateTimeout   = 30 * time.Minute
+	transcribeTimeout = 300 * time.Second
+)
+
+type Target struct {
+	URL       string
+	AuthToken string
+}
+
+var httpClient = &http.Client{Transport: &http.Transport{
+	MaxIdleConnsPerHost: 8,
+	IdleConnTimeout:     90 * time.Second,
+}}
+
+func (t Target) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(t.URL, "/")+path, body)
+	if err != nil {
+		return nil, err
+	}
+	if t.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+t.AuthToken)
+	}
+	return req, nil
+}
+
+func (t Target) do(req *http.Request, op string) (*http.Response, error) {
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed: %s", op, transportReason(err)))
+	}
+	return res, nil
+}
+
+func transportReason(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "timeout"
+	}
+	var uerr *url.Error
+	if errors.As(err, &uerr) && uerr.Timeout() {
+		return "timeout"
+	}
+	return "inference server unreachable"
+}
+
+// upstreamError logs the worker's payload server-side and returns a generic
+// message: worker bodies can carry tracebacks and internal paths.
+func upstreamError(op string, res *http.Response, logf func(string, ...any)) error {
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
+	logf("[inference/"+op+"] upstream error", "status", res.StatusCode, "body", string(body))
+	return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d)", op, res.StatusCode))
+}
+
+type Client struct {
+	target Target
+	logf   func(msg string, args ...any)
+}
+
+func NewClient(target Target, logf func(string, ...any)) *Client {
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	return &Client{target: target, logf: logf}
+}
+
+func Health(ctx context.Context, t Target) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := t.newRequest(ctx, http.MethodGet, "/health", nil)
+	if err != nil {
+		return err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	io.Copy(io.Discard, res.Body)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
+	}
+	return nil
+}
+
+type ModelsList struct {
+	Installed []string        `json:"installed"`
+	Custom    []catalog.Model `json:"custom"`
+}
+
+func (c *Client) ListModels(ctx context.Context) (*ModelsList, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	req, err := c.target.newRequest(ctx, http.MethodGet, "/models", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.target.do(req, "listModels")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, upstreamError("listModels", res, c.logf)
+	}
+	var out ModelsList
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "listModels failed: invalid response")
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteModel(ctx context.Context, modelID string) error {
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+	req, err := c.target.newRequest(ctx, http.MethodDelete, "/models/"+url.PathEscape(modelID), nil)
+	if err != nil {
+		return err
+	}
+	res, err := c.target.do(req, "deleteModel")
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return upstreamError("deleteModel", res, c.logf)
+	}
+	io.Copy(io.Discard, res.Body)
+	return nil
+}
+
+// FetchExport hands the raw response back so the caller can stream the zip
+// through. The caller must close the body and call cancel.
+func (c *Client) FetchExport(ctx context.Context, modelID string) (*http.Response, context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(ctx, exportTimeout)
+	req, err := c.target.newRequest(ctx, http.MethodGet, "/models/"+url.PathEscape(modelID)+"/export", nil)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	res, err := c.target.do(req, "export")
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return res, cancel, nil
+}
+
+type PullFile struct {
+	URL  string `json:"url"`
+	Path string `json:"path"`
+}
+
+type PullRequest struct {
+	Backend   string     `json:"backend"`
+	ModelID   string     `json:"model_id"`
+	Files     []PullFile `json:"files"`
+	TotalSize int64      `json:"total_size"`
+	HFToken   *string    `json:"hf_token"`
+}
+
+type PullEvent struct {
+	Status   string   `json:"status"`
+	Progress *float64 `json:"progress"`
+	Message  string   `json:"message"`
+}
+
+// PullModel consumes the worker's SSE progress stream. Malformed events are
+// skipped, as the worker interleaves download and dependency-install events.
+func (c *Client) PullModel(ctx context.Context, in PullRequest, onEvent func(PullEvent) error) error {
+	ctx, cancel := context.WithTimeout(ctx, pullTimeout)
+	defer cancel()
+	payload, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	req, err := c.target.newRequest(ctx, http.MethodPost, "/models/pull", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	res, err := c.target.do(req, "pullModel")
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return upstreamError("pullModel", res, c.logf)
+	}
+	return sse.Read(res.Body, func(ev sse.Event) error {
+		var pe PullEvent
+		if err := json.Unmarshal([]byte(ev.Data), &pe); err != nil {
+			return nil
+		}
+		return onEvent(pe)
+	})
+}
+
+type FilePart struct {
+	Name        string
+	ContentType string
+	Data        []byte
+}
+
+type ImportResult struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+func (c *Client) ImportPiper(ctx context.Context, name string, onnx, config FilePart) (*ImportResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, importTimeout)
+	defer cancel()
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		err := func() error {
+			if err := mw.WriteField("name", name); err != nil {
+				return err
+			}
+			for field, part := range map[string]FilePart{"onnx": onnx, "config": config} {
+				w, err := createFilePart(mw, field, part.Name, part.ContentType)
+				if err != nil {
+					return err
+				}
+				if _, err := w.Write(part.Data); err != nil {
+					return err
+				}
+			}
+			return mw.Close()
+		}()
+		pw.CloseWithError(err)
+	}()
+	req, err := c.target.newRequest(ctx, http.MethodPost, "/models/piper/import", pr)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	res, err := c.target.do(req, "importPiperModel")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
+		c.logf("[inference/importPiperModel] upstream error", "status", res.StatusCode, "body", string(body))
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("Piper import failed (HTTP %d)", res.StatusCode))
+	}
+	var out ImportResult
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "Piper import failed: invalid response")
+	}
+	return &out, nil
+}
+
+// Request is the worker's generate payload; nil pointers serialise as null,
+// which the worker expects for absent optionals.
+type Request struct {
+	Backend            string   `json:"backend"`
+	Text               string   `json:"text"`
+	ModelPath          string   `json:"model_path"`
+	VoicePath          *string  `json:"voice_path"`
+	ReferenceAudio     []string `json:"reference_audio"`
+	ReferenceAudioData []string `json:"reference_audio_data"`
+	ReferenceCacheKey  *string  `json:"reference_cache_key"`
+	ReferenceText      []string `json:"reference_text"`
+	InstructText       *string  `json:"instruct_text"`
+	InstructGender     *string  `json:"instruct_gender"`
+	Speed              float64  `json:"speed"`
+	NoiseScale         *float64 `json:"noise_scale"`
+	Language           string   `json:"language"`
+}
+
+func (r *Request) normalise() {
+	if r.Speed == 0 {
+		r.Speed = 1
+	}
+	if r.Language == "" {
+		r.Language = "en"
+	}
+}
+
+func (c *Client) postGenerate(ctx context.Context, path string, in Request, op string) (*http.Response, error) {
+	in.normalise()
+	payload, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	req, err := c.target.newRequest(ctx, http.MethodPost, path, bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := c.target.do(req, op)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode == http.StatusPreconditionFailed {
+		res.Body.Close()
+		return nil, ErrCacheMiss
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		defer res.Body.Close()
+		return nil, upstreamError(op, res, c.logf)
+	}
+	return res, nil
+}
+
+func (c *Client) Generate(ctx context.Context, in Request) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, generateTimeout)
+	defer cancel()
+	res, err := c.postGenerate(ctx, "/generate", in, "generate")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return io.ReadAll(res.Body)
+}
+
+type Stream struct {
+	Body       io.ReadCloser
+	SampleRate int
+	cancel     context.CancelFunc
+}
+
+func (s *Stream) Close() error {
+	err := s.Body.Close()
+	s.cancel()
+	return err
+}
+
+func (c *Client) GenerateStream(ctx context.Context, in Request) (*Stream, error) {
+	ctx, cancel := context.WithTimeout(ctx, generateTimeout)
+	res, err := c.postGenerate(ctx, "/generate/stream", in, "generateStream")
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	rate, _ := strconv.Atoi(res.Header.Get("X-Sample-Rate"))
+	if rate <= 0 {
+		rate = 24000
+	}
+	return &Stream{Body: res.Body, SampleRate: rate, cancel: cancel}, nil
+}
+
+type TranscribeResult struct {
+	Text     string `json:"text"`
+	Language string `json:"language,omitempty"`
+}
+
+var ErrTranscribeTimeout = errors.New("transcription timed out")
+
+func (c *Client) Transcribe(ctx context.Context, audio io.Reader, filename, contentType, modelPath string) (*TranscribeResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, transcribeTimeout)
+	defer cancel()
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		err := func() error {
+			if err := mw.WriteField("model_path", modelPath); err != nil {
+				return err
+			}
+			w, err := createFilePart(mw, "file", filename, contentType)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(w, audio); err != nil {
+				return err
+			}
+			return mw.Close()
+		}()
+		pw.CloseWithError(err)
+	}()
+	req, err := c.target.newRequest(ctx, http.MethodPost, "/transcribe", pr)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	res, err := httpClient.Do(req)
+	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, ErrTranscribeTimeout
+		}
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "transcribe failed: "+transportReason(err))
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, upstreamError("transcribe", res, c.logf)
+	}
+	var out TranscribeResult
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "transcribe failed: invalid response")
+	}
+	return &out, nil
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+// mime/multipart hard-codes application/octet-stream for file parts and the
+// worker's /transcribe rejects anything that is not audio/*.
+func createFilePart(mw *multipart.Writer, field, filename, contentType string) (io.Writer, error) {
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, quoteEscaper.Replace(field), quoteEscaper.Replace(filename)))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	h.Set("Content-Type", contentType)
+	return mw.CreatePart(h)
+}

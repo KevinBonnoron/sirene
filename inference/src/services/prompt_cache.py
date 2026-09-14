@@ -5,6 +5,7 @@ Level 2 (L2): Backend-specific intermediate representations (memory + disk).
 """
 
 import hashlib
+import json
 import logging
 import shutil
 import threading
@@ -56,12 +57,27 @@ class PromptCache:
             return str(path)
         return None
 
-    def put_audio(self, key: str, source_path: str) -> str:
-        """Move a temp file into the cache. Returns the cached path."""
+    def put_audio(self, key: str, source_path: str, included: int | None = None) -> str:
+        """Move a temp file into the cache. Returns the cached path. `included`
+        records how many reference samples the clip holds, so a later hit can
+        trim the transcript to match."""
         dest = self._audio_dir / f"{key}.wav"
         shutil.move(source_path, dest)
+        if included is not None:
+            (self._audio_dir / f"{key}.json").write_text(json.dumps({"included": included}))
         logger.debug(f"[cache] L1 stored: {key}")
         return str(dest)
+
+    def get_audio_included(self, key: str) -> int | None:
+        """How many samples a cached clip holds, or None for clips stored before
+        that was tracked."""
+        meta = self._audio_dir / f"{key}.json"
+        if not meta.exists():
+            return None
+        try:
+            return int(json.loads(meta.read_text())["included"])
+        except (ValueError, KeyError, TypeError):
+            return None
 
 
 
@@ -111,6 +127,8 @@ class PromptCache:
 
         for f in self._audio_dir.glob("*.wav"):
             f.unlink(missing_ok=True)
+        for f in self._audio_dir.glob("*.json"):
+            f.unlink(missing_ok=True)
         for f in self._prompt_dir.glob("*.pt"):
             f.unlink(missing_ok=True)
 
@@ -152,6 +170,8 @@ class PromptCache:
                 break
             size = f.stat().st_size
             f.unlink(missing_ok=True)
+            if f.suffix == ".wav":
+                f.with_suffix(".json").unlink(missing_ok=True)
             total_size -= size
             evicted += 1
             if f.suffix == ".pt":

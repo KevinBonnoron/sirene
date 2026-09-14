@@ -27,6 +27,10 @@ class GenerateParams:
     reference_audio_data: list[str] | None = None  # base64 data URIs
     reference_cache_key: str | None = None
     reference_text: list[str] | None = None
+    # Set once the reference audio is resolved: how many samples, in order,
+    # made it into the concatenated clip. The transcript must describe exactly
+    # that audio or in-context cloning models speak the difference.
+    included_reference_count: int | None = None
     instruct_text: str | None = None
     instruct_gender: str | None = None
     speed: float = 1.0
@@ -44,8 +48,12 @@ class GenerateParams:
 
     @property
     def joined_reference_text(self) -> str:
-        """Join all non-empty reference text segments into a single string."""
-        return " ".join(t for t in (self.reference_text or []) if t)
+        """Transcript of the reference clip: the segments of the samples that
+        were actually concatenated, in order."""
+        texts = list(self.reference_text or [])
+        if self.included_reference_count is not None:
+            texts = texts[: self.included_reference_count]
+        return " ".join(t for t in texts if t)
 
 
 class TTSBackend(ABC):
@@ -172,9 +180,13 @@ class TTSBackend(ABC):
         else:
             raise ValueError("No reference audio provided")
 
+        # A clip cached before the sample count was tracked is rebuilt: without
+        # the count the transcript cannot be trimmed to match it.
         cached_path = cache.get_audio(key)
-        if cached_path:
+        included = cache.get_audio_included(key)
+        if cached_path and included is not None:
             logger.info(f"[{self.name}] L1 cache hit for reference audio")
+            params.included_reference_count = included
             yield cached_path
             return
 
@@ -182,21 +194,22 @@ class TTSBackend(ABC):
             logger.info(
                 f"[{self.name}] L1 cache miss, decoding reference audio from request"
             )
-            temp_path = self._decode_and_concatenate_reference(
+            temp_path, included = self._decode_and_concatenate_reference(
                 params.reference_audio_data, max_duration
             )
         elif params.reference_audio:
             logger.info(f"[{self.name}] L1 cache miss, downloading reference audio")
-            temp_path = self._download_and_concatenate_reference(
+            temp_path, included = self._download_and_concatenate_reference(
                 params.reference_audio, max_duration
             )
         else:
             raise ValueError(
                 "Reference audio cache miss but no audio data provided in request"
             )
+        params.included_reference_count = included
 
         try:
-            cached_path = cache.put_audio(key, temp_path)
+            cached_path = cache.put_audio(key, temp_path, included=included)
             yield cached_path
         except Exception:
             # Cache store failed, fall back to temp path
@@ -228,12 +241,14 @@ class TTSBackend(ABC):
         else:
             return False
 
-        return get_cache().get_audio(key) is None
+        cache = get_cache()
+        return cache.get_audio(key) is None or cache.get_audio_included(key) is None
 
     def _decode_and_concatenate_reference(
         self, data_uris: list[str], max_duration: float | None = None
-    ) -> str:
-        """Decode base64 data URIs, concatenate, and return a temp file path."""
+    ) -> tuple[str, int]:
+        """Decode base64 data URIs, concatenate whole samples up to max_duration,
+        and return the temp file path plus how many samples were included."""
         import base64
         import soundfile as sf
 
@@ -264,13 +279,12 @@ class TTSBackend(ABC):
             tmp.write(data)
             tmp.flush()
             tmp.close()
-            return tmp.name
+            return tmp.name, 1
 
         all_audio: list[np.ndarray] = []
         target_sr: int | None = None
-        cumulative_samples = 0
 
-        for i, data_uri in enumerate(data_uris):
+        for data_uri in data_uris:
             data, suffix = _decode_one(data_uri)
             tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
             tmp.write(data)
@@ -288,46 +302,65 @@ class TTSBackend(ABC):
                     import librosa
 
                     audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
-
-                all_audio.append(audio)
-                cumulative_samples += len(audio)
-
-                max_samples = int(max_duration * target_sr)
-                if cumulative_samples >= max_samples:
-                    logger.info(
-                        f"[{self.name}] Reached {max_duration:.0f}s limit after "
-                        f"{i + 1}/{len(data_uris)} samples, skipping remaining"
-                    )
-                    break
             finally:
                 os.unlink(tmp.name)
+
+            if not self._append_reference_sample(all_audio, audio, max_duration, target_sr):
+                break
 
         if not all_audio or target_sr is None:
             raise ValueError("No reference audio could be decoded")
 
-        concatenated = np.concatenate(all_audio)
-        max_samples = int(max_duration * target_sr)
-        if len(concatenated) > max_samples:
-            concatenated = concatenated[:max_samples]
+        path = self._write_reference_clip(all_audio, target_sr, len(data_uris))
+        return path, len(all_audio)
 
+    def _append_reference_sample(
+        self,
+        all_audio: list[np.ndarray],
+        audio: np.ndarray,
+        max_duration: float,
+        sr: int,
+    ) -> bool:
+        """Append a whole sample if it fits within max_duration; a sample is never
+        cut in the middle, otherwise its transcript would no longer match. The
+        first sample is the only one allowed to be trimmed, so that a single
+        long recording still yields a usable clip. Returns False once full."""
+        max_samples = int(max_duration * sr)
+        current = sum(len(a) for a in all_audio)
+        if not all_audio:
+            all_audio.append(audio[:max_samples])
+            return len(audio) < max_samples
+        if current + len(audio) > max_samples:
+            logger.info(
+                f"[{self.name}] Reference clip full at {current / sr:.1f}s, "
+                f"keeping {len(all_audio)} whole samples"
+            )
+            return False
+        all_audio.append(audio)
+        return True
+
+    def _write_reference_clip(
+        self, all_audio: list[np.ndarray], sr: int, offered: int
+    ) -> str:
+        import soundfile as sf
+
+        concatenated = np.concatenate(all_audio)
         out_tmp = tempfile.NamedTemporaryFile(
             suffix=".wav", delete=False, prefix=f"{self.name}_concat_ref_"
         )
-        sf.write(out_tmp.name, concatenated, target_sr)
+        sf.write(out_tmp.name, concatenated, sr)
         out_tmp.close()
-
-        total_duration = len(concatenated) / target_sr
         logger.info(
-            f"[{self.name}] Decoded {len(all_audio)} samples into "
-            f"{total_duration:.1f}s reference audio at {target_sr}Hz"
+            f"[{self.name}] Concatenated {len(all_audio)}/{offered} samples into "
+            f"{len(concatenated) / sr:.1f}s reference audio at {sr}Hz"
         )
         return out_tmp.name
 
     def _download_and_concatenate_reference(
         self, urls: list[str], max_duration: float | None = None
-    ) -> str:
-        """Download multiple reference audio URLs, concatenate, and return a
-        temp file path. Truncates to max_duration seconds."""
+    ) -> tuple[str, int]:
+        """Download multiple reference audio URLs, concatenate whole samples up to
+        max_duration, and return the temp file path plus how many were included."""
         import httpx
         import soundfile as sf
 
@@ -336,11 +369,10 @@ class TTSBackend(ABC):
 
         # Fast path: single URL - just download and return
         if len(urls) == 1:
-            return self._download_single_reference(urls[0])
+            return self._download_single_reference(urls[0]), 1
 
         all_audio: list[np.ndarray] = []
         target_sr: int | None = None
-        cumulative_samples = 0
 
         for i, url in enumerate(urls):
             logger.info(
@@ -371,44 +403,17 @@ class TTSBackend(ABC):
                     import librosa
 
                     audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
-
-                all_audio.append(audio)
-                cumulative_samples += len(audio)
-
-                # Stop downloading once we have enough audio
-                max_samples = int(max_duration * target_sr)
-                if cumulative_samples >= max_samples:
-                    logger.info(
-                        f"[{self.name}] Reached {max_duration:.0f}s limit after "
-                        f"{i + 1}/{len(urls)} samples, skipping remaining"
-                    )
-                    break
             finally:
                 os.unlink(tmp.name)
+
+            if not self._append_reference_sample(all_audio, audio, max_duration, target_sr):
+                break
 
         if not all_audio or target_sr is None:
             raise ValueError("No reference audio files could be loaded")
 
-        concatenated = np.concatenate(all_audio)
-
-        # Truncate to exact max duration
-        max_samples = int(max_duration * target_sr)
-        if len(concatenated) > max_samples:
-            concatenated = concatenated[:max_samples]
-
-        # Write concatenated result to temp file
-        out_tmp = tempfile.NamedTemporaryFile(
-            suffix=".wav", delete=False, prefix=f"{self.name}_concat_ref_"
-        )
-        sf.write(out_tmp.name, concatenated, target_sr)
-        out_tmp.close()
-
-        total_duration = len(concatenated) / target_sr
-        logger.info(
-            f"[{self.name}] Concatenated {len(all_audio)} samples into "
-            f"{total_duration:.1f}s reference audio at {target_sr}Hz"
-        )
-        return out_tmp.name
+        path = self._write_reference_clip(all_audio, target_sr, len(urls))
+        return path, len(all_audio)
 
     def _download_single_reference(self, url: str) -> str:
         """Download a single reference audio URL and return a temp file path."""

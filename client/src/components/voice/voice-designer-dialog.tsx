@@ -31,7 +31,7 @@ function StepIndicator({ current }: { current: Step }) {
           <div key={step} className="flex items-center">
             {i > 0 && <div className={cn('mx-2 h-px w-8 transition-colors', isDone ? 'bg-primary/50' : 'bg-border')} />}
             <div className={cn('flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors', isActive && 'border-primary bg-primary/10 text-primary', isDone && 'border-primary/50 text-primary/70', !isActive && !isDone && 'text-muted-foreground')}>
-              <span className="flex size-4 items-center justify-center rounded-full bg-current/10 text-[10px] font-medium">{isDone ? '✓' : step}</span>
+              <span className="flex size-4 items-center justify-center rounded-full bg-current/10 text-2xs font-medium">{isDone ? '✓' : step}</span>
               {label}
             </div>
           </div>

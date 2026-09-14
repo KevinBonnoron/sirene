@@ -31,9 +31,9 @@ export function TakeBank({ entries, onAdd }: Props) {
   return (
     <aside className="flex h-full w-[320px] shrink-0 flex-col border-l border-border-subtle bg-bg-elevated">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border-subtle px-4">
-        <Sparkles className="size-3.5 shrink-0 text-accent-amber" />
+        <Sparkles className="size-3.5 shrink-0 text-primary" />
         <h2 className="font-serif text-sm tracking-tight">{t('studio.bankTitle')}</h2>
-        <span className="ml-auto font-mono text-[11px] tabular-nums text-dim">{entries.length}</span>
+        <span className="ml-auto font-mono text-2xs tabular-nums text-dim">{entries.length}</span>
       </header>
 
       {entries.length === 0 ? (
@@ -69,27 +69,27 @@ function BankCard({ entry, seed, onAdd }: { entry: BankEntry; seed: number; onAd
         <GripVertical className="size-3 shrink-0 text-dim opacity-0 transition-opacity group-hover:opacity-100" />
         <Avatar className="size-5 shrink-0">
           <AvatarImage src={entry.voiceAvatarUrl} alt={entry.voiceName} />
-          <AvatarFallback className="text-[9px]">{entry.voiceName.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-2xs">{entry.voiceName.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="min-w-0 truncate text-xs font-medium">{entry.voiceName}</span>
-        <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-dim">{entry.duration.toFixed(1)}s</span>
+        <span className="ml-auto shrink-0 font-mono text-2xs tabular-nums text-dim">{entry.duration.toFixed(1)}s</span>
         {onAdd && (
-          <Button variant="ghost" size="icon-xs" onClick={() => onAdd(entry.id)} aria-label={t('studio.bankAddHint')} title={t('studio.bankAddHint')} className="size-5 shrink-0 text-muted-foreground hover:bg-accent-amber hover:text-primary-foreground dark:hover:bg-accent-amber dark:hover:text-primary-foreground">
+          <Button variant="ghost" size="icon-xs" onClick={() => onAdd(entry.id)} aria-label={t('studio.bankAddHint')} title={t('studio.bankAddHint')} className="size-5 shrink-0 text-muted-foreground hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary dark:hover:text-primary-foreground">
             <Plus />
           </Button>
         )}
       </div>
 
-      <p className="line-clamp-2 min-w-0 font-serif text-[13px] leading-snug text-foreground/90">{entry.text}</p>
+      <p className="line-clamp-2 min-w-0 font-serif text-sm leading-snug text-foreground/90">{entry.text}</p>
 
       <div className="flex min-w-0 items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={toggle} disabled={!entry.audioUrl} className="size-6 shrink-0 rounded-full bg-bg-elevated hover:bg-accent-amber hover:text-primary-foreground" aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
+        <Button variant="ghost" size="icon" onClick={toggle} disabled={!entry.audioUrl} className="size-6 shrink-0 rounded-full bg-bg-elevated hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary" aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
           {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 translate-x-[0.5px]" />}
         </Button>
         <div className="min-w-0 flex-1 overflow-hidden">
           <TakeWaveform seed={seed * 11 + 3} bars={32} active={isPlaying} progress={progress} ariaLabel={t('studio.waveformAriaLabel')} className="h-6" />
         </div>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-dim">{formatRelative(entry.createdAt, t)}</span>
+        <span className="shrink-0 font-mono text-2xs tabular-nums text-dim">{formatRelative(entry.createdAt, t)}</span>
       </div>
     </li>
   );

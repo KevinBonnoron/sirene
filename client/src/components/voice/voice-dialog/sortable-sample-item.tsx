@@ -46,7 +46,7 @@ export function SortableSampleItem({ sample, cumulativeDuration, maxDuration, on
           {enabled ? <Volume2 className="size-3.5" /> : <VolumeOff className="size-3.5" />}
         </Button>
         <Waveform src={pb.files.getURL(sample, sample.audio)} height={32} />
-        <span className="shrink-0 text-[10px] text-muted-foreground">{sample.duration ? `${sample.duration.toFixed(1)}s` : ''}</span>
+        <span className="shrink-0 text-2xs text-muted-foreground">{sample.duration ? `${sample.duration.toFixed(1)}s` : ''}</span>
         <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
           <Trash2 className="size-3.5" />
         </Button>

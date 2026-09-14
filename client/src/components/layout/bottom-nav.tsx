@@ -21,7 +21,7 @@ export function BottomNav() {
       {navItems.map((item) => (
         <Link key={item.href} to={item.href} className={cn('flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground', currentPath === item.href && 'text-foreground')}>
           <item.icon className={item.primary ? 'size-7' : 'size-5'} />
-          <span className="text-[10px]">{item.label}</span>
+          <span className="text-2xs">{item.label}</span>
         </Link>
       ))}
     </div>

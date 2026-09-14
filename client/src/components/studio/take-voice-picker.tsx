@@ -50,7 +50,7 @@ export function TakeVoicePicker({ voiceId, onChange, disabled }: Props) {
         <button type="button" disabled={disabled} className={cn('group flex min-w-0 items-center gap-2 rounded transition-colors', disabled ? 'cursor-default opacity-70' : 'cursor-pointer hover:bg-muted/40')}>
           <Avatar className="size-6 shrink-0">
             <AvatarImage src={triggerAvatar} alt={selected?.name} />
-            <AvatarFallback className="text-[10px]">{selected?.name.charAt(0).toUpperCase() ?? '?'}</AvatarFallback>
+            <AvatarFallback className="text-2xs">{selected?.name.charAt(0).toUpperCase() ?? '?'}</AvatarFallback>
           </Avatar>
           <span className="min-w-0 truncate text-sm font-medium">{selected?.name ?? t('voice.selectVoice')}</span>
           <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">·</span>
@@ -92,12 +92,12 @@ export function TakeVoicePicker({ voiceId, onChange, disabled }: Props) {
                       <p className="truncate text-sm font-medium leading-tight">{v.name}</p>
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {modelName && (
-                          <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                          <Badge variant="outline" className="px-1 py-0 text-2xs">
                             {modelName}
                           </Badge>
                         )}
                         {v.language && (
-                          <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                          <Badge variant="secondary" className="px-1 py-0 text-2xs">
                             {v.language}
                           </Badge>
                         )}

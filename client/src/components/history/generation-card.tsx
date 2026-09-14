@@ -31,19 +31,19 @@ export function GenerationCard({ generation, autoPlay }: Props) {
       <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
         <Avatar className="size-5 shrink-0">
           <AvatarImage src={avatarUrl} alt={voiceName} />
-          <AvatarFallback className="text-[9px]">{voiceName.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-2xs">{voiceName.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="truncate text-xs font-medium">{voiceName}</span>
         <span className="text-xs text-dim">·</span>
         <span className="truncate text-xs text-muted-foreground">{generation.model}</span>
-        <Badge variant="outline" className="shrink-0 text-[10px]">
+        <Badge variant="outline" className="shrink-0 text-2xs">
           {generation.language}
         </Badge>
-        <span className="ml-auto shrink-0 font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(generation.created, t)}</span>
+        <span className="ml-auto shrink-0 font-mono text-2xs tabular-nums text-dim">{formatRelative(generation.created, t)}</span>
         <DeleteGenerationButton generationId={generation.id} />
       </header>
 
-      {generation.text && <p className="px-4 pt-3 font-serif text-[15px] leading-snug text-foreground/90 sm:px-5">{stripSSML(generation.text)}</p>}
+      {generation.text && <p className="px-4 pt-3 font-serif text-base leading-snug text-foreground/90 sm:px-5">{stripSSML(generation.text)}</p>}
 
       {generation.audio && (
         <div className="px-3 pb-2.5 pt-2 sm:px-4">

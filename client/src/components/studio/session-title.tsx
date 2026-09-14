@@ -52,7 +52,7 @@ export function SessionTitle({ name, onChange, editing, onEditingChange }: Props
 
   return (
     <h1 className="mb-6 font-serif text-2xl tracking-tight sm:text-3xl">
-      <button type="button" onClick={() => onEditingChange(true)} className="text-left transition-colors hover:text-accent-amber">
+      <button type="button" onClick={() => onEditingChange(true)} className="text-left transition-colors hover:text-primary">
         {name ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}
       </button>
     </h1>

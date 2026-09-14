@@ -473,7 +473,7 @@ export function StudioPage() {
         />
 
         <main className="custom-scrollbar flex-1 overflow-y-auto" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-          <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-accent-amber/60 -outline-offset-8 bg-accent-amber/5')}>
+          <div className={cn(`mx-auto w-full max-w-[760px] px-4 py-6 sm:px-6 md:py-10 ${isMobile ? 'pb-24' : ''}`, bankDragDepth > 0 && 'rounded-lg outline-2 outline-dashed outline-primary/60 -outline-offset-8 bg-primary/5')}>
             {sessionLoading ? (
               <div className="flex min-h-[40vh] items-center justify-center">
                 <Loader2 className="size-5 animate-spin text-dim" />
@@ -515,7 +515,7 @@ export function StudioPage() {
             )}
 
             {!sessionLoading && !sessionNotFound && generatedCount >= 1 && !showDraft && (
-              <button type="button" onClick={handleAddTake} className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-accent-amber/60 hover:bg-card/40 hover:text-foreground">
+              <button type="button" onClick={handleAddTake} className="mt-4 flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:bg-card/40 hover:text-foreground">
                 <span className="flex min-w-0 items-center gap-2">
                   <Plus className="size-4 shrink-0" />
                   <span className="truncate">
@@ -523,7 +523,7 @@ export function StudioPage() {
                     <span className="hidden text-muted-foreground/70 sm:inline"> - {t('studio.addTakeHint')}</span>
                   </span>
                 </span>
-                <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-[11px] leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>
+                <kbd className="hidden shrink-0 rounded-md border border-border bg-muted px-2 py-1 font-sans text-2xs leading-none text-foreground shadow-sm sm:inline">⌘N</kbd>
               </button>
             )}
           </div>
@@ -560,7 +560,7 @@ function EmptyState() {
   return (
     <div className="mb-8 flex flex-col items-center gap-3 py-8 text-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-card">
-        <Sparkles className="size-6 text-accent-amber" />
+        <Sparkles className="size-6 text-primary" />
       </div>
       <h2 className="font-serif text-2xl tracking-tight">{t('studio.emptyTitle')}</h2>
       <p className="max-w-md text-sm text-muted-foreground">{t('studio.emptyHint')}</p>
@@ -573,11 +573,11 @@ function NoVoicesState() {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-card">
-        <AudioLines className="size-7 text-accent-amber" />
+        <AudioLines className="size-7 text-primary" />
       </div>
       <h2 className="font-serif text-2xl tracking-tight">{t('studio.noVoicesTitle')}</h2>
       <p className="text-sm text-muted-foreground">{t('studio.noVoicesHint')}</p>
-      <Button asChild className="mt-2 gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90">
+      <Button asChild className="mt-2 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
         <Link to="/voices">
           <Plus className="size-4" />
           {t('studio.noVoicesCta')}

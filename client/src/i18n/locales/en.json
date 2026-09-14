@@ -344,6 +344,22 @@
       "invalidCurrent": "Current password is incorrect"
     }
   },
+  "appearance": {
+    "title": "Appearance",
+    "description": "Theme and accent colour, saved on this device.",
+    "mode": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "accent": "Accent colour",
+    "accents": {
+      "amber": "Amber",
+      "sage": "Sage",
+      "sky": "Sky",
+      "violet": "Violet",
+      "rose": "Rose"
+    }
+  },
   "cloudKeys": {
     "title": "Cloud integrations",
     "description": "Keys for third-party providers (OpenAI, ElevenLabs, HuggingFace). Stored securely and never displayed in full after saving.",

@@ -5,12 +5,11 @@ import { useTheme } from '@/providers/theme-provider';
 
 export function ThemeToggle() {
   const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
-  const resolved = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
-    <Button variant="ghost" size="icon" className="size-9" aria-label={t('nav.toggleTheme')} onClick={() => setTheme(resolved === 'dark' ? 'light' : 'dark')}>
-      {resolved === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    <Button variant="ghost" size="icon" className="size-9" aria-label={t('nav.toggleTheme')} onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+      {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
   );
 }

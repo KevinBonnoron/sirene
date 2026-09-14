@@ -108,12 +108,12 @@ function KeyRow({ apiKey }: { apiKey: ApiKeySummary }) {
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1">
             {apiKey.scopes === null ? (
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="text-2xs">
                 {t('apiKeys.fullAccess')}
               </Badge>
             ) : (
               apiKey.scopes.map((scope) => (
-                <Badge key={scope} variant="outline" className="text-[10px] font-mono">
+                <Badge key={scope} variant="outline" className="text-2xs font-mono">
                   {scope}
                 </Badge>
               ))

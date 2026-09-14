@@ -103,7 +103,7 @@ export function PublicSessionPage({ sessionId }: Props) {
       <header className="sticky top-0 z-10 flex h-12 items-center gap-3 border-b border-border-subtle bg-background/85 px-4 backdrop-blur-sm">
         <h1 className="text-sm font-bold tracking-tight">Sirene</h1>
         <span className="text-xs text-dim">·</span>
-        <span className="flex items-center gap-1.5 text-xs text-accent-amber">
+        <span className="flex items-center gap-1.5 text-xs text-primary">
           <Globe className="size-3.5" />
           {t('studio.publicSessionTitle')}
         </span>
@@ -145,16 +145,16 @@ function PublicTake({ index, generation, voice }: PublicTakeProps) {
   return (
     <article className="rounded-lg border border-border bg-card">
       <header className="flex items-center gap-3 border-b border-border-subtle px-4 py-2.5">
-        <span className="font-mono text-[10.5px] text-dim tabular-nums">#{String(index).padStart(2, '0')}</span>
+        <span className="font-mono text-2xs text-dim tabular-nums">#{String(index).padStart(2, '0')}</span>
         <Avatar className="size-5">
           <AvatarImage src={avatarUrl} alt={voiceName} />
-          <AvatarFallback className="text-[9px]">{voiceName.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="text-2xs">{voiceName.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="text-xs font-medium">{voiceName}</span>
-        {duration > 0 && <span className="ml-auto font-mono text-[10.5px] text-dim tabular-nums">{formatTime(duration)}</span>}
+        {duration > 0 && <span className="ml-auto font-mono text-2xs text-dim tabular-nums">{formatTime(duration)}</span>}
       </header>
 
-      <div className="px-5 py-4 font-serif text-[19px] leading-[1.75]">{generation.text}</div>
+      <div className="px-5 py-4 font-serif text-lg leading-[1.75]">{generation.text}</div>
 
       <div className="flex items-center gap-3 border-t border-border-subtle px-4 py-2.5">
         <Button variant="ghost" size="icon" disabled={!audioUrl} onClick={toggle} className="size-8 rounded-full bg-bg-elevated hover:bg-card-elevated">

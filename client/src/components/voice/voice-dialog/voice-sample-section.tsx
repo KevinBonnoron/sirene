@@ -66,7 +66,7 @@ export function VoiceSampleSection({ existingSamples, pendingSamples, cumulative
             </TooltipContent>
           </Tooltip>
         </div>
-        {totalDuration > 0 && <span className="text-[10px] text-muted-foreground">{t('voice.totalDuration', { duration: totalDuration.toFixed(1), max: maxReferenceDuration })}</span>}
+        {totalDuration > 0 && <span className="text-2xs text-muted-foreground">{t('voice.totalDuration', { duration: totalDuration.toFixed(1), max: maxReferenceDuration })}</span>}
       </div>
 
       <div className="space-y-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto">

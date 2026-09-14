@@ -43,19 +43,19 @@ export function SessionsDialog({ open, onOpenChange, sessions, generations, acti
               const isActive = session.id === activeSessionId;
               const displayName = session.name?.trim().length ? session.name : t('studio.untitledSession');
               return (
-                <li key={session.id} className={cn('group/row relative flex items-stretch rounded-md transition-colors', isActive && 'bg-accent-amber/10')}>
-                  <Button variant="ghost" onClick={() => handleSelect(session.id)} className={cn('h-auto min-w-0 flex-1 justify-start gap-3 px-3 py-2.5 text-left font-normal', isActive && 'hover:bg-accent-amber/15')}>
-                    <MessageSquareText className={cn('size-4 shrink-0', isActive ? 'text-accent-amber' : 'text-dim')} />
+                <li key={session.id} className={cn('group/row relative flex items-stretch rounded-md transition-colors', isActive && 'bg-primary/10')}>
+                  <Button variant="ghost" onClick={() => handleSelect(session.id)} className={cn('h-auto min-w-0 flex-1 justify-start gap-3 px-3 py-2.5 text-left font-normal', isActive && 'hover:bg-primary/15')}>
+                    <MessageSquareText className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-dim')} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={cn('truncate font-serif text-sm', !session.name?.trim() && 'italic text-dim')}>{displayName}</span>
-                        {isActive && <Check className="size-3.5 shrink-0 text-accent-amber" />}
+                        {isActive && <Check className="size-3.5 shrink-0 text-primary" />}
                       </div>
                       {preview && <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{preview}</p>}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="font-mono text-[10.5px] tabular-nums text-dim">{formatRelative(session.updated, t)}</span>
-                      <span className="font-mono text-[10px] tabular-nums text-dim">{t(ids.length === 1 ? 'studio.takeCountSingular' : 'studio.takeCountPlural', { count: ids.length })}</span>
+                      <span className="font-mono text-2xs tabular-nums text-dim">{formatRelative(session.updated, t)}</span>
+                      <span className="font-mono text-2xs tabular-nums text-dim">{t(ids.length === 1 ? 'studio.takeCountSingular' : 'studio.takeCountPlural', { count: ids.length })}</span>
                     </div>
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => onRequestDelete(session.id, displayName)} aria-label={t('common.delete')} className="shrink-0 self-center text-dim opacity-0 transition-opacity hover:text-destructive group-hover/row:opacity-100 focus-visible:opacity-100">

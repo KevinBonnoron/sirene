@@ -146,22 +146,22 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
     <article
       className={cn(
         'group relative rounded-lg border bg-card transition-colors',
-        isFocused ? 'border-accent-amber/50 shadow-[0_0_0_1px_var(--accent-amber)/20]' : 'border-border',
+        isFocused ? 'border-primary/50 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_20%,transparent)]' : 'border-border',
         isDraft && 'bg-bg-elevated',
         affinageMode === 'detailed' && 'border-accent-violet/40 shadow-[0_0_0_1px_color-mix(in_oklch,var(--accent-violet)_30%,transparent)]',
       )}
     >
       <header className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5 sm:gap-3 sm:px-4">
-        <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">#{String(take.orderIndex).padStart(2, '0')}</span>
+        <span className="shrink-0 font-mono text-2xs text-dim tabular-nums">#{String(take.orderIndex).padStart(2, '0')}</span>
 
         <TakeVoicePicker voiceId={take.voiceId} onChange={onVoiceChange ?? NOOP} disabled={disabled || !onVoiceChange} />
 
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
-          <span className={cn('flex items-center gap-1.5 text-[11px]', badge.textClass)}>
+          <span className={cn('flex items-center gap-1.5 text-2xs', badge.textClass)}>
             <span className={cn('size-1.5 rounded-full', badge.dotClass)} />
             {t(badge.labelKey)}
           </span>
-          {!isDraft && totalDuration > 0 && <span className="font-mono text-[10.5px] text-dim tabular-nums">{formatTime(totalDuration)}</span>}
+          {!isDraft && totalDuration > 0 && <span className="font-mono text-2xs text-dim tabular-nums">{formatTime(totalDuration)}</span>}
         </div>
 
         {!isDraft && (
@@ -173,7 +173,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
             className={cn('shrink-0 text-muted-foreground', isPanelOpen ? 'data-[state=on]:bg-accent-violet/15 data-[state=on]:text-accent-violet data-[state=on]:border data-[state=on]:border-accent-violet/40' : 'size-7 min-w-7 px-0')}
           >
             <AudioWaveform className="size-3.5" />
-            {isPanelOpen && <span className="hidden text-[11px] sm:inline">{t('studio.tuning')}</span>}
+            {isPanelOpen && <span className="hidden text-2xs sm:inline">{t('studio.tuning')}</span>}
           </Toggle>
         )}
       </header>
@@ -194,11 +194,11 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
 
       {!isDraft && (
         <div className={cn('flex items-center gap-3 px-4 pb-2.5 pt-1 sm:px-5', isGenerating && 'animate-pulse')}>
-          <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-accent-amber hover:text-primary-foreground" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
+          <Button variant="ghost" size="icon" disabled={!take.audioUrl || isGenerating} className="size-8 shrink-0 rounded-full bg-bg-elevated hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary" onClick={toggle} aria-label={isPlaying ? t('studio.pause') : t('studio.play')}>
             {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 translate-x-[1px]" />}
           </Button>
           <TakeWaveform seed={take.orderIndex * 17 + 1} active={isPlaying} progress={progress} ariaLabel={t('studio.waveformAriaLabel')} className="min-w-0 flex-1 overflow-hidden" />
-          <span className="shrink-0 font-mono text-[10.5px] text-dim tabular-nums">{`${formatTime(playPosition)} / ${formatTime(totalDuration)}`}</span>
+          <span className="shrink-0 font-mono text-2xs text-dim tabular-nums">{`${formatTime(playPosition)} / ${formatTime(totalDuration)}`}</span>
         </div>
       )}
 
@@ -217,7 +217,7 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
               variant="outline"
               size="sm"
               aria-label={t('studio.tuning')}
-              className="text-[10.5px]"
+              className="text-2xs"
             >
               <ToggleGroupItem value="quick" aria-label={t('studio.tuningGlobal')}>
                 <SlidersHorizontal className="size-3" />
@@ -333,11 +333,11 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
       </Toggle>
 
       <div className="ml-auto flex items-center gap-2">
-        {estimatedLabel && <span className="hidden font-mono text-[10.5px] tabular-nums text-dim sm:inline">{estimatedLabel}</span>}
-        <Button size="sm" disabled={isBusy || !onGenerate} className="gap-1.5 bg-accent-amber text-primary-foreground hover:bg-accent-amber/90" onClick={onGenerate}>
+        {estimatedLabel && <span className="hidden font-mono text-2xs tabular-nums text-dim sm:inline">{estimatedLabel}</span>}
+        <Button size="sm" disabled={isBusy || !onGenerate} className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={onGenerate}>
           {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           {t('studio.generate')}
-          <span className="ml-1 hidden font-mono text-[10px] opacity-70 sm:inline">⌘↵</span>
+          <span className="ml-1 hidden font-mono text-2xs opacity-70 sm:inline">⌘↵</span>
         </Button>
       </div>
     </>

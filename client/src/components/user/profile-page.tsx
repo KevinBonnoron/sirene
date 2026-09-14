@@ -16,6 +16,7 @@ import { pb } from '@/lib/pocketbase';
 import { avatarUrl, userInitials } from '@/lib/user-avatar';
 import { useAuth } from '@/providers/auth-provider';
 import { ApiKeysSection } from './api-keys-section';
+import { AppearanceSection } from './appearance-section';
 import { CloudKeysSection } from './cloud-keys-section';
 
 const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml';
@@ -224,6 +225,12 @@ export function ProfilePage() {
             </Button>
           </Section>
         </form>
+
+        <Separator />
+
+        <Section title={t('appearance.title')} description={t('appearance.description')}>
+          <AppearanceSection />
+        </Section>
 
         <Separator />
 

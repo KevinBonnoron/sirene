@@ -1,0 +1,40 @@
+version: '3'
+
+vars:
+  APP_NAME: Sirene
+  BINARY_NAME: sirene-desktop
+  BIN_DIR: bin
+  VERSION: '{{.VERSION | default "dev"}}'
+  GOOS: '{{.GOOS | default OS}}'
+  LDFLAGS_VERSION: '-X github.com/KevinBonnoron/sirene/server/internal/config.Version={{.VERSION}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+
+tasks:
+  default:
+    desc: Builds and runs the desktop app
+    cmds:
+      - task: run
+
+  build:
+    desc: Builds the desktop app for the host OS (GOOS=... to target another one)
+    cmds:
+      - task: '{{.GOOS}}:build'
+
+  package:
+    desc: Builds and packages the desktop app into a distributable archive
+    cmds:
+      - task: '{{.GOOS}}:package'
+
+  run:
+    desc: Builds and runs the desktop app
+    cmds:
+      - task: '{{.GOOS}}:run'
+
+  clean:
+    cmds:
+      - rm -rf {{.BIN_DIR}} internal/launcher/inference_src/src internal/launcher/inference_src/pyproject.toml internal/launcher/inference_src/overrides.txt

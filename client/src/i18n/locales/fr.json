@@ -196,16 +196,17 @@
   "nav": {
     "appName": "Sirene",
     "appSubtitle": "TTS Open Router",
-    "navigation": "Navigation",
     "sessions": "Sessions",
     "studio": "Studio",
     "voices": "Voix",
     "models": "Modèles",
     "history": "Historique",
     "toggleTheme": "Changer de thème",
-    "theme": "Thème",
     "language": "Langue",
-    "settings": "Paramètres"
+    "profile": "Profil",
+    "admin": "Administration",
+    "navigation": "Navigation",
+    "inferenceServers": "Inférence"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -307,6 +308,53 @@
     "sessionNotFoundHint": "Cette session n'existe pas ou a été supprimée.",
     "backToStudio": "Retour au Studio"
   },
+  "profile": {
+    "subtitle": "Votre compte, vos identifiants et vos clés API.",
+    "currentPassword": "Mot de passe actuel",
+    "save": "Enregistrer",
+    "avatar": {
+      "change": "Changer l'avatar",
+      "remove": "Supprimer l'avatar",
+      "saved": "Avatar mis à jour",
+      "saveFailed": "Impossible de mettre à jour votre avatar"
+    },
+    "name": {
+      "title": "Nom affiché",
+      "description": "Comment vous apparaissez dans l'application.",
+      "label": "Nom",
+      "saved": "Nom mis à jour",
+      "saveFailed": "Impossible de mettre à jour votre nom"
+    },
+    "email": {
+      "title": "Adresse e-mail",
+      "description": "Le changement d'e-mail nécessite votre mot de passe actuel.",
+      "label": "E-mail",
+      "submit": "Mettre à jour l'e-mail",
+      "saved": "E-mail mis à jour",
+      "saveFailed": "Impossible de mettre à jour votre e-mail"
+    },
+    "password": {
+      "title": "Mot de passe",
+      "description": "Utilisez au moins 8 caractères.",
+      "newPassword": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "submit": "Mettre à jour le mot de passe",
+      "saved": "Mot de passe mis à jour",
+      "saveFailed": "Impossible de mettre à jour votre mot de passe",
+      "invalidCurrent": "Le mot de passe actuel est incorrect"
+    }
+  },
+  "cloudKeys": {
+    "title": "Intégrations cloud",
+    "description": "Clés pour les fournisseurs tiers (OpenAI, ElevenLabs, HuggingFace). Stockées de manière sécurisée et jamais affichées en entier après enregistrement.",
+    "openAIKey": "Clé API OpenAI",
+    "elevenLabsKey": "Clé API ElevenLabs",
+    "hfToken": "Token HuggingFace",
+    "removed": "{{key}} supprimé",
+    "saved": "{{key}} enregistré",
+    "removeFailed": "Échec de la suppression",
+    "saveFailed": "Échec de l'enregistrement"
+  },
   "inferenceServers": {
     "title": "Serveurs d'inférence",
     "description": "Configurez les serveurs où s'exécutent les générations TTS et les téléchargements de modèles. Plusieurs serveurs servent de failover ; le serveur en ligne avec la plus haute priorité est utilisé.",
@@ -343,26 +391,6 @@
       "installHint": "Tourne sur Ubuntu/Debian. Détecte le GPU NVIDIA automatiquement. Affiche l'URL et le token d'auth à la fin."
     }
   },
-  "settings": {
-    "title": "Paramètres",
-    "subtitle": "Gérez les serveurs d'inférence, les clés API et les intégrations cloud.",
-    "tabs": {
-      "inferenceServers": "Serveurs d'inférence",
-      "apiKeys": "Clés API",
-      "cloudKeys": "Intégrations cloud"
-    },
-    "cloudKeys": {
-      "title": "Intégrations cloud",
-      "description": "Clés pour les fournisseurs tiers (OpenAI, ElevenLabs, HuggingFace). Stockées de manière sécurisée et jamais affichées en entier après enregistrement."
-    },
-    "openAIKey": "Clé API OpenAI",
-    "elevenLabsKey": "Clé API ElevenLabs",
-    "hfToken": "Token HuggingFace",
-    "removed": "{{key}} supprimé",
-    "saved": "{{key}} enregistré",
-    "removeFailed": "Échec de la suppression",
-    "saveFailed": "Échec de l'enregistrement"
-  },
   "cliAuth": {
     "title": "Autoriser le CLI",
     "subtitle": "Saisissez le code à usage unique affiché dans votre terminal.",
@@ -378,7 +406,7 @@
     "confirmDescription": "Une nouvelle clé API sera créée pour le CLI sur cet appareil.",
     "nameLabel": "Nom de la clé",
     "namePlaceholder": "ex. CLI laptop",
-    "nameHint": "Utilisé pour identifier la clé dans Paramètres > Clés API.",
+    "nameHint": "Utilisé pour identifier la clé dans Profil > Clés API.",
     "authorize": "Autoriser",
     "successTitle": "C'est bon !",
     "successDescription": "Vous pouvez fermer cet onglet et retourner au terminal.",

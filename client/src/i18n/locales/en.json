@@ -196,16 +196,17 @@
   "nav": {
     "appName": "Sirene",
     "appSubtitle": "TTS Open Router",
-    "navigation": "Navigation",
     "sessions": "Sessions",
     "studio": "Studio",
     "voices": "Voices",
     "models": "Models",
     "history": "History",
     "toggleTheme": "Toggle theme",
-    "theme": "Theme",
     "language": "Language",
-    "settings": "Settings"
+    "profile": "Profile",
+    "admin": "Administration",
+    "navigation": "Navigation",
+    "inferenceServers": "Inference"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -307,18 +308,45 @@
     "sessionNotFoundHint": "This session doesn't exist or has been deleted.",
     "backToStudio": "Back to Studio"
   },
-  "settings": {
-    "title": "Settings",
-    "subtitle": "Manage inference servers, API keys, and cloud integrations.",
-    "tabs": {
-      "inferenceServers": "Inference servers",
-      "apiKeys": "API keys",
-      "cloudKeys": "Cloud integrations"
+  "profile": {
+    "subtitle": "Your account, credentials and API keys.",
+    "currentPassword": "Current password",
+    "save": "Save",
+    "avatar": {
+      "change": "Change avatar",
+      "remove": "Remove avatar",
+      "saved": "Avatar updated",
+      "saveFailed": "Could not update your avatar"
     },
-    "cloudKeys": {
-      "title": "Cloud integrations",
-      "description": "Keys for third-party providers (OpenAI, ElevenLabs, HuggingFace). Stored securely and never displayed in full after saving."
+    "name": {
+      "title": "Display name",
+      "description": "How you appear in the app.",
+      "label": "Name",
+      "saved": "Name updated",
+      "saveFailed": "Could not update your name"
     },
+    "email": {
+      "title": "Email address",
+      "description": "Changing your email requires your current password.",
+      "label": "Email",
+      "submit": "Update email",
+      "saved": "Email updated",
+      "saveFailed": "Could not update your email"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Use at least 8 characters.",
+      "newPassword": "New password",
+      "confirm": "Confirm new password",
+      "submit": "Update password",
+      "saved": "Password updated",
+      "saveFailed": "Could not update your password",
+      "invalidCurrent": "Current password is incorrect"
+    }
+  },
+  "cloudKeys": {
+    "title": "Cloud integrations",
+    "description": "Keys for third-party providers (OpenAI, ElevenLabs, HuggingFace). Stored securely and never displayed in full after saving.",
     "openAIKey": "OpenAI API Key",
     "elevenLabsKey": "ElevenLabs API Key",
     "hfToken": "HuggingFace Token",
@@ -342,7 +370,7 @@
     "confirmDescription": "A new API key will be created for the CLI on this device.",
     "nameLabel": "Key name",
     "namePlaceholder": "e.g. CLI laptop",
-    "nameHint": "Used to identify the key in Settings > API Keys.",
+    "nameHint": "Used to identify the key in Profile > API keys.",
     "authorize": "Authorize",
     "successTitle": "All set!",
     "successDescription": "You can close this tab and return to your terminal.",

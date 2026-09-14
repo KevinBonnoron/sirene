@@ -1,73 +1,21 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Check, Clock, Languages, LogOut, MessageSquareText, Mic, Moon, MoreHorizontal, Settings, Sun, Trash2 } from 'lucide-react';
+import { AudioLines, Box, Clock, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, sessionCollection } from '@/collections';
 import { DeleteSessionAlert } from '@/components/studio/delete-session-alert';
 import { SessionsDialog } from '@/components/studio/sessions-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
-import { SUPPORTED_LANGUAGES, type SupportedLanguage, setLanguage } from '@/i18n';
 import { useAuth } from '@/providers/auth-provider';
-import { useTheme } from '@/providers/theme-provider';
-
-const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
-  en: 'English',
-  fr: 'Français',
-};
+import { UserMenu } from './user-menu';
 
 const RECENT_SESSIONS_LIMIT = 5;
 
-function ThemeToggleButton() {
-  const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
-  const toggle = () => setTheme(theme === 'light' ? 'dark' : 'light');
-  return (
-    <SidebarMenuButton tooltip={t('nav.toggleTheme')} onClick={toggle}>
-      {theme === 'dark' ? <Moon className="size-4" /> : <Sun className="size-4" />}
-      <span>{t('nav.theme')}</span>
-    </SidebarMenuButton>
-  );
-}
-
-function LogoutButton() {
-  const { t } = useTranslation();
-  const { logout, user } = useAuth();
-  return (
-    <SidebarMenuButton tooltip={user?.email ?? t('auth.logout')} onClick={logout}>
-      <LogOut className="size-4" />
-      <span>{t('auth.logout')}</span>
-    </SidebarMenuButton>
-  );
-}
-
-function LanguageToggleButton() {
-  const { t, i18n } = useTranslation();
-  const current = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language) ? (i18n.language as SupportedLanguage) : 'en';
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <SidebarMenuButton tooltip={t('nav.language')}>
-          <Languages className="size-4" />
-          <span>{LANGUAGE_LABELS[current]}</span>
-        </SidebarMenuButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="right">
-        {SUPPORTED_LANGUAGES.map((lang) => (
-          <DropdownMenuItem key={lang} onSelect={() => setLanguage(lang)}>
-            {current === lang ? <Check className="size-3.5 text-accent-amber" /> : <span className="size-3.5" />}
-            {LANGUAGE_LABELS[lang]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export function AppSidebar() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const router = useRouterState();
   const currentPath = router.location.pathname;
   const activeSessionId = (router.location.search as { session?: string } | undefined)?.session ?? null;
@@ -89,6 +37,7 @@ export function AppSidebar() {
     { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];
+  const adminItems = [{ label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server }];
 
   return (
     <Sidebar collapsible="icon">
@@ -114,6 +63,26 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {user?.role === 'admin' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t('nav.admin')}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={currentPath === item.href} tooltip={item.label}>
+                      <Link to={item.href}>
+                        <item.icon className="size-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {recentSessions.length > 0 && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -165,21 +134,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <ThemeToggleButton />
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <LanguageToggleButton />
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={currentPath === '/settings'} tooltip={t('nav.settings')}>
-              <Link to="/settings">
-                <Settings className="size-4" />
-                <span>{t('nav.settings')}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <LogoutButton />
+            <UserMenu />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

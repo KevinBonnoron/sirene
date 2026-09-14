@@ -10,6 +10,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
+  /** Re-fetch the current user after a profile change. */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -73,12 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [qc],
   );
 
+  const refresh = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+  }, [qc]);
+
   const logout = useCallback(() => {
     clearStoredToken();
     window.location.href = '/login';
   }, []);
 
-  const value = useMemo(() => ({ user, isLoading, login, register, logout }), [user, isLoading, login, register, logout]);
+  const value = useMemo(() => ({ user, isLoading, login, register, logout, refresh }), [user, isLoading, login, register, logout, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

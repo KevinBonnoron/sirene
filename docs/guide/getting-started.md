@@ -6,11 +6,11 @@ Download the latest release for your platform from the [releases page](https://g
 
 | Platform | File |
 |----------|------|
-| macOS (Apple Silicon) | `desktop-macos-arm64.zip` |
-| Linux (x64) | `desktop-linux-x64.zip` |
-| Windows (x64) | `desktop-windows-x64.zip` |
+| macOS (Apple Silicon) | `sirene-desktop-macos-arm64.zip` |
+| Linux (x64) | `sirene-desktop-linux-amd64.tar.gz` |
+| Windows (x64) | `sirene-desktop-windows-amd64.zip` |
 
-On first launch, Sirene will set up its inference environment automatically.
+The download is a few tens of megabytes. On first launch, Sirene downloads a standalone Python and the inference service into `~/.sirene` (a few hundred megabytes); the `Local` inference server shows as offline in **Settings → Inference servers** until that finishes. TTS backends themselves are installed on demand when you install a model. Logs are in `~/.sirene/logs/desktop.log`.
 
 ## Docker
 
@@ -26,9 +26,10 @@ See the [Docker guide](./docker.md) for more options.
 
 ## First Launch
 
-1. Open the app (or navigate to `http://localhost:5173` for Docker)
-2. Go to the **Models** page and install the model of your choice (e.g. Kokoro v1.0)
-3. You're ready to generate speech
+1. Open the app (`http://localhost` for Docker)
+2. Create the administrator account in the setup wizard
+3. Go to the **Models** page and install the model of your choice (e.g. Kokoro v1.0)
+4. You're ready to generate speech
 
 ## Adding more inference servers
 

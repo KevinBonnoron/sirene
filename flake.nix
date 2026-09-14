@@ -84,23 +84,22 @@
         inherit version;
 
         src = desktopPkgs.fetchurl {
-          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/stable-linux-x64-Sirene.tar.zst";
+          url = "https://github.com/KevinBonnoron/sirene/releases/download/v${version}/sirene-desktop-linux-amd64.tar.gz";
           hash = "sha256-YBwIBJFNITcNQ5LadL93zWVEuHsHRomqu0Q0gswLncA=";
         };
 
-        sourceRoot = "Sirene";
+        sourceRoot = ".";
 
-        nativeBuildInputs = with desktopPkgs; [ autoPatchelfHook makeWrapper zstd ];
+        nativeBuildInputs = with desktopPkgs; [ autoPatchelfHook makeWrapper ];
         buildInputs = desktopLibs;
-        autoPatchelfIgnoreMissingDeps = [ "libcrypt.so.1" ];
 
         installPhase = ''
           runHook preInstall
-          chmod +x Resources/app/Resources/pocketbase
-          mkdir -p $out/opt/sirene
-          cp -r . $out/opt/sirene/
+          install -Dm755 sirene-desktop $out/opt/sirene/sirene-desktop
+          install -Dm644 sirene.desktop $out/share/applications/sirene.desktop
+          install -Dm644 sirene.png $out/share/icons/hicolor/512x512/apps/sirene.png
           mkdir -p $out/bin
-          makeWrapper $out/opt/sirene/bin/launcher $out/bin/sirene \
+          makeWrapper $out/opt/sirene/sirene-desktop $out/bin/sirene-desktop \
             --set GST_PLUGIN_PATH "${gstPluginPath}"
           runHook postInstall
         '';
@@ -139,8 +138,11 @@
           # runtime
           bun
 
-          # db
-          pocketbase
+          # task runner + Go (server, desktop)
+          go-task
+          go
+          gopls
+          watchexec
 
           # inference
           espeak-ng
@@ -166,21 +168,9 @@
             bun install
           fi
 
-          # Patch generic Linux binaries for NixOS (electrobun CLI)
-          NIX_INTERP=$(patchelf --print-interpreter "$(which bun)" 2>/dev/null)
-          if [ -n "$NIX_INTERP" ]; then
-            for bin in \
-              "$PWD/node_modules/electrobun/bin/electrobun" \
-              "$PWD/desktop/node_modules/electrobun/bin/electrobun" \
-              "$PWD/desktop/build/dev-linux-x64/Sirene-dev/bin/bun"; do
-              if [ -f "$bin" ] && ! patchelf --print-interpreter "$bin" 2>/dev/null | grep -q nix; then
-                patchelf --set-interpreter "$NIX_INTERP" "$bin" 2>/dev/null || true
-              fi
-            done
-          fi
-
-          # Auto-install Python dependencies on first use (base only - backends installed on demand)
-          if [ ! -d "$PWD/.venv" ]; then
+          # Auto-install Python dependencies on first use (base only - backends installed on demand).
+          # -x follows the symlink, so a venv whose interpreter vanished is rebuilt too.
+          if [ ! -x "$PWD/.venv/bin/python" ]; then
             echo "→ Setting up Python virtual environment..."
             uv venv --python 3.11 --seed .venv
             source .venv/bin/activate

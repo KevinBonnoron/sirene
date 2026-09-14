@@ -5,14 +5,15 @@ set -euo pipefail
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | bash
 #
-# Modes (interactive prompt by default; skip with INSTALL_MODE):
+# Modes (interactive prompt by default; skip with INSTALL_MODE or pass as $1):
 #   full       - server + inference on this machine [default]
 #   server     - just the app, register inference servers later via the UI
 #   inference  - just an inference server, prints URL + auth token
 #   cli        - just the `sirene` command-line client binary
+#   recover    - create or reset the dashboard superuser of an existing install
 #
 # Optional env vars:
-#   INSTALL_MODE   full|server|inference|cli
+#   INSTALL_MODE   full|server|inference|cli|recover
 #   DEVICE         cpu|cuda                (full / inference only - auto-detected if unset)
 #   INFERENCE_URL  http://...               (server mode only - seeds the registry at boot)
 #   PORT           default 8000             (inference mode only)
@@ -135,7 +136,10 @@ remove_container() {
 
 # ── Pick install mode ───────────────────────────────────────────────────────
 
-INSTALL_MODE="${INSTALL_MODE:-}"
+# `./install.sh recover` (or any other mode as the first positional) sets the
+# mode without going through the interactive menu. Useful when the script lives
+# locally and the user already knows what they want.
+INSTALL_MODE="${INSTALL_MODE:-${1:-}}"
 if [ -z "$INSTALL_MODE" ]; then
   printf "${BOLD}What do you want to install?${RESET}\n"
   printf "  ${CYAN}1)${RESET} Sirene             ${DIM}server + inference on this machine (default)${RESET}\n"
@@ -153,8 +157,8 @@ if [ -z "$INSTALL_MODE" ]; then
 fi
 
 case "$INSTALL_MODE" in
-  full|server|inference|cli) ;;
-  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / inference / cli" ;;
+  full|server|inference|cli|recover) ;;
+  *) die "unknown INSTALL_MODE \"$INSTALL_MODE\" - expected full / server / inference / cli / recover" ;;
 esac
 
 # ── CLI mode short-circuit ──────────────────────────────────────────────────
@@ -272,6 +276,54 @@ if [ "$(id -u)" -eq 0 ]; then
 else
   command -v sudo >/dev/null 2>&1 || die "this script needs root or sudo"
   SUDO="sudo"
+fi
+
+# ── Mode: recover (create or reset the dashboard superuser) ─────────────────
+# The Go server is PocketBase itself, so the only account to manage is the
+# human-facing dashboard superuser at /_/. Uses docker exec when sirene-server
+# is up, or a one-shot container against the same image when it is stopped.
+if [ "$INSTALL_MODE" = "recover" ]; then
+  ensure_docker
+
+  if [ ! -d "$INSTALL_DIR" ]; then
+    die "no existing install found at $(pwd)/$INSTALL_DIR - run install.sh first"
+  fi
+  cd "$INSTALL_DIR"
+
+  RAW_DATA_DIR="${DATA_DIR:-$(pwd)/data}"
+  case "$RAW_DATA_DIR" in
+    /*) DATA_DIR_ABS="$RAW_DATA_DIR" ;;
+    *)  DATA_DIR_ABS="$(pwd)/$RAW_DATA_DIR" ;;
+  esac
+
+  if [ ! -d "$DATA_DIR_ABS/pb_data" ] || [ -z "$(ls -A "$DATA_DIR_ABS/pb_data" 2>/dev/null)" ]; then
+    die "no PocketBase data at $DATA_DIR_ABS/pb_data - nothing to recover"
+  fi
+
+  SUPERUSER_EMAIL="${SUPERUSER_EMAIL:-admin@sirene.local}"
+  NEW_PASSWORD=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 24)
+
+  if $SUDO docker inspect -f {{.State.Running}} sirene-server 2>/dev/null | grep -q true; then
+    info "upserting dashboard superuser (container running)..."
+    $SUDO docker exec sirene-server sirene superuser upsert "$SUPERUSER_EMAIL" "$NEW_PASSWORD" --dir=/app/db/pb_data >/dev/null
+  else
+    info "upserting dashboard superuser (offline)..."
+    $SUDO docker run --rm \
+      -v "${DATA_DIR_ABS}/pb_data:/app/db/pb_data" \
+      "${REPO}:latest" \
+      superuser upsert "$SUPERUSER_EMAIL" "$NEW_PASSWORD" --dir=/app/db/pb_data >/dev/null
+  fi
+
+  printf "\n"
+  printf "  ${GREEN}┌${BORDER}┐${RESET}\n"
+  printf "  ${GREEN}│${RESET}  ${BOLD}%-43s${RESET}${GREEN}│${RESET}\n" "Dashboard superuser ready"
+  printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "URL:" "http://localhost/_/"
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Email:" "${SUPERUSER_EMAIL}"
+  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "${NEW_PASSWORD}"
+  printf "  ${GREEN}└${BORDER}┘${RESET}\n"
+  printf "\n"
+  exit 0
 fi
 
 # ── Pick device (full / inference only) ─────────────────────────────────────
@@ -419,59 +471,9 @@ fi
 mkdir -p "$DATA_DIR_ABS/pb_data"
 [ "$INSTALL_MODE" = "full" ] && mkdir -p "$DATA_DIR_ABS/models" "$DATA_DIR_ABS/packages"
 
-PB_SUPERUSER_EMAIL="admin@sirene.local"
-
-# Read a single KEY=VALUE pair from the credentials file without sourcing it.
-# Sourcing executes whatever sh code happens to be in the file, which is unsafe
-# for a path that's already on disk by the time we get here.
-read_cred() {
-  local key="$1"
-  local file="$2"
-  [ -f "$file" ] || return 1
-  awk -v k="$key" -F= '
-    /^[[:space:]]*#/ || $1 ~ /^[[:space:]]*$/ { next }
-    {
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
-      if ($1 == k) {
-        sub(/^[^=]*=/, "")
-        # strip surrounding quotes if present
-        gsub(/^["'\'']|["'\'']$/, "")
-        print
-        exit
-      }
-    }
-  ' "$file"
-}
-
-# On a reinstall PB still uses the admin account that was stored in pb_data, so
-# rotating the password here would print credentials that no longer work. Reuse
-# the saved credentials when available; if pb_data exists without a credentials
-# file, leave the user to recover it manually rather than silently overwriting.
-if [ -f credentials ]; then
-  EXISTING_EMAIL=$(read_cred PB_SUPERUSER_EMAIL credentials || true)
-  EXISTING_PASSWORD=$(read_cred PB_SUPERUSER_PASSWORD credentials || true)
-  if [ -n "$EXISTING_PASSWORD" ]; then
-    PB_PASSWORD="$EXISTING_PASSWORD"
-    PB_SUPERUSER_EMAIL="${EXISTING_EMAIL:-$PB_SUPERUSER_EMAIL}"
-    ok "reusing PocketBase credentials from $(pwd)/credentials"
-  fi
-fi
-
-if [ -z "${PB_PASSWORD:-}" ]; then
-  if [ "$PB_DATA_HAS_CONTENT" = "1" ]; then
-    printf "${YELLOW}warning:${RESET} pb_data already exists but no credentials file was found.\n"
-    printf "         Skipping password generation - recover the existing admin via PB Admin UI\n"
-    printf "         or remove %s to start fresh.\n" "$DATA_DIR_ABS/pb_data"
-    PB_PASSWORD=""
-  else
-    PB_PASSWORD=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
-    ( umask 077 && cat > credentials <<EOF
-PB_SUPERUSER_EMAIL=${PB_SUPERUSER_EMAIL}
-PB_SUPERUSER_PASSWORD=${PB_PASSWORD}
-EOF
-    )
-    ok "saved PocketBase credentials to $(pwd)/credentials (mode 600)"
-  fi
+if [ "$PB_DATA_HAS_CONTENT" = "1" ]; then
+  printf "${YELLOW}note:${RESET} existing data found at %s - back it up before upgrading,\n" "$DATA_DIR_ABS/pb_data"
+  printf "      PocketBase migrations are applied on start and cannot be rolled back.\n"
 fi
 
 ensure_network
@@ -512,12 +514,6 @@ $SUDO docker pull "$SERVER_IMAGE" >/dev/null
 
 info "starting sirene-server on port 80 ..."
 SERVER_ENV_ARGS=()
-if [ -n "$PB_PASSWORD" ]; then
-  SERVER_ENV_ARGS+=(
-    -e "PB_SUPERUSER_EMAIL=$PB_SUPERUSER_EMAIL"
-    -e "PB_SUPERUSER_PASSWORD=$PB_PASSWORD"
-  )
-fi
 if [ -n "$EFFECTIVE_INFERENCE_URL" ]; then
   SERVER_ENV_ARGS+=(-e "INFERENCE_URL=$EFFECTIVE_INFERENCE_URL")
 fi
@@ -538,20 +534,13 @@ printf "  ${GREEN}┌${BORDER}┐${RESET}\n"
 printf "  ${GREEN}│${RESET}  ${BOLD}%-43s${RESET}${GREEN}│${RESET}\n" "Sirene is ready!"
 printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "URL:" "http://localhost"
-printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Admin:" "http://localhost/db/_/"
-printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Email:" "${PB_SUPERUSER_EMAIL}"
-if [ -n "$PB_PASSWORD" ]; then
-  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "${PB_PASSWORD}"
-else
-  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Password:" "(see existing pb_data - credentials were not regenerated)"
-fi
+printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Admin:" "http://localhost/_/"
 printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
 printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Data:" "$DATA_DIR_ABS"
-# Only point at the credentials file when we actually wrote one this run; on the
-# "pb_data exists but no credentials file was found" path it would otherwise
-# advertise a path that doesn't exist.
-if [ -f credentials ]; then
-  printf "  ${GREEN}│${RESET}  ${YELLOW}%-10s${RESET}%-33s${GREEN}│${RESET}\n" "Creds:" "$(pwd)/credentials"
-fi
+printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" ""
+printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" "The first account created in the web UI"
+printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" "becomes the administrator. For the"
+printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" "PocketBase dashboard run:"
+printf "  ${GREEN}│${RESET}  %-43s${GREEN}│${RESET}\n" "  ./install.sh recover"
 printf "  ${GREEN}└${BORDER}┘${RESET}\n"
 printf "\n"

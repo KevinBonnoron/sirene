@@ -1,10 +1,10 @@
 # Database
 
-Sirene uses [PocketBase](https://pocketbase.io) as its database, file storage, and real-time engine. PocketBase runs on port **8090** and provides an admin UI at `http://localhost:8090/_/`.
+Sirene uses [PocketBase](https://pocketbase.io) as its database, file storage, and real-time engine. It runs inside the `sirene` binary; the dashboard is served at `/_/` (port 8090 in development) and requires a superuser created with `sirene superuser upsert`.
 
 ## Collections
 
-Collections are created automatically via migrations in `db/pb_migrations/`.
+Collections are created automatically via the Go migrations in `server/migrations/`.
 
 ### `voices`
 
@@ -48,7 +48,7 @@ Collections are created automatically via migrations in `db/pb_migrations/`.
    → Transcription: text field + auto-transcribe button (Whisper)
    → Upload to voice_samples collection
 
-3. Hono server:
+3. Sirene server:
    a. Creates the voice in PocketBase (voices collection)
    b. Stores samples in PocketBase (voice_samples, file field)
    c. Forwards samples to the Python service for preprocessing
@@ -68,4 +68,4 @@ PocketBase provides real-time subscriptions via Server-Sent Events. The client s
 
 - A new generation is created
 - A voice is added or modified
-- Download progress updates (via Hono SSE, not PocketBase)
+- Download progress updates (via the server SSE endpoint, not PocketBase)

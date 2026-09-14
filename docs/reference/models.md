@@ -42,13 +42,15 @@ Each model has a JSON manifest embedded in the `manifests/` directory that descr
 
 ```
 1. User clicks [Install] on a model in the web UI
-2. Client opens an SSE connection to GET /api/models/:id/pull
-3. Hono server:
-   a. Stores state in memory (activeDownloads Map)
-   b. Downloads files from HuggingFace into /data/models/
-   c. Sends progress via SSE to the client (progress, complete, error)
-4. Client updates the React Query cache with progress
-5. fs.watch() detects changes and notifies via GET /api/models/events (SSE)
+2. Client calls POST /api/models/:id/pull and receives job ids
+3. Sirene server:
+   a. Creates one in-memory job per target inference server
+   b. Asks each server to POST /models/pull with the HuggingFace file URLs
+   c. Relays the worker's SSE progress into the job store
+4. Inference server downloads the files into its models directory and
+   installs the backend dependencies on demand
+5. Client follows GET /api/jobs/stream (SSE) for progress, and GET
+   /api/models/events (SSE) pings it to refresh the installed list
 ```
 
 ## Storage Layout

@@ -1,6 +1,6 @@
 # API Inference (FastAPI)
 
-The inference service runs on port **8000** and handles all TTS model loading and processing. It is an internal API called only by the Hono server.
+The inference service runs on port **8000** and handles all TTS model loading and processing. It is an internal API called only by the Sirene server.
 
 ## Generate Audio
 

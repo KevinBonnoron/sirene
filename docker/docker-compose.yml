@@ -5,8 +5,6 @@ services:
       - "80:80"
     volumes:
       - sirene-data:/app/db/pb_data
-    env_file:
-      - .env
     restart: unless-stopped
 
   inference:

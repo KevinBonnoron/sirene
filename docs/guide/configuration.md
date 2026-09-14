@@ -2,15 +2,24 @@
 
 All configuration is done via environment variables. Default values work for local development.
 
-## Server (Hono)
+## Server (`sirene`)
+
+The server is a single Go binary built on PocketBase: it serves the API, the database, file storage, realtime and the web UI on one port.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `POCKETBASE_URL` | `http://localhost:8090` | PocketBase URL |
-| `PB_SUPERUSER_EMAIL` | `admin@sirene.local` | PocketBase admin email |
-| `PB_SUPERUSER_PASSWORD` | `changeme123` | PocketBase admin password |
-| `MODELS_PATH` | `./data/models` | Models directory |
-| `INFERENCE_URL` | `http://localhost:8000` | Inference service URL |
+| `INFERENCE_URL` | `http://localhost:8000` | Inference service seeded as the `Local` inference server on first start |
+| `SIRENE_UI_DIR` | - | Serve the web UI from this directory instead of the embedded build |
+
+Command-line flags come from PocketBase:
+
+```bash
+sirene serve --http=0.0.0.0:80 --dir=/app/db/pb_data   # start the server
+sirene superuser upsert EMAIL PASSWORD --dir=...        # dashboard superuser for /_/
+sirene migrate up --dir=...                             # apply pending migrations
+```
+
+The first account created in the web UI becomes the Sirene administrator. The PocketBase dashboard superuser is a separate, optional account used only for `/_/`.
 
 ## Inference (FastAPI)
 
@@ -19,28 +28,20 @@ All configuration is done via environment variables. Default values work for loc
 | `INFERENCE_MODELS_PATH` | `/data/models` | Models directory |
 | `INFERENCE_DEVICE` | `cuda` | Device (`cuda` or `cpu`) |
 | `INFERENCE_MAX_LOADED_MODELS` | `2` | Max models loaded in memory simultaneously |
+| `INFERENCE_AUTH_TOKEN` | - | Bearer token required on every request except `/health` |
+| `INFERENCE_ALLOW_NO_AUTH` | `false` | Allow running without a token (trusted networks only) |
+| `PACKAGES_DIR` | - | Persistent directory for lazily installed backend packages |
 
 ## Client (Vite)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_PB_URL` | - | PocketBase URL (set at build time) |
-| `VITE_SERVER_URL` | - | Hono server URL (set at build time) |
+The client has no build-time configuration: it talks to the API, PocketBase and files on its own origin. In development, Vite proxies `/api` and `/_` to the Go server on port 8090.
 
-::: tip
-In development, Vite proxies requests to the backend services automatically. These variables are only needed for production builds.
-:::
+## Desktop app
 
-## Docker
-
-These variables are used by the Docker entrypoint to initialize PocketBase on first start:
+The desktop app embeds the server and bootstraps the inference worker under `~/.sirene`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PB_SUPERUSER_EMAIL` | - | PocketBase admin email (auto-created on startup) |
-| `PB_SUPERUSER_PASSWORD` | - | PocketBase admin password |
-| `INFERENCE_DEVICE` | `cpu` | Inference device (`cpu` or `cuda`) |
-
-::: tip
-The `install.sh` script at the repo root generates these automatically. See the [Docker guide](./docker.md) for details.
-:::
+| `SIRENE_HOME` | `~/.sirene` | Data directory (database, models, Python runtime, logs) |
+| `SIRENE_INFERENCE_DEVICE` | `cpu` | Device passed to the bundled inference worker |
+| `SIRENE_UI_DIR` | - | Serve the web UI from this directory (development) |

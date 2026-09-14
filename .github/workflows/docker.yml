@@ -22,12 +22,11 @@ jobs:
           filters: |
             server:
               - 'client/**'
+              - 'shared/**'
               - 'server/**'
-              - 'db/**'
+              - 'go.mod'
+              - 'go.sum'
               - 'docker/Dockerfile'
-              - 'docker/nginx.conf'
-              - 'docker/supervisord.conf'
-              - 'docker/entrypoint.sh'
             inference:
               - 'inference/**'
               - 'docker/Dockerfile.inference'
@@ -44,18 +43,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        env:
-          VITE_PB_URL: __VITE_PB_URL_PLACEHOLDER__
-          VITE_SERVER_URL: __VITE_SERVER_URL_PLACEHOLDER__
-        run: bunx turbo run build --filter='!@sirene/desktop' --filter='!@sirene/inference'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -87,6 +74,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+          build-args: VERSION=${{ github.sha }}
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
 

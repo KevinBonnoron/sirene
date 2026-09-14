@@ -1,0 +1,138 @@
+# Sirene task runner (https://taskfile.dev). Run `task --list` for the menu.
+version: '3'
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  GO_LDFLAGS: '-s -w -X github.com/KevinBonnoron/sirene/server/internal/config.Version={{.VERSION}}'
+
+includes:
+  desktop:
+    taskfile: ./desktop/Taskfile.yml
+    dir: ./desktop
+    vars:
+      VERSION: '{{.VERSION}}'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  install:
+    desc: Installs JS dependencies and Go modules
+    cmds:
+      - bun install
+      - go mod download
+
+  # ── Development ────────────────────────────────────────────────────────────
+
+  dev:
+    desc: Runs the server, the web client and the inference worker
+    deps: [dev:server, dev:client, dev:inference]
+
+  dev:server:
+    desc: Runs the Go server (API + PocketBase + dashboard) on :8090, restarted on every Go change
+    # Runs from server/ so PocketBase automigrate writes into server/migrations.
+    dir: server
+    cmds:
+      - watchexec -r -e go -- go run ./cmd/sirene serve --http=127.0.0.1:8090 --dir=../db/pb_data
+
+  dev:client:
+    desc: Runs the Vite dev server on :5173
+    cmds:
+      - bun run -F @sirene/client dev
+
+  dev:inference:
+    desc: Runs the inference worker on :8000
+    dir: inference
+    preconditions:
+      - sh: test -x ../.venv/bin/python && ../.venv/bin/python -c "import uvicorn"
+        msg: "Python venv missing or broken: run `task setup:python`"
+    env:
+      INFERENCE_LOG_LEVEL: debug
+      INFERENCE_ALLOW_NO_AUTH: "true"
+    cmds:
+      - ../.venv/bin/python -m uvicorn src.main:app --reload --port 8000
+
+  setup:python:
+    desc: Creates the Python venv at .venv and installs the inference service (base deps only)
+    cmds:
+      - rm -rf .venv
+      - uv venv --python 3.11 --seed .venv
+      - uv pip install --python .venv/bin/python -e ./inference
+
+  dev:docs:
+    cmds:
+      - bun run -F @sirene/docs dev
+
+  # ── Build ──────────────────────────────────────────────────────────────────
+
+  build:
+    desc: Builds the web UI, the server binary and the CLI
+    cmds:
+      - task: build:server
+      - task: build:cli
+
+  build:ui:
+    desc: Builds the web client and copies it into the server for embedding
+    sources:
+      - client/src/**/*
+      - client/public/**/*
+      - client/index.html
+      - client/vite.config.ts
+      - client/package.json
+      - shared/src/**/*
+      - shared/package.json
+      - bun.lock
+    generates:
+      - server/ui/dist/index.html
+    cmds:
+      - bun run -F @sirene/client build
+      - rm -rf server/ui/dist/*
+      - cp -r client/dist/. server/ui/dist/
+
+  build:server:
+    desc: Builds the sirene server binary (embeds the UI)
+    deps: [build:ui]
+    cmds:
+      - CGO_ENABLED=0 go build -trimpath -ldflags="{{.GO_LDFLAGS}}" -o server/bin/sirene ./server/cmd/sirene
+
+  build:cli:
+    desc: Builds the CLI binary for the host
+    dir: cli
+    cmds:
+      - bun build src/index.ts --compile --outfile dist/sirene
+
+  build:docs:
+    cmds:
+      - bun run -F @sirene/docs build
+
+  docker:build:
+    desc: Builds the server Docker image
+    cmds:
+      - docker build -f docker/Dockerfile --build-arg VERSION={{.VERSION}} -t sirene:{{.TAG | default "local"}} .
+
+  # ── Quality ────────────────────────────────────────────────────────────────
+
+  test:
+    desc: Runs the Go test suite
+    cmds:
+      - go test -tags gtk3 ./...
+
+  lint:
+    desc: Biome, gofmt and go vet
+    cmds:
+      - bunx biome ci .
+      - test -z "$(gofmt -l server desktop)" || (gofmt -l server desktop && exit 1)
+      - go vet -tags gtk3 ./...
+
+  format:
+    cmds:
+      - bunx biome format . --write
+      - gofmt -w server desktop
+
+  type-check:
+    desc: Type-checks the TypeScript workspaces
+    cmds:
+      - cd client && bunx tsc -b
+      - bun run -F @sirene/cli type-check

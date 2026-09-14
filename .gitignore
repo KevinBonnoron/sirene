@@ -55,10 +55,10 @@ bun.lockb
 .claude
 
 # Desktop build artifacts
-desktop/build
-desktop/artifacts
-desktop/node_modules/@sirene
-desktop/node_modules/electrobun
+desktop/bin
+desktop/*.syso
+desktop/internal/launcher/inference_src/*
+!desktop/internal/launcher/inference_src/.gitkeep
 
 # Tanstack
 .tanstack
@@ -67,3 +67,10 @@ desktop/node_modules/electrobun
 db/pb_data
 
 data/*
+# Go server
+server/bin
+server/tmp
+!server/ui/dist/
+server/ui/dist/*
+!server/ui/dist/.gitkeep
+.task/

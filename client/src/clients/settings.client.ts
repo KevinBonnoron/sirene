@@ -10,8 +10,8 @@ export interface SettingEntry {
 export const settingsClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
-    getAll: () => delegate.get<SettingEntry[]>('/settings'),
-    update: (key: string, value: string) => delegate.put<{ success: boolean }>('/settings', { key, value }),
-    remove: (key: string) => delegate.delete<{ success: boolean }>(`/settings/${key}`),
+    getAll: () => delegate.get<SettingEntry[]>('/app-settings'),
+    update: (key: string, value: string) => delegate.put<{ success: boolean }>('/app-settings', { key, value }),
+    remove: (key: string) => delegate.delete<{ success: boolean }>(`/app-settings/${key}`),
   })),
 );

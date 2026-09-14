@@ -1,8 +1,9 @@
+// The Go server hosts the SPA, the Sirene API and PocketBase on one origin.
 export const config = {
   server: {
-    url: import.meta.env.VITE_SERVER_URL ?? '/api',
+    url: '/api',
   },
   pb: {
-    url: import.meta.env.VITE_PB_URL || 'http://localhost:8090',
+    url: window.location.origin,
   },
 };

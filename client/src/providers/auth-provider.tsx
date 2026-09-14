@@ -1,5 +1,5 @@
 import type { User } from '@sirene/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
@@ -44,14 +44,16 @@ async function fetchCurrentUser(): Promise<User | null> {
   return null;
 }
 
+export const authMeQueryOptions = queryOptions({
+  queryKey: AUTH_QUERY_KEY,
+  queryFn: fetchCurrentUser,
+  retry: false,
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
-  const { data: user = null, isLoading } = useQuery({
-    queryKey: AUTH_QUERY_KEY,
-    queryFn: fetchCurrentUser,
-    retry: false,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  const { data: user = null, isLoading } = useQuery(authMeQueryOptions);
 
   const login = useCallback(
     async (email: string, password: string) => {

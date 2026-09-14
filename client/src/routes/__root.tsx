@@ -1,14 +1,21 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/providers/auth-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 
-const queryClient = new QueryClient();
+interface RouterContext {
+  queryClient: QueryClient;
+}
 
-export const Route = createRootRoute({
-  component: () => (
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: RootRoute,
+});
+
+function RootRoute() {
+  const { queryClient } = Route.useRouteContext();
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider storageKey="sirene-theme">
         <AuthProvider>
@@ -19,5 +26,5 @@ export const Route = createRootRoute({
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  ),
-});
+  );
+}

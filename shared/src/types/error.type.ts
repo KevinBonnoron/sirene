@@ -4,11 +4,16 @@
 export type ErrorCode =
   // 500 fallback
   | 'internal'
+  | 'notFound'
+  | 'validation'
+  | 'request.tooLarge'
   // Auth
   | 'auth.invalidCredentials'
   | 'auth.invalidToken'
   | 'auth.registrationFailed'
   | 'auth.required'
+  | 'auth.forbidden'
+  | 'auth.emailTaken'
   // API keys
   | 'apiKey.notFound'
   | 'apiKey.unknownScope'

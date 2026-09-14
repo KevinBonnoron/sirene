@@ -1,16 +1,19 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
+import { SETUP_STATUS_QUERY_KEY } from '@/hooks/use-setup-status';
 import { useValidators } from '@/hooks/use-validators';
 import { useAppForm, zodValidator } from '@/lib/form';
 import { useAuth } from '@/providers/auth-provider';
 
-export function RegisterForm() {
+export function SetupForm() {
   const { t } = useTranslation();
   const v = useValidators();
   const { register } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [serverError, setServerError] = useState('');
 
   const schema = z
@@ -33,9 +36,13 @@ export function RegisterForm() {
       setServerError('');
       try {
         await register(value.email, value.password, value.name);
+        // Write the flip into the cache before navigating: an invalidation
+        // would leave the stale answer in place while it refetches and bounce
+        // the user straight back here.
+        qc.setQueryData(SETUP_STATUS_QUERY_KEY, { needsSetup: false });
         navigate({ to: '/' });
       } catch (err) {
-        setServerError(t([`register.${err instanceof Error ? err.message : ''}`, 'register.failed']));
+        setServerError(t([`setup.${err instanceof Error ? err.message : ''}`, 'setup.failed']));
       }
     },
   });
@@ -43,8 +50,8 @@ export function RegisterForm() {
   return (
     <>
       <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight">{t('register.title')}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t('register.subtitle')}</p>
+        <h2 className="text-2xl font-bold tracking-tight">{t('setup.title')}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t('setup.subtitle')}</p>
       </div>
 
       {serverError && (
@@ -61,25 +68,18 @@ export function RegisterForm() {
           form.handleSubmit();
         }}
       >
-        <form.AppField name="name">{(field) => <field.InputField label={t('register.name')} placeholder={t('register.namePlaceholder')} autoComplete="name" />}</form.AppField>
+        <form.AppField name="name">{(field) => <field.InputField label={t('setup.name')} placeholder={t('setup.namePlaceholder')} autoComplete="name" />}</form.AppField>
 
-        <form.AppField name="email">{(field) => <field.EmailField label={t('register.email')} placeholder={t('register.emailPlaceholder')} autoComplete="email" />}</form.AppField>
+        <form.AppField name="email">{(field) => <field.EmailField label={t('setup.email')} placeholder={t('setup.emailPlaceholder')} autoComplete="email" />}</form.AppField>
 
-        <form.AppField name="password">{(field) => <field.PasswordField label={t('register.password')} autoComplete="new-password" />}</form.AppField>
+        <form.AppField name="password">{(field) => <field.PasswordField label={t('setup.password')} autoComplete="new-password" />}</form.AppField>
 
-        <form.AppField name="passwordConfirm">{(field) => <field.PasswordField label={t('register.passwordConfirm')} autoComplete="new-password" />}</form.AppField>
+        <form.AppField name="passwordConfirm">{(field) => <field.PasswordField label={t('setup.passwordConfirm')} autoComplete="new-password" />}</form.AppField>
 
         <form.AppForm>
-          <form.SubscribeButton>{t('register.submit')}</form.SubscribeButton>
+          <form.SubscribeButton>{t('setup.submit')}</form.SubscribeButton>
         </form.AppForm>
       </form>
-
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t('register.hasAccount')}{' '}
-        <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">
-          {t('register.login')}
-        </Link>
-      </p>
     </>
   );
 }

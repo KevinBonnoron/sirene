@@ -1,63 +1,56 @@
 # syntax=docker/dockerfile:1
 
-# ── PocketBase binary (per target platform) ──────────────────────────────────
+# ── Client (SPA) ─────────────────────────────────────────────────────────────
 
-FROM alpine:latest AS binary-downloader
+FROM --platform=$BUILDPLATFORM oven/bun:1.3.10 AS client
 
-ARG POCKETBASE_VERSION=0.26.2
+WORKDIR /src
+COPY package.json bun.lock ./
+COPY client/package.json client/
+COPY shared/package.json shared/
+COPY cli/package.json cli/
+COPY inference/package.json inference/
+COPY docs/package.json docs/
+RUN bun install --frozen-lockfile
+COPY tsconfig.json ./
+COPY shared shared
+COPY client client
+RUN bun run -F @sirene/client build
+
+# ── Server (Go, cross-compiled for the target platform) ──────────────────────
+
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS server
+
+ARG TARGETOS
 ARG TARGETARCH
+ARG VERSION=dev
 
-WORKDIR /tmp
-
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add curl unzip \
-    && ARCH=$(case "$TARGETARCH" in \
-        arm64) echo "linux_arm64" ;; \
-        amd64) echo "linux_amd64" ;; \
-        *) echo "Unsupported architecture: $TARGETARCH" >&2 && exit 1 ;; \
-    esac) \
-    && curl -fsSL "https://github.com/pocketbase/pocketbase/releases/download/v${POCKETBASE_VERSION}/pocketbase_${POCKETBASE_VERSION}_${ARCH}.zip" -o pocketbase.zip \
-    && unzip -q pocketbase.zip \
-    && chmod +x pocketbase \
-    && rm pocketbase.zip
-
-# ── Bun binary (per target platform) ─────────────────────────────────────────
-
-FROM oven/bun:1.2.4 AS bun-bin
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY server server
+COPY shared/src/types shared/src/types
+COPY --from=client /src/client/dist server/ui/dist
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath -ldflags="-s -w -X github.com/KevinBonnoron/sirene/server/internal/config.Version=$VERSION" \
+    -o /out/sirene ./server/cmd/sirene
 
 # ── Final image ──────────────────────────────────────────────────────────────
 
-FROM debian:bookworm-slim
+# Root variant: existing volumes were written by root under the previous image.
+FROM gcr.io/distroless/static-debian12@sha256:d75cdd72874d4790092fcb1b058493ecf6bb5bf2b2b897045b00ff01d91843f2
 
-COPY --from=bun-bin /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=server /out/sirene /usr/local/bin/sirene
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        nginx supervisor \
-    && rm -f /etc/nginx/sites-enabled/default \
-    && mkdir -p /var/log/supervisor /app/db/pb_data
-
-WORKDIR /app
-
-COPY server/dist/index.js ./server/dist/index.js
-COPY client/dist /usr/share/nginx/html
-COPY db/pb_migrations /app/db/pb_migrations
-
-COPY --from=binary-downloader /tmp/pocketbase /usr/local/bin/pocketbase
-
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Default inference URL - override via INFERENCE_URL env var
+# PocketBase spools request bodies above 16 MB to a temp file.
+ENV TMPDIR=/tmp
 ENV INFERENCE_URL=http://inference:8000
 
+WORKDIR /app/db
+VOLUME /app/db/pb_data
 EXPOSE 80
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT ["/usr/local/bin/sirene"]
+CMD ["serve", "--http=0.0.0.0:80", "--dir=/app/db/pb_data"]

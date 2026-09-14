@@ -2,7 +2,7 @@
 
 Sirene is split into two Docker images:
 
-- **`ghcr.io/kevinbonnoron/sirene`** - Nginx + React client + Hono API + PocketBase
+- **`ghcr.io/kevinbonnoron/sirene`** - a single Go binary: API + PocketBase + React client
 - **`ghcr.io/kevinbonnoron/sirene-inference`** - Python inference server (FastAPI + uvicorn)
 
 All model management (download, install check, deletion) is handled by the inference server. The server container only needs persistent storage for the PocketBase database.
@@ -18,9 +18,13 @@ curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh
 It will:
 1. Check for Docker and Docker Compose
 2. Ask for your deployment mode (see below)
-3. Generate PocketBase admin credentials
-4. Create a `docker-compose.yml` and `.env` file
-5. Pull and start the containers
+3. Pull and start the containers
+
+The first account created in the web UI becomes the administrator. To open the PocketBase dashboard at `/_/`, create a superuser by running the installer again in `recover` mode from the directory where you installed (the one containing `sirene/`):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=recover bash
+```
 
 ## Deployment Modes
 
@@ -36,8 +40,6 @@ services:
       - "80:80"
     volumes:
       - sirene-data:/app/db/pb_data
-    env_file:
-      - .env
     restart: unless-stopped
 
   inference:
@@ -138,8 +140,6 @@ services:
       - sirene-data:/app/db/pb_data
     environment:
       - INFERENCE_URL=https://{pod-id}-8000.proxy.runpod.net
-    env_file:
-      - .env
     restart: unless-stopped
 
 volumes:
@@ -160,11 +160,7 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PB_SUPERUSER_EMAIL` | - | PocketBase admin email (created on first start) |
-| `PB_SUPERUSER_PASSWORD` | - | PocketBase admin password |
-| `VITE_PB_URL` | `/db` | PocketBase URL as seen by the browser |
-| `VITE_SERVER_URL` | `/api` | API server URL as seen by the browser |
-| `INFERENCE_URL` | `http://inference:8000` | URL of the inference service |
+| `INFERENCE_URL` | `http://inference:8000` (image), `http://localhost:8000` (binary) | URL of the inference service seeded as the `Local` server. `INSTALL_MODE=full` points it at the bundled inference container; `INSTALL_MODE=server` starts none, so set it to a reachable service or add one from **Settings → Inference servers** before installing models. |
 
 ### Inference (`sirene-inference`)
 
@@ -173,7 +169,7 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 | `INFERENCE_DEVICE` | `cpu` | `cpu` or `cuda` |
 | `INFERENCE_MODELS_PATH` | `/app/data/models` | Path to model files |
 | `INFERENCE_AUTH_TOKEN` | - | When set, every request (except `/health`) must carry `Authorization: Bearer <token>`. Set automatically by `INSTALL_MODE=inference`; leave unset for trusted-network setups. |
-| `SIRENE_PACKAGES_DIR` | `/app/data/packages` | Persistent dir for lazily installed backend deps |
+| `PACKAGES_DIR` | `/app/data/packages` | Persistent dir for lazily installed backend deps |
 
 ## Volumes
 
@@ -182,6 +178,10 @@ Replace `{pod-id}` with your actual pod ID from RunPod.
 | `sirene-data` | server | `/app/db/pb_data` | PocketBase database and uploaded files |
 | `sirene-models` | inference | `/app/data/models` | Downloaded TTS models |
 | `sirene-packages` | inference | `/app/data/packages` | Lazily installed Python backend packages |
+
+## Upgrading
+
+Migrations run automatically on start and cannot be rolled back: back up the PocketBase data before upgrading. With Compose that is the `sirene-data` volume; with `install.sh` it is the host directory `sirene/data/pb_data` (or `$DATA_DIR/pb_data`) mounted into the container.
 
 ## Build from Source
 
@@ -198,9 +198,9 @@ docker build -f docker/Dockerfile.inference -t sirene-inference:cuda --build-arg
 
 ## Architecture
 
-Nginx routes all traffic in the server container:
-- `/api` → Hono server (port 3000)
-- `/db` → PocketBase (port 8090)
-- `/` → React SPA (static files)
+The server container runs one process, `sirene serve`, which answers on port 80:
+- `/api/*` → Sirene routes and the PocketBase API (records, files, realtime)
+- `/_/` → PocketBase dashboard
+- `/` → React SPA (embedded in the binary)
 
-The Hono server delegates all model operations (download, install check, deletion) to the inference container via its REST API at `INFERENCE_URL`. Backend Python dependencies (torch, onnxruntime, etc.) are **not** bundled in the image - they are installed on demand into the `sirene-packages` volume the first time a model using that backend is installed.
+The server delegates all model operations (download, install check, deletion) to the inference container via its REST API at `INFERENCE_URL`. Backend Python dependencies (torch, onnxruntime, etc.) are **not** bundled in the image - they are installed on demand into the `sirene-packages` volume the first time a model using that backend is installed.

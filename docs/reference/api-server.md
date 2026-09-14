@@ -1,6 +1,6 @@
-# API Server (Hono)
+# API Server
 
-The Hono server runs on port **3000** and acts as the orchestrator. It handles validation, resolves voices/parameters, and forwards inference requests to the FastAPI service.
+The Sirene server (Go, built on PocketBase) serves the API under `/api` on the same port as the web UI (8090 in development, 80 in Docker) and acts as the orchestrator. It handles validation, resolves voices/parameters, and forwards inference requests to the FastAPI service.
 
 ## Generation
 

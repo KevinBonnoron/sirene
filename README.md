@@ -41,7 +41,7 @@ Then open [http://localhost](http://localhost).
 - **Model management** - Download and manage TTS models on demand from the web UI
 - **Real-time updates** - Track downloads and generation progress via Server-Sent Events
 - **Transcription** - Speech-to-text via Whisper models
-- **Self-hosted** - Two lightweight Docker images: one for the web/API, one for inference
+- **Self-hosted** - Two Docker images: a single Go binary for the web/API/database, and one for inference
 
 ## Supported Backends
 
@@ -59,43 +59,44 @@ Then open [http://localhost](http://localhost).
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) >= 1.2.4
+- [Task](https://taskfile.dev) (task runner)
+- [Bun](https://bun.sh) >= 1.3.10
+- [Go](https://go.dev) >= 1.26
 - [Python](https://www.python.org) >= 3.11
-- [PocketBase](https://pocketbase.io) (installed automatically in the devcontainer)
+- For the desktop app on Linux: GTK 3 and WebKitGTK 4.1 development headers
 
 ### Quick Start
 
-The easiest way is to use the **devcontainer** - open the project in VS Code or GitHub Codespaces and all dependencies are installed automatically.
-
-For manual setup:
+With Nix, `direnv allow` (or `nix develop`) provides every tool. For manual setup:
 
 ```bash
-bun install
+task install
 pip install -e "./inference[cpu]"
-mkdir -p data/models
 ```
 
 ### Start all services
 
 ```bash
-bun run dev
+task dev
 ```
 
 | Service | Port |
 |---------|------|
-| PocketBase | 8090 |
-| Hono Server | 3000 |
+| Sirene server (API + PocketBase, dashboard at /_/) | 8090 |
 | Vite Client | 5173 |
 | Inference FastAPI | 8000 |
 
-### Scripts
+### Tasks
 
 ```bash
-bun run dev          # All services in dev mode
-bun run build        # Production build
-bun run lint         # Biome lint
-bun run format       # Biome format
-bun run type-check   # TypeScript check
+task --list        # Every task
+task dev           # Server, client and inference worker
+task build         # Web UI, server binary and CLI
+task build:ui      # Build the client into server/ui/dist for embedding
+task test          # Go unit tests
+task lint          # Biome, gofmt, go vet
+task desktop:build # Wails desktop app for the host OS
+task desktop:package
 ```
 
 ## License

@@ -65,7 +65,7 @@ COPY inference/src ./src
 
 ENV INFERENCE_MODELS_PATH=/app/data/models
 ENV INFERENCE_CACHE_DIR=/app/data/cache/prompts
-ENV SIRENE_PACKAGES_DIR=/app/data/packages
+ENV PACKAGES_DIR=/app/data/packages
 
 EXPOSE 8000
 

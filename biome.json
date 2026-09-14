@@ -10,7 +10,10 @@
       "**",
       "!client/src/routeTree.gen.ts",
       "!!client/src/components/ui",
-      "!db/pb_migrations"
+      "!server/internal/catalog/models.json",
+      "!server/internal/openapi/openapi.json",
+      "!server/migrations/collections_snapshot.json",
+      "!server/ui/dist"
     ]
   },
   "formatter": {

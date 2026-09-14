@@ -18,7 +18,7 @@ export function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative size-9" aria-label={t('notifications.open')}>
           <Bell className="size-4" />
-          {runningCount > 0 && <span className="absolute right-1 top-1 inline-flex size-1.5 rounded-full bg-accent-amber" aria-hidden />}
+          {runningCount > 0 && <span className="absolute right-1 top-1 inline-flex size-1.5 rounded-full bg-primary" aria-hidden />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="w-80 p-0">
@@ -53,7 +53,7 @@ function JobRow({ job, onDismiss }: { job: Job; onDismiss: () => void }) {
           <p className="truncate text-xs font-medium" title={job.label}>
             {job.label}
           </p>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{statusLabel}</p>
+          <p className="text-2xs uppercase tracking-wide text-muted-foreground">{statusLabel}</p>
         </div>
         {canDismiss && (
           <button type="button" onClick={onDismiss} aria-label={t('notifications.dismiss')} className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100">
@@ -62,7 +62,7 @@ function JobRow({ job, onDismiss }: { job: Job; onDismiss: () => void }) {
         )}
       </div>
       {job.status === 'running' && <Progress value={job.progress} className="h-1" />}
-      {job.status === 'failed' && job.error && <p className="truncate text-[10px] text-destructive">{job.error}</p>}
+      {job.status === 'failed' && job.error && <p className="truncate text-2xs text-destructive">{job.error}</p>}
     </li>
   );
 }

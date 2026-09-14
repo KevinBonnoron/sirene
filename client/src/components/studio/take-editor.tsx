@@ -31,7 +31,7 @@ interface Props {
   className?: string;
 }
 
-const EDITOR_CLASSES = '[&_.tiptap]:font-serif [&_.tiptap]:text-[19px] [&_.tiptap]:leading-[1.75] [&_.tiptap]:font-normal [&_.tiptap]:outline-none [&_.tiptap_p]:my-0';
+const EDITOR_CLASSES = '[&_.tiptap]:font-serif [&_.tiptap]:text-lg [&_.tiptap]:leading-[1.75] [&_.tiptap]:font-normal [&_.tiptap]:outline-none [&_.tiptap_p]:my-0';
 
 export function TakeEditor({ ref, initialContent, placeholder, editable = true, onChange, onActiveChange, onSubmit, className }: Props) {
   const submitRef = useRef(onSubmit);

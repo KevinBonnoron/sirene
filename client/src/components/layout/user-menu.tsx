@@ -30,7 +30,7 @@ export function UserMenu() {
         <SidebarMenuButton size="lg" tooltip={displayName} className="data-[state=open]:bg-sidebar-accent">
           <Avatar size="sm" className="rounded-md">
             <AvatarImage src={avatarUrl(user)} alt="" />
-            <AvatarFallback className="rounded-md text-[10px]">{userInitials(user)}</AvatarFallback>
+            <AvatarFallback className="rounded-md group-data-[size=sm]/avatar:text-2xs">{userInitials(user)}</AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
             <span className="truncate font-medium">{displayName}</span>
@@ -62,7 +62,7 @@ export function UserMenu() {
           <DropdownMenuSubContent>
             {SUPPORTED_LANGUAGES.map((lang) => (
               <DropdownMenuItem key={lang} onSelect={() => setLanguage(lang)}>
-                {currentLanguage === lang ? <Check className="size-3.5 text-accent-amber" /> : <span className="size-3.5" />}
+                {currentLanguage === lang ? <Check className="size-3.5 text-primary" /> : <span className="size-3.5" />}
                 {LANGUAGE_LABELS[lang]}
               </DropdownMenuItem>
             ))}

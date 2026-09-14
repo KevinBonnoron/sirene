@@ -78,7 +78,7 @@ export function ShareSessionDialog({ open, onOpenChange, session }: Props) {
             <Lock className="size-3.5" />
             {t('studio.sharePrivate')}
           </ToggleGroupItem>
-          <ToggleGroupItem value="public" aria-label={t('studio.sharePublic')} className="data-[state=on]:bg-accent-amber/15 data-[state=on]:text-accent-amber">
+          <ToggleGroupItem value="public" aria-label={t('studio.sharePublic')} className="data-[state=on]:bg-primary/15 data-[state=on]:text-primary">
             {busy && isPublic ? <Loader2 className="size-3.5 animate-spin" /> : <Globe className="size-3.5" />}
             {t('studio.sharePublic')}
           </ToggleGroupItem>

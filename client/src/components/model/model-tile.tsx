@@ -74,7 +74,7 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
             {catalog.name}
           </p>
           {isApi ? (
-            <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-[10px] font-medium text-accent-sky">
+            <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-2xs font-medium text-accent-sky">
               <Cloud className="size-2.5" />
               {t('model.cloudApi')}
             </span>
@@ -100,38 +100,38 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
       {status === 'pulling' && <Progress value={progress} className="h-1" />}
       {status === 'error' && installation?.error && <p className="truncate text-xs text-destructive">{installation.error}</p>}
       {showCoverage && (
-        <p className="flex items-center gap-1 text-[10px] text-muted-foreground" title={installedNames.join(', ')}>
+        <p className="flex items-center gap-1 text-2xs text-muted-foreground" title={installedNames.join(', ')}>
           <Server className="size-2.5" />
           {t('model.installedOn', { count: installedServerIds.length, total: enabledServers.length })}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-1">
         {catalog.types.includes('preset') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-[10px] font-medium text-accent-sky">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-2xs font-medium text-accent-sky">
             <AudioLines className="size-2.5" />
             {t('voice.preset')}
           </span>
         )}
         {catalog.types.includes('cloning') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-violet/15 px-1 py-px text-[10px] font-medium text-accent-violet">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-violet/15 px-1 py-px text-2xs font-medium text-accent-violet">
             <Mic className="size-2.5" />
             {t('voice.cloning')}
           </span>
         )}
         {catalog.types.includes('transcription') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-green/15 px-1 py-px text-[10px] font-medium text-accent-green">
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-green/15 px-1 py-px text-2xs font-medium text-accent-green">
             <FileAudio className="size-2.5" />
             {t('model.stt')}
           </span>
         )}
         {catalog.types.includes('design') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-amber/15 px-1 py-px text-[10px] font-medium text-accent-amber">
+          <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1 py-px text-2xs font-medium text-primary">
             <Sparkles className="size-2.5" />
             {t('voice.voiceDesign')}
           </span>
         )}
         {catalog.gated && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-rust/15 px-1 py-px text-[10px] font-medium text-accent-rust" title={t('model.hfTokenTooltip')}>
+          <span className="inline-flex items-center gap-0.5 rounded bg-accent-rust/15 px-1 py-px text-2xs font-medium text-accent-rust" title={t('model.hfTokenTooltip')}>
             <KeyRound className="size-2.5" />
             {t('model.hfToken')}
           </span>
@@ -203,7 +203,7 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('model.perServer')}</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{t('model.perServer')}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {visibleServers.map((server) => {
             const isInstalled = installedSet.has(server.id);

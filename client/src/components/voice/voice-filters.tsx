@@ -15,11 +15,11 @@ interface FilterBadge {
 }
 
 const badgeColors: Record<FilterType, string> = {
-  search: 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200',
-  visibility: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  language: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  model: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  tag: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  search: 'bg-muted text-foreground',
+  visibility: 'bg-accent-sky/15 text-accent-sky',
+  language: 'bg-accent-sage/15 text-accent-sage',
+  model: 'bg-accent-violet/15 text-accent-violet',
+  tag: 'bg-accent-rust/15 text-accent-rust',
 };
 
 const categoryLabels: Record<Exclude<FilterType, 'search'>, string> = {

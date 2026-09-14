@@ -65,7 +65,7 @@ export function VoiceGrid({ voices, selectedId, onSelect, empty, showAddButton =
               <div className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 transition-colors group-hover:border-muted-foreground/50 group-hover:bg-accent/50">
                 <Plus className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
               </div>
-              <span className="w-14 text-center text-[10px] text-muted-foreground">{t('voice.add')}</span>
+              <span className="w-14 text-center text-2xs text-muted-foreground">{t('voice.add')}</span>
             </button>
           </AddVoiceMenu>
         </div>
@@ -98,7 +98,7 @@ export function VoiceGrid({ voices, selectedId, onSelect, empty, showAddButton =
               <div className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 transition-colors group-hover:border-muted-foreground/50 group-hover:bg-accent/50">
                 <Plus className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
               </div>
-              <span className="w-14 text-center text-[10px] text-muted-foreground">{t('voice.add')}</span>
+              <span className="w-14 text-center text-2xs text-muted-foreground">{t('voice.add')}</span>
             </button>
           </AddVoiceMenu>
         )}

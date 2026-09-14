@@ -107,14 +107,7 @@ export function VoiceModelPicker({ open, installedModels, modelId, presetVoice, 
                 <span className="text-sm font-medium">{g.displayName}</span>
                 <div className="flex gap-1">
                   {g.types.map((type) => (
-                    <Badge
-                      key={type}
-                      variant="outline"
-                      className={cn(
-                        'px-1.5 py-0 text-[10px]',
-                        type === 'preset' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : type === 'api' ? 'border-cyan-500/50 text-cyan-600 dark:text-cyan-400' : type === 'design' ? 'border-amber-500/50 text-amber-600 dark:text-amber-400' : 'border-purple-500/50 text-purple-600 dark:text-purple-400',
-                      )}
-                    >
+                    <Badge key={type} variant="outline" className={cn('px-1.5 py-0 text-2xs', type === 'preset' ? 'border-accent-sky/50 text-accent-sky' : type === 'api' ? 'border-accent-sage/50 text-accent-sage' : type === 'design' ? 'border-primary/50 text-primary' : 'border-accent-violet/50 text-accent-violet')}>
                       {type === 'preset' ? t('voice.preset') : type === 'api' ? t('voice.cloud') : type === 'design' ? t('voice.voiceDesign') : t('voice.cloning')}
                     </Badge>
                   ))}

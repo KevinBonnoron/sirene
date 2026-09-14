@@ -344,6 +344,22 @@
       "invalidCurrent": "Le mot de passe actuel est incorrect"
     }
   },
+  "appearance": {
+    "title": "Apparence",
+    "description": "Thème et couleur d'accent, enregistrés sur cet appareil.",
+    "mode": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système",
+    "accent": "Couleur d'accent",
+    "accents": {
+      "amber": "Ambre",
+      "sage": "Sauge",
+      "sky": "Ciel",
+      "violet": "Violet",
+      "rose": "Rose"
+    }
+  },
   "cloudKeys": {
     "title": "Intégrations cloud",
     "description": "Clés pour les fournisseurs tiers (OpenAI, ElevenLabs, HuggingFace). Stockées de manière sécurisée et jamais affichées en entier après enregistrement.",

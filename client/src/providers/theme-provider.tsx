@@ -1,63 +1,95 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'light' | 'system';
+export const ACCENTS = ['amber', 'sage', 'sky', 'violet', 'rose'] as const;
+export type Accent = (typeof ACCENTS)[number];
 
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
+  defaultAccent?: Accent;
   storageKey?: string;
 };
 
 type ThemeProviderState = {
   theme: Theme;
+  resolvedTheme: 'dark' | 'light';
   setTheme: (theme: Theme) => void;
+  accent: Accent;
+  setAccent: (accent: Accent) => void;
 };
 
-const initialState: ThemeProviderState = {
-  theme: 'system',
-  setTheme: () => null,
-};
+const ThemeProviderContext = createContext<ThemeProviderState | null>(null);
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
-
-export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 'vite-ui-theme', ...props }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-
-    root.classList.remove('light', 'dark');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-  };
-
-  return (
-    <ThemeProviderContext.Provider {...props} value={value}>
-      {children}
-    </ThemeProviderContext.Provider>
-  );
+function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const value = localStorage.getItem(key);
+    return value && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-export const useTheme = () => {
+function writeStored(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private mode or blocked storage: keep the choice for this session only.
+  }
+}
+
+function systemTheme(): 'dark' | 'light' {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+export function ThemeProvider({ children, defaultTheme = 'system', defaultAccent = 'amber', storageKey = 'sirene-theme' }: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<Theme>(() => readStored(storageKey, ['dark', 'light', 'system'] as const, defaultTheme));
+  const [accent, setAccentState] = useState<Accent>(() => readStored(`${storageKey}-accent`, ACCENTS, defaultAccent));
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>(() => (theme === 'system' ? systemTheme() : theme));
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme;
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(resolved);
+      root.style.colorScheme = resolved;
+      setResolvedTheme(resolved);
+    };
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, [theme]);
+
+  useEffect(() => {
+    window.document.documentElement.dataset.accent = accent;
+  }, [accent]);
+
+  const value = useMemo<ThemeProviderState>(
+    () => ({
+      theme,
+      resolvedTheme,
+      accent,
+      setTheme: (next) => {
+        writeStored(storageKey, next);
+        setThemeState(next);
+      },
+      setAccent: (next) => {
+        writeStored(`${storageKey}-accent`, next);
+        setAccentState(next);
+      },
+    }),
+    [theme, resolvedTheme, accent, storageKey],
+  );
+
+  return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;
+}
+
+export function useTheme() {
   const context = useContext(ThemeProviderContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
-
   return context;
-};
+}

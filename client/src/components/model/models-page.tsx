@@ -27,7 +27,7 @@ type FilterKey = CatalogModelType | 'gated';
 const filterConfig: Record<FilterKey, { label: string; active: string }> = {
   preset: { label: 'voice.preset', active: 'border-accent-sky/60 bg-accent-sky/15 text-accent-sky' },
   cloning: { label: 'voice.cloning', active: 'border-accent-violet/60 bg-accent-violet/15 text-accent-violet' },
-  design: { label: 'voice.voiceDesign', active: 'border-accent-amber/60 bg-accent-amber/15 text-accent-amber' },
+  design: { label: 'voice.voiceDesign', active: 'border-primary/60 bg-primary/15 text-primary' },
   api: { label: 'voice.cloud', active: 'border-accent-sky/60 bg-accent-sky/15 text-accent-sky' },
   transcription: { label: 'model.stt', active: 'border-accent-green/60 bg-accent-green/15 text-accent-green' },
   gated: { label: 'model.hfToken', active: 'border-accent-rust/60 bg-accent-rust/15 text-accent-rust' },

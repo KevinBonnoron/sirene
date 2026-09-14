@@ -258,12 +258,12 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
             placeholder={server ? t('inferenceServers.authTokenEditPlaceholder') : t('inferenceServers.authTokenPlaceholder')}
             className="font-mono text-xs"
           />
-          <p className="text-[10px] text-muted-foreground">{server ? t('inferenceServers.authTokenEditHint') : t('inferenceServers.authTokenHint')}</p>
+          <p className="text-2xs text-muted-foreground">{server ? t('inferenceServers.authTokenEditHint') : t('inferenceServers.authTokenHint')}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={priorityId}>{t('inferenceServers.priority')}</Label>
           <Input id={priorityId} type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
-          <p className="text-[10px] text-dim">{t('inferenceServers.priorityHint')}</p>
+          <p className="text-2xs text-dim">{t('inferenceServers.priorityHint')}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={enabledId}>{t('inferenceServers.enabled')}</Label>

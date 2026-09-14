@@ -34,7 +34,7 @@ export function TakeWaveform({ seed = 42, bars = 80, active = false, progress = 
   });
 
   const barW = Math.max(1, (VIEWBOX_WIDTH - BAR_GAP * (safeBars - 1)) / safeBars);
-  const activeColor = 'var(--accent-amber)';
+  const activeColor = 'var(--primary)';
   const idleColor = 'var(--dim)';
 
   return (

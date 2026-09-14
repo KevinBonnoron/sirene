@@ -83,16 +83,16 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t('inferenceServers.addDialog.installLabel')}</p>
+          <p className="mb-2 text-2xs font-medium uppercase tracking-wide text-muted-foreground">{t('inferenceServers.addDialog.installLabel')}</p>
           <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-background/50 p-2">
-            <code className="block min-w-0 flex-1 truncate font-mono text-[11px] leading-relaxed" title={INSTALL_COMMAND}>
+            <code className="block min-w-0 flex-1 truncate font-mono text-2xs leading-relaxed" title={INSTALL_COMMAND}>
               {INSTALL_COMMAND}
             </code>
             <Button size="icon" variant="ghost" className="size-7 shrink-0" onClick={copy} aria-label={t('studio.copy')}>
               {copied ? <Check className="size-3.5 text-accent-sage" /> : <Copy className="size-3.5" />}
             </Button>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">{t('inferenceServers.addDialog.installHint')}</p>
+          <p className="mt-2 text-2xs text-muted-foreground">{t('inferenceServers.addDialog.installHint')}</p>
         </div>
 
         <form
@@ -114,12 +114,12 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="add-token">{t('inferenceServers.authToken')}</Label>
               <Input id="add-token" value={authToken} onChange={(e) => setAuthToken(e.target.value)} placeholder={t('inferenceServers.authTokenPlaceholder')} className="font-mono text-xs" />
-              <p className="text-[10px] text-muted-foreground">{t('inferenceServers.authTokenHint')}</p>
+              <p className="text-2xs text-muted-foreground">{t('inferenceServers.authTokenHint')}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="add-priority">{t('inferenceServers.priority')}</Label>
               <Input id="add-priority" type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
-              <p className="text-[10px] text-dim">{t('inferenceServers.priorityHint')}</p>
+              <p className="text-2xs text-dim">{t('inferenceServers.priorityHint')}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="add-enabled">{t('inferenceServers.enabled')}</Label>

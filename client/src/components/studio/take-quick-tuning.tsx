@@ -28,13 +28,13 @@ function SliderRow({ label, unit, value, min, max, step, displayValue, disabled,
   return (
     <div className={cn('flex flex-col gap-1.5', disabled && 'opacity-55')} title={disabled ? disabledHint : undefined}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className={cn('text-[9.5px] font-semibold uppercase tracking-wider', disabled && 'text-dim')} style={disabled ? undefined : { color: `var(${accentVar})` }}>
+        <span className={cn('text-2xs font-semibold uppercase tracking-wider', disabled && 'text-dim')} style={disabled ? undefined : { color: `var(${accentVar})` }}>
           {label}
         </span>
         {disabled ? (
-          <span className="truncate text-[10px] italic text-dim">{disabledHint}</span>
+          <span className="truncate text-2xs italic text-dim">{disabledHint}</span>
         ) : (
-          <span className="font-mono text-[10.5px] tabular-nums text-foreground">
+          <span className="font-mono text-2xs tabular-nums text-foreground">
             {displayValue} <span className="text-dim">{unit}</span>
           </span>
         )}
@@ -126,7 +126,7 @@ export function TakeQuickTuning({ tuning, capabilities, onChange }: Props) {
         disabled={!capabilities.variation}
         disabledHint={unsupportedHint}
         onChange={(variationSeed) => onChange({ ...tuning, variationSeed })}
-        accentVar="--accent-amber"
+        accentVar="--primary"
       />
     </div>
   );

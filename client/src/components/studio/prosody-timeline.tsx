@@ -75,13 +75,13 @@ function Lane({ label, unit, accentVar, height, last, disabled, disabledHint, ch
   return (
     <div className={cn('grid', !last && 'border-b border-border-subtle')} style={{ gridTemplateColumns: `${LABEL_COL_WIDTH}px 1fr` }} title={disabled ? disabledHint : undefined}>
       <div className="flex flex-col justify-center gap-0.5 border-r border-border-subtle bg-bg-elevated px-3 py-2">
-        <div className={cn('text-[10px] font-semibold uppercase tracking-wider', disabled && 'text-dim')} style={disabled ? undefined : { color: `var(${accentVar})` }}>
+        <div className={cn('text-2xs font-semibold uppercase tracking-wider', disabled && 'text-dim')} style={disabled ? undefined : { color: `var(${accentVar})` }}>
           {label}
         </div>
-        {unit && <div className="font-mono text-[9.5px] text-dim">{unit}</div>}
+        {unit && <div className="font-mono text-2xs text-dim">{unit}</div>}
       </div>
       <div className="relative px-3" style={{ height }}>
-        {disabled ? <div className="flex h-full items-center justify-center text-[10px] italic text-dim">{disabledHint}</div> : children}
+        {disabled ? <div className="flex h-full items-center justify-center text-2xs italic text-dim">{disabledHint}</div> : children}
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ export function ProsodyTimeline({ duration, words, pitchCurve, wordRates, capabi
             const left = (w.start / duration) * 100;
             const width = ((w.end - w.start) / duration) * 100;
             return (
-              <div key={w.index} className="absolute top-1 flex items-center overflow-hidden rounded border border-border-subtle bg-card px-1.5 py-0.5 font-serif text-[11px] text-muted-foreground" style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, height: 24 }}>
+              <div key={w.index} className="absolute top-1 flex items-center overflow-hidden rounded border border-border-subtle bg-card px-1.5 py-0.5 font-serif text-2xs text-muted-foreground" style={{ left: `${left}%`, width: `calc(${width}% - 2px)`, height: 24 }}>
                 <span className="truncate">{w.text}</span>
               </div>
             );

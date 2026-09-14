@@ -38,11 +38,11 @@ function BubbleVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props,
   return (
     <>
       <button type="button" onClick={handleClick} className="flex flex-col items-center gap-1">
-        <Avatar className={cn('size-12 transition-all', selected && 'ring-2 ring-accent-amber ring-offset-2 ring-offset-background')}>
+        <Avatar className={cn('size-12 transition-all', selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
           <AvatarImage src={avatarUrl} alt={voice.name} />
           <AvatarFallback className="text-sm">{voice.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <span className="w-14 truncate text-center text-[10px] text-muted-foreground">{voice.name}</span>
+        <span className="w-14 truncate text-center text-2xs text-muted-foreground">{voice.name}</span>
       </button>
       {showEdit && <VoiceDialog voice={voice} open={showEdit} onOpenChange={setShowEdit} />}
     </>
@@ -59,7 +59,7 @@ function CompactVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props
   const handleClick = editOnClick && isOwner ? () => setShowEdit(true) : () => onSelect(voice.id);
 
   return (
-    <div className={cn('group relative flex w-full items-center rounded-lg border border-border transition-colors hover:bg-card-elevated', selected && 'border-accent-amber/60 bg-accent-amber/10')}>
+    <div className={cn('group relative flex w-full items-center rounded-lg border border-border transition-colors hover:bg-card-elevated', selected && 'border-primary/60 bg-primary/10')}>
       <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 p-2 text-left" onClick={handleClick}>
         <Avatar className="size-8 shrink-0">
           <AvatarImage src={avatarUrl} alt={voice.name} />
@@ -68,7 +68,7 @@ function CompactVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium leading-tight">{voice.name}</p>
           {voice.language && (
-            <Badge variant="secondary" className="mt-0.5 px-1.5 py-0 text-[10px]">
+            <Badge variant="secondary" className="mt-0.5 px-1.5 py-0 text-2xs">
               {voice.language}
             </Badge>
           )}
@@ -149,7 +149,7 @@ function FullVoiceItem({ voice, selected, onSelect, editOnClick }: Omit<Props, '
   return (
     <>
       <Card
-        className={cn('cursor-pointer border-border py-3 transition-colors hover:bg-card-elevated', selected && 'border-accent-amber/60 bg-accent-amber/10')}
+        className={cn('cursor-pointer border-border py-3 transition-colors hover:bg-card-elevated', selected && 'border-primary/60 bg-primary/10')}
         role="button"
         tabIndex={0}
         onClick={handleClick}

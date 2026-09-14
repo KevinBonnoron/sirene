@@ -43,7 +43,7 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="min-w-0 truncate font-serif text-sm tracking-tight text-muted-foreground">{sessionName ?? <span className="italic text-dim">{t('studio.untitledSession')}</span>}</span>
 
-            <span className="flex shrink-0 items-center gap-1 text-[11px] text-dim">
+            <span className="flex shrink-0 items-center gap-1 text-2xs text-dim">
               {saving ? (
                 <span className="hidden sm:inline">{t('studio.saving')}</span>
               ) : saved ? (
@@ -61,7 +61,7 @@ export function StudioTopbar({ sessionName, saved = true, saving = false, takeCo
         {inSession && takeCount > 0 && (
           <>
             <Button variant="ghost" size="sm" disabled={!onShare} onClick={onShare} className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.share')}>
-              {isPublic ? <Globe className="size-3.5 text-accent-amber" /> : <Share2 className="size-3.5" />}
+              {isPublic ? <Globe className="size-3.5 text-primary" /> : <Share2 className="size-3.5" />}
               <span className="hidden sm:inline">{t('studio.share')}</span>
             </Button>
             <Button variant="ghost" size="sm" disabled={!onExport} onClick={onExport} className="gap-1.5 px-2 text-muted-foreground sm:px-3" aria-label={t('studio.export')}>

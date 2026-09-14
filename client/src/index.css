@@ -53,10 +53,19 @@
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-mono: var(--font-mono);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 :root {
   --radius: 0.625rem;
+
+  /* Brand accent, overridden per data-accent below. Lightness is fixed so the
+     dark primary-foreground stays readable on every accent. Neutral surfaces
+     take a faint tint of the same hue so the whole palette follows the accent. */
+  --hue: 70;
+  --brand: oklch(0.72 0.115 70);
+  --brand-ring: oklch(0.72 0.115 70 / 50%);
 
   /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -65,45 +74,45 @@
 
   /* Light theme — Atelier C parchment palette: warm cream background, deep umber text.
      Mirrors the dark theme's hue (~70) with high lightness instead of low. */
-  --background: oklch(0.985 0.006 80); /* #faf6ef — parchment */
-  --foreground: oklch(0.225 0.012 70); /* #2a2520 — deep umber */
-  --bg-elevated: oklch(0.97 0.007 80); /* #f3eee4 */
-  --card: oklch(0.99 0.005 80); /* #fcf9f3 */
-  --card-foreground: oklch(0.225 0.012 70);
-  --card-elevated: oklch(0.96 0.008 75); /* #ede7db — popover/menu surface */
-  --popover: oklch(0.99 0.005 80);
-  --popover-foreground: oklch(0.225 0.012 70);
-  --primary: oklch(0.735 0.115 70); /* amber, same CTA as dark */
+  --background: oklch(0.985 0.008 var(--hue));
+  --foreground: oklch(0.225 0.016 var(--hue));
+  --bg-elevated: oklch(0.97 0.01 var(--hue));
+  --card: oklch(0.99 0.006 var(--hue));
+  --card-foreground: oklch(0.225 0.016 var(--hue));
+  --card-elevated: oklch(0.96 0.013 var(--hue));
+  --popover: oklch(0.99 0.008 var(--hue));
+  --popover-foreground: oklch(0.225 0.016 var(--hue));
+  --primary: var(--brand);
   --primary-foreground: oklch(
     0.18 0.012 70
   ); /* dark umber — readable on amber */
-  --secondary: oklch(0.945 0.008 75);
-  --secondary-foreground: oklch(0.225 0.012 70);
-  --muted: oklch(0.945 0.008 75);
-  --muted-foreground: oklch(0.5 0.013 70); /* #7a7066 — readable warm grey */
-  --dim: oklch(0.65 0.012 70); /* #9c9388 — secondary metadata */
-  --accent: oklch(0.945 0.008 75);
+  --secondary: oklch(0.945 0.013 var(--hue));
+  --secondary-foreground: oklch(0.225 0.016 var(--hue));
+  --muted: oklch(0.945 0.013 var(--hue));
+  --muted-foreground: oklch(0.5 0.016 var(--hue));
+  --dim: oklch(0.55 0.016 var(--hue)); /* tertiary text */
+  --accent: oklch(0.945 0.013 var(--hue));
   --accent-foreground: oklch(0.225 0.012 70);
   --destructive: oklch(0.55 0.17 22);
-  --border: oklch(0.895 0.008 70); /* #d8d2c5 */
-  --border-subtle: oklch(0.93 0.007 75); /* #e9e3d6 */
-  --input: oklch(0.895 0.008 70);
-  --ring: oklch(0.735 0.115 70 / 50%); /* amber halo */
-  --chart-1: oklch(0.735 0.115 70);
+  --border: oklch(0.895 0.013 var(--hue));
+  --border-subtle: oklch(0.93 0.011 var(--hue));
+  --input: oklch(0.895 0.013 var(--hue));
+  --ring: var(--brand-ring);
+  --chart-1: var(--brand);
   --chart-2: oklch(0.71 0.052 160);
   --chart-3: oklch(0.74 0.055 235);
   --chart-4: oklch(0.68 0.17 295);
   --chart-5: oklch(0.76 0.105 148);
-  --sidebar: oklch(0.97 0.007 80);
-  --sidebar-foreground: oklch(0.225 0.012 70);
-  --sidebar-primary: oklch(0.735 0.115 70);
-  --sidebar-primary-foreground: oklch(0.18 0.012 70);
-  --sidebar-accent: oklch(0.945 0.008 75);
-  --sidebar-accent-foreground: oklch(0.225 0.012 70);
-  --sidebar-border: oklch(0.895 0.008 70);
-  --sidebar-ring: oklch(0.735 0.115 70 / 50%);
-  --waveform: oklch(0.78 0.012 70); /* warm taupe — quiet bars */
-  --waveform-progress: oklch(0.735 0.115 70); /* amber */
+  --sidebar: oklch(0.97 0.01 var(--hue));
+  --sidebar-foreground: oklch(0.225 0.016 var(--hue));
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.18 0.016 var(--hue));
+  --sidebar-accent: oklch(0.945 0.013 var(--hue));
+  --sidebar-accent-foreground: oklch(0.225 0.016 var(--hue));
+  --sidebar-border: oklch(0.895 0.013 var(--hue));
+  --sidebar-ring: var(--brand-ring);
+  --waveform: oklch(0.78 0.016 var(--hue)); /* warm taupe — quiet bars */
+  --waveform-progress: var(--brand);
 
   /* Warm named accents (shared across themes) */
   --accent-amber: oklch(
@@ -121,43 +130,105 @@
 
 .dark {
   /* Warm dark palette (Sirene Studio) */
-  --background: oklch(0.135 0.003 75); /* #0e0d0c */
-  --foreground: oklch(0.925 0.009 80); /* #ece7df */
-  --bg-elevated: oklch(0.155 0.004 70); /* #141210 */
-  --card: oklch(0.185 0.004 65); /* #181613 */
-  --card-foreground: oklch(0.925 0.009 80);
-  --card-elevated: oklch(0.215 0.006 70); /* #1e1b17 */
-  --popover: oklch(0.185 0.004 65);
-  --popover-foreground: oklch(0.925 0.009 80);
-  --primary: oklch(0.735 0.115 70); /* amber, CTA primaire en dark */
-  --primary-foreground: oklch(0.135 0.003 75);
-  --secondary: oklch(0.23 0.006 70);
-  --secondary-foreground: oklch(0.925 0.009 80);
-  --muted: oklch(0.23 0.006 70);
-  --muted-foreground: oklch(0.575 0.012 70); /* #8a8076 */
-  --dim: oklch(0.395 0.01 70); /* #5a544d */
-  --accent: oklch(0.23 0.006 70);
+  --background: oklch(0.135 0.008 var(--hue));
+  --foreground: oklch(0.925 0.014 var(--hue));
+  --bg-elevated: oklch(0.155 0.008 var(--hue));
+  --card: oklch(0.185 0.01 var(--hue));
+  --card-foreground: oklch(0.925 0.014 var(--hue));
+  --card-elevated: oklch(0.215 0.01 var(--hue));
+  --popover: oklch(0.185 0.01 var(--hue));
+  --popover-foreground: oklch(0.925 0.014 var(--hue));
+  --primary: var(--brand);
+  --primary-foreground: oklch(0.135 0.005 var(--hue));
+  --secondary: oklch(0.23 0.01 var(--hue));
+  --secondary-foreground: oklch(0.925 0.014 var(--hue));
+  --muted: oklch(0.23 0.01 var(--hue));
+  --muted-foreground: oklch(0.64 0.016 var(--hue)); /* ≥ 5:1 on card surfaces */
+  --dim: oklch(
+    0.6 0.016 var(--hue)
+  ); /* tertiary text, ≥ 4.5:1 on card surfaces */
+  --accent: oklch(0.23 0.01 var(--hue));
   --accent-foreground: oklch(0.925 0.009 80);
   --destructive: oklch(0.6 0.16 22);
-  --border: oklch(0.275 0.008 70); /* #2a2622 */
-  --border-subtle: oklch(0.23 0.006 70); /* #221f1b */
-  --input: oklch(0.275 0.008 70 / 60%);
-  --ring: oklch(0.735 0.115 70 / 50%);
-  --chart-1: oklch(0.735 0.115 70);
+  --border: oklch(0.275 0.012 var(--hue));
+  --border-subtle: oklch(0.23 0.01 var(--hue));
+  --input: oklch(0.275 0.013 var(--hue) / 60%);
+  --ring: var(--brand-ring);
+  --chart-1: var(--brand);
   --chart-2: oklch(0.71 0.052 160);
   --chart-3: oklch(0.74 0.055 235);
   --chart-4: oklch(0.68 0.17 295);
   --chart-5: oklch(0.76 0.105 148);
-  --sidebar: oklch(0.155 0.004 70);
-  --sidebar-foreground: oklch(0.925 0.009 80);
-  --sidebar-primary: oklch(0.735 0.115 70);
-  --sidebar-primary-foreground: oklch(0.135 0.003 75);
-  --sidebar-accent: oklch(0.23 0.006 70);
-  --sidebar-accent-foreground: oklch(0.925 0.009 80);
-  --sidebar-border: oklch(0.275 0.008 70);
-  --sidebar-ring: oklch(0.735 0.115 70 / 50%);
-  --waveform: oklch(0.395 0.01 70);
-  --waveform-progress: oklch(0.735 0.115 70);
+  --sidebar: oklch(0.155 0.008 var(--hue));
+  --sidebar-foreground: oklch(0.925 0.014 var(--hue));
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.135 0.005 var(--hue));
+  --sidebar-accent: oklch(0.23 0.01 var(--hue));
+  --sidebar-accent-foreground: oklch(0.925 0.014 var(--hue));
+  --sidebar-border: oklch(0.275 0.013 var(--hue));
+  --sidebar-ring: var(--brand-ring);
+  --waveform: oklch(0.395 0.016 var(--hue));
+  --waveform-progress: var(--brand);
+}
+
+/* Selectable accents. Custom properties resolve where they are declared, so
+   each block restates the derived tokens: that lets any element (a swatch)
+   carry data-accent and paint itself with the accent it offers. Amber is the
+   default declared in :root. */
+[data-accent="amber"] {
+  --hue: 70;
+  --brand: oklch(0.72 0.115 70);
+  --brand-ring: oklch(0.72 0.115 70 / 50%);
+  --primary: var(--brand);
+  --ring: var(--brand-ring);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand-ring);
+  --waveform-progress: var(--brand);
+  --chart-1: var(--brand);
+}
+[data-accent="sage"] {
+  --hue: 160;
+  --brand: oklch(0.72 0.09 160);
+  --brand-ring: oklch(0.72 0.09 160 / 50%);
+  --primary: var(--brand);
+  --ring: var(--brand-ring);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand-ring);
+  --waveform-progress: var(--brand);
+  --chart-1: var(--brand);
+}
+[data-accent="sky"] {
+  --hue: 240;
+  --brand: oklch(0.72 0.1 235);
+  --brand-ring: oklch(0.72 0.1 235 / 50%);
+  --primary: var(--brand);
+  --ring: var(--brand-ring);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand-ring);
+  --waveform-progress: var(--brand);
+  --chart-1: var(--brand);
+}
+[data-accent="violet"] {
+  --hue: 300;
+  --brand: oklch(0.72 0.13 295);
+  --brand-ring: oklch(0.72 0.13 295 / 50%);
+  --primary: var(--brand);
+  --ring: var(--brand-ring);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand-ring);
+  --waveform-progress: var(--brand);
+  --chart-1: var(--brand);
+}
+[data-accent="rose"] {
+  --hue: 355;
+  --brand: oklch(0.72 0.12 350);
+  --brand-ring: oklch(0.72 0.12 350 / 50%);
+  --primary: var(--brand);
+  --ring: var(--brand-ring);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand-ring);
+  --waveform-progress: var(--brand);
+  --chart-1: var(--brand);
 }
 
 @layer base {
@@ -196,14 +267,4 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--dim);
-}
-
-/* The Button ghost variant injects `dark:hover:bg-accent/50` which wins over our custom
-   `hover:bg-accent-amber` / `hover:text-primary-foreground` utilities in dark mode. Re-emit
-   them here, later in the cascade, so the custom amber hover lands on dark too. */
-.dark .hover\:bg-accent-amber:hover {
-  background-color: var(--accent-amber);
-}
-.dark .hover\:text-primary-foreground:hover {
-  color: var(--primary-foreground);
 }

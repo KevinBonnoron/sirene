@@ -464,7 +464,21 @@
     "submit": "Sign up",
     "failed": "Registration failed",
     "hasAccount": "Already have an account?",
-    "login": "Log in"
+    "login": "Log in",
+    "auth.emailTaken": "An account with this email already exists. Log in instead."
+  },
+  "setup": {
+    "title": "Welcome to Sirene",
+    "subtitle": "Create the administrator account for this instance",
+    "name": "Name",
+    "namePlaceholder": "John Doe",
+    "email": "Email",
+    "emailPlaceholder": "your@email.com",
+    "password": "Password",
+    "passwordConfirm": "Confirm password",
+    "submit": "Create administrator",
+    "failed": "Could not create the administrator account",
+    "auth.emailTaken": "An account with this email already exists."
   },
   "auth": {
     "logout": "Log out",
@@ -477,6 +491,10 @@
   },
   "errors": {
     "internal": "Internal error",
+    "notFound": "Not found",
+    "validation": "Invalid request",
+    "request.tooLarge": "Request too large",
+    "auth.forbidden": "You are not allowed to do this",
     "voice.notFound": "Voice not found",
     "voice.zipRequired": "A .zip file is required",
     "voice.audioRequired": "An audio file is required",
@@ -528,6 +546,11 @@
     "cliAuth.sessionNotFound": "CLI session not found or expired",
     "cliAuth.sessionAlreadyUsed": "CLI session already used",
     "voiceDesigner.nameAudioRequired": "Name and audio are required",
-    "voiceDesigner.textFieldsExpected": "description, language, model and transcript must be text fields"
+    "voiceDesigner.textFieldsExpected": "description, language, model and transcript must be text fields",
+    "auth.emailTaken": "An account with this email already exists"
+  },
+  "form": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   }
 }

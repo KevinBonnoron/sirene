@@ -85,7 +85,7 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
 
   // Third-party API keys (informational; only warn, don't fail)
   try {
-    const settings = await getJson<Setting[]>(config, '/settings');
+    const settings = await getJson<Setting[]>(config, '/app-settings');
     const keyNames = new Set(settings.map((s) => s.key));
     const configured = ['openai_api_key', 'elevenlabs_api_key', 'hf_token'].filter((k) => keyNames.has(k));
     if (configured.length === 0) {

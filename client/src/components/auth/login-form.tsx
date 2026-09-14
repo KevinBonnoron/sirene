@@ -47,7 +47,11 @@ export function LoginForm() {
         <p className="mt-2 text-sm text-muted-foreground">{t('login.subtitle')}</p>
       </div>
 
-      {serverError && <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{serverError}</div>}
+      {serverError && (
+        <div role="alert" className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {serverError}
+        </div>
+      )}
 
       <form
         noValidate

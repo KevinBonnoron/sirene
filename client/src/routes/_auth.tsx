@@ -1,38 +1,42 @@
-import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/auth-layout';
+import { setupStatusQueryOptions } from '@/hooks/use-setup-status';
 import { safeRedirect } from '@/lib/safe-redirect';
-import { useAuth } from '@/providers/auth-provider';
+import { authMeQueryOptions, useAuth } from '@/providers/auth-provider';
 
 export const Route = createFileRoute('/_auth')({
+  beforeLoad: async ({ context, location }) => {
+    const status = await context.queryClient.ensureQueryData(setupStatusQueryOptions);
+    if (status.needsSetup) {
+      throw redirect({ to: '/setup' });
+    }
+    const user = await context.queryClient.ensureQueryData(authMeQueryOptions);
+    // With a ?redirect= the component effect performs a full-page replace.
+    if (user && !safeRedirect(new URLSearchParams(location.searchStr).get('redirect'))) {
+      throw redirect({ to: '/' });
+    }
+  },
   component: AuthLayoutRoute,
 });
 
 function AuthLayoutRoute() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Runs after an in-page login: honour ?redirect= so the CLI device-code
+  // flow lands back on /cli-auth?code=... once the user has signed in.
   useEffect(() => {
-    if (!isLoading && user) {
-      // Honour the `?redirect=` parameter so the CLI device-code flow can land
-      // the user back on `/cli-auth?code=...` after they sign in.
-      const params = new URLSearchParams(window.location.search);
-      const redirect = safeRedirect(params.get('redirect'));
-      if (redirect) {
-        window.location.replace(redirect);
-        return;
-      }
-      navigate({ to: '/' });
+    if (!user) {
+      return;
     }
-  }, [user, isLoading, navigate]);
-
-  if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  }
-
-  if (user) {
-    return null;
-  }
+    const redirectTo = safeRedirect(new URLSearchParams(window.location.search).get('redirect'));
+    if (redirectTo) {
+      window.location.replace(redirectTo);
+      return;
+    }
+    navigate({ to: '/' });
+  }, [user, navigate]);
 
   return (
     <AuthLayout>

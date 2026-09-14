@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
@@ -21,6 +22,11 @@ import { Route as AppModelsRouteImport } from './routes/_app/models'
 import { Route as AppHistoryRouteImport } from './routes/_app/history'
 import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
 
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
@@ -76,6 +82,7 @@ const AppCliAuthRoute = AppCliAuthRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/setup': typeof SetupRoute
   '/cli-auth': typeof AppCliAuthRoute
   '/history': typeof AppHistoryRoute
   '/models': typeof AppModelsRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
+  '/setup': typeof SetupRoute
   '/cli-auth': typeof AppCliAuthRoute
   '/history': typeof AppHistoryRoute
   '/models': typeof AppModelsRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/setup': typeof SetupRoute
   '/_app/cli-auth': typeof AppCliAuthRoute
   '/_app/history': typeof AppHistoryRoute
   '/_app/models': typeof AppModelsRoute
@@ -114,6 +123,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/setup'
     | '/cli-auth'
     | '/history'
     | '/models'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/setup'
     | '/cli-auth'
     | '/history'
     | '/models'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/setup'
     | '/_app/cli-auth'
     | '/_app/history'
     | '/_app/models'
@@ -152,11 +164,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  SetupRoute: typeof SetupRoute
   ShareSessionIdRoute: typeof ShareSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_auth': {
       id: '/_auth'
       path: ''
@@ -272,6 +292,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  SetupRoute: SetupRoute,
   ShareSessionIdRoute: ShareSessionIdRoute,
 }
 export const routeTree = rootRouteImport

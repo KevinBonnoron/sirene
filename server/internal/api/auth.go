@@ -19,6 +19,7 @@ type authUser struct {
 	Name     string `json:"name"`
 	Avatar   string `json:"avatar"`
 	Verified bool   `json:"verified"`
+	Role     string `json:"role"`
 }
 
 type authResult struct {
@@ -27,12 +28,17 @@ type authResult struct {
 }
 
 func toAuthUser(rec *core.Record) authUser {
+	role := rec.GetString("role")
+	if role == "" {
+		role = "user"
+	}
 	return authUser{
 		ID:       rec.Id,
 		Email:    rec.Email(),
 		Name:     rec.GetString("name"),
 		Avatar:   rec.GetString("avatar"),
 		Verified: rec.Verified(),
+		Role:     role,
 	}
 }
 

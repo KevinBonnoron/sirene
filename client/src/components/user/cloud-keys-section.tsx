@@ -1,35 +1,22 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
 import { Eye, EyeOff, Loader2, Pencil, Save, Trash2 } from 'lucide-react';
 import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { type SettingEntry, settingsClient } from '@/clients/settings.client';
-import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { ApiKeysSection } from './api-keys-section';
-import { InferenceServersSection } from './inference-servers-section';
 
 const KEYS = [
-  { key: 'openai_api_key', labelKey: 'settings.openAIKey', placeholder: 'sk-...' },
-  { key: 'elevenlabs_api_key', labelKey: 'settings.elevenLabsKey', placeholder: 'sk-...' },
-  { key: 'hf_token', labelKey: 'settings.hfToken', placeholder: 'hf_...' },
+  { key: 'openai_api_key', labelKey: 'cloudKeys.openAIKey', placeholder: 'sk-...' },
+  { key: 'elevenlabs_api_key', labelKey: 'cloudKeys.elevenLabsKey', placeholder: 'sk-...' },
+  { key: 'hf_token', labelKey: 'cloudKeys.hfToken', placeholder: 'hf_...' },
 ] as const;
 
-/** Tab identifiers used both in the page and in the route's search-param
- *  validator. Adding a tab is a compile-time event in both places. */
-export const SETTINGS_TABS = ['inference-servers', 'api-keys', 'cloud-keys'] as const;
-export type SettingsTab = (typeof SETTINGS_TABS)[number];
-const DEFAULT_TAB: SettingsTab = 'inference-servers';
-
 type ApiKeyState = { editing: boolean; value: string; visible: boolean; saving: boolean; deleting: boolean };
-type ApiKeyAction = { type: 'startEdit' } | { type: 'setValue'; value: string } | { type: 'toggleVisible' } | { type: 'startSave' } | { type: 'saveDone' } | { type: 'startDelete' } | { type: 'deleteDone' };
+type ApiKeyAction = { type: 'startEdit' } | { type: 'setValue'; value: string } | { type: 'toggleVisible' } | { type: 'startSave' } | { type: 'saveDone' } | { type: 'startDelete' } | { type: 'deleteDone' } | { type: 'saveFailed' };
 
 function apiKeyReducer(state: ApiKeyState, action: ApiKeyAction): ApiKeyState {
   switch (action.type) {
@@ -47,6 +34,8 @@ function apiKeyReducer(state: ApiKeyState, action: ApiKeyAction): ApiKeyState {
       return { ...state, deleting: true };
     case 'deleteDone':
       return { ...state, deleting: false };
+    case 'saveFailed':
+      return { ...state, saving: false };
   }
 }
 
@@ -68,10 +57,10 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
     dispatch({ type: 'startDelete' });
     try {
       await settingsClient.remove(keyDef.key);
-      toast.success(t('settings.removed', { key: t(keyDef.labelKey) }));
+      toast.success(t('cloudKeys.removed', { key: t(keyDef.labelKey) }));
       qc.invalidateQueries({ queryKey: ['settings'] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('settings.removeFailed'));
+      toast.error(e instanceof Error ? e.message : t('cloudKeys.removeFailed'));
     } finally {
       dispatch({ type: 'deleteDone' });
     }
@@ -84,12 +73,12 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
     dispatch({ type: 'startSave' });
     try {
       await settingsClient.update(keyDef.key, value.trim());
-      toast.success(t('settings.saved', { key: t(keyDef.labelKey) }));
+      toast.success(t('cloudKeys.saved', { key: t(keyDef.labelKey) }));
       dispatch({ type: 'saveDone' });
       qc.invalidateQueries({ queryKey: ['settings'] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('settings.saveFailed'));
-      dispatch({ type: 'deleteDone' });
+      toast.error(e instanceof Error ? e.message : t('cloudKeys.saveFailed'));
+      dispatch({ type: 'saveFailed' });
     }
   }
 
@@ -146,8 +135,7 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
   );
 }
 
-function CloudKeysSection() {
-  const { t } = useTranslation();
+export function CloudKeysSection() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsClient.getAll(),
@@ -158,56 +146,10 @@ function CloudKeysSection() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('settings.cloudKeys.title')}</CardTitle>
-        <CardDescription>{t('settings.cloudKeys.description')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {KEYS.map((keyDef) => (
-          <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function SettingsPage() {
-  const { t } = useTranslation();
-  const isMobile = useIsMobile();
-  const navigate = useNavigate({ from: '/settings' });
-  const search = useSearch({ from: '/_app/settings' }) as { tab?: SettingsTab };
-  const activeTab: SettingsTab = search.tab ?? DEFAULT_TAB;
-
-  return (
-    <div className="flex h-full flex-col">
-      <SectionTopbar label={t('nav.settings')} subtitle={t('settings.subtitle')} />
-      <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
-        <Tabs
-          value={activeTab}
-          onValueChange={(next) => {
-            // Drop the search param entirely when the user lands back on the
-            // default so the URL stays clean (`/settings` vs `/settings?tab=inference-servers`).
-            navigate({ search: next === DEFAULT_TAB ? {} : { tab: next as SettingsTab }, replace: true });
-          }}
-        >
-          <TabsList>
-            <TabsTrigger value="inference-servers">{t('settings.tabs.inferenceServers')}</TabsTrigger>
-            <TabsTrigger value="api-keys">{t('settings.tabs.apiKeys')}</TabsTrigger>
-            <TabsTrigger value="cloud-keys">{t('settings.tabs.cloudKeys')}</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="inference-servers">
-            <InferenceServersSection />
-          </TabsContent>
-          <TabsContent value="api-keys">
-            <ApiKeysSection />
-          </TabsContent>
-          <TabsContent value="cloud-keys">
-            <CloudKeysSection />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+    <>
+      {KEYS.map((keyDef) => (
+        <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
+      ))}
+    </>
   );
 }

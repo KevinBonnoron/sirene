@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/router"
 
@@ -37,4 +39,52 @@ func registerMe(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		}
 		return e.JSON(http.StatusOK, out)
 	})
+
+	// Email is the login identifier and there is no SMTP for PocketBase's own
+	// confirmation flow, so the change is made in-process, gated by the
+	// current password and a browser session.
+	p.PATCH("/me/email", func(e *core.RequestEvent) error {
+		var body struct {
+			Email           *string `json:"email"`
+			CurrentPassword *string `json:"currentPassword"`
+		}
+		if err := bindJSON(e, &body); err != nil {
+			return err
+		}
+		if err := requireString("email", body.Email, 1, 0); err != nil {
+			return err
+		}
+		if err := checkEmail("email", *body.Email); err != nil {
+			return err
+		}
+		if err := requireString("currentPassword", body.CurrentPassword, 1, 0); err != nil {
+			return err
+		}
+		user, err := e.App.FindRecordById("users", auth.IdentityOf(e).UserID)
+		if err != nil {
+			return err
+		}
+		if !user.ValidatePassword(*body.CurrentPassword) {
+			return apierr.Unauthorized(apierr.CodeAuthInvalidCredentials, "Invalid password")
+		}
+		if !strings.EqualFold(user.Email(), *body.Email) {
+			user.SetEmail(*body.Email)
+			user.SetVerified(false)
+		}
+		if err := e.App.Save(user); err != nil {
+			var ve validation.Errors
+			if errors.As(err, &ve) {
+				if fieldErr, ok := ve["email"].(validation.Error); ok && fieldErr.Code() == "validation_not_unique" {
+					return apierr.BadRequest(apierr.CodeAuthEmailTaken, "An account with this email already exists")
+				}
+				return apierr.Validation(ve.Error())
+			}
+			return err
+		}
+		res, err := authResponse(user)
+		if err != nil {
+			return err
+		}
+		return e.JSON(http.StatusOK, res)
+	}).Bind(auth.RequireJWT())
 }

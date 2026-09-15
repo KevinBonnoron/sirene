@@ -185,7 +185,6 @@ func (c *CliAuth) Approve(userCode, userID, name string, scopes *[]string) error
 		return apierr.BadRequest(apierr.CodeCliAuthSessionAlreadyUsed, "CLI session already used")
 	}
 
-	// The user may narrow what the CLI asked for but never broaden it.
 	var granted *[]string
 	if s.requestedScopes == nil {
 		granted = scopes
@@ -213,8 +212,7 @@ func (c *CliAuth) Approve(userCode, userID, name string, scopes *[]string) error
 		s.status = cliPending
 		return err
 	}
-	// The session may have expired while the key was being minted; a key
-	// nobody can ever collect must not survive.
+	// The session may have expired while the key was minted; a key nobody can collect must not survive.
 	if live, ok := c.byDevice[s.deviceCode]; !ok || live != s {
 		if rerr := c.keys.Revoke(userID, created.ID); rerr != nil {
 			return rerr

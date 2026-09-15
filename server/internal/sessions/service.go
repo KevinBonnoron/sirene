@@ -81,8 +81,7 @@ func (s *Service) Delete(id, userID string) error {
 	return s.app.Delete(rec)
 }
 
-// SetPublic denormalises the flag onto every generation of the session:
-// audio file access is gated by the generation's own view rule.
+// Audio file access is gated by the generation's own view rule, so the flag is denormalised onto each generation.
 func (s *Service) SetPublic(id, userID string, public bool) (*core.Record, error) {
 	rec, err := s.Owned(id, userID)
 	if err != nil {

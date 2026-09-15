@@ -37,16 +37,11 @@ async function* streamJobEvents(config: CliConfig): AsyncGenerator<{ event: stri
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-      // The server can omit a trailing blank line before closing the
-      // connection. Flush whatever's still buffered so the final job-state
-      // update isn't silently dropped (which would otherwise look like the
-      // pull never completed).
+      // The server may close without a trailing blank line; flush the buffered event.
       if (dataLines.length > 0) {
         try {
           yield { event, data: JSON.parse(dataLines.join('\n')) };
-        } catch {
-          // Malformed trailing payload: skip rather than emit garbage.
-        }
+        } catch {}
       }
       return;
     }
@@ -59,9 +54,7 @@ async function* streamJobEvents(config: CliConfig): AsyncGenerator<{ event: stri
         if (dataLines.length > 0) {
           try {
             yield { event, data: JSON.parse(dataLines.join('\n')) };
-          } catch {
-            // Malformed SSE payload; skip the event entirely rather than corrupting later state.
-          }
+          } catch {}
           dataLines.length = 0;
           event = 'message';
         }
@@ -82,8 +75,6 @@ async function* streamJobEvents(config: CliConfig): AsyncGenerator<{ event: stri
   }
 }
 
-/** Render a single progress bar line for one job. Width-stable: callers can
- *  blank previous lines without artefacts. */
 function renderBar(job: Job, labelWidth: number): string {
   const progress = Math.max(0, Math.min(100, job.progress));
   const filled = Math.round((progress / 100) * BAR_WIDTH);
@@ -108,9 +99,6 @@ class MultiBarRenderer {
   private linesDrawn = 0;
   private readonly isTty = process.stdout.isTTY === true;
 
-  /** Draw / redraw the full set of bars. On TTY we rewind to the top of the
-   *  previous frame with `\x1b[<n>A` and overwrite each line. On non-TTY we
-   *  just append a snapshot, which is friendlier to CI logs. */
   public render(jobs: Job[]): void {
     if (jobs.length === 0) {
       return;
@@ -119,7 +107,6 @@ class MultiBarRenderer {
     const lines = jobs.map((j) => renderBar(j, labelWidth));
 
     if (!this.isTty) {
-      // No cursor control: print one snapshot block, blank line as separator.
       for (const line of lines) {
         process.stdout.write(`${line}\n`);
       }
@@ -128,22 +115,18 @@ class MultiBarRenderer {
     }
 
     if (this.linesDrawn > 0) {
-      // Move cursor up to the start of the previous frame.
       process.stdout.write(`\x1b[${this.linesDrawn}A`);
     }
     for (const line of lines) {
-      // \x1b[2K = erase entire line; \r = column 0; then write and newline.
       process.stdout.write(`\x1b[2K\r${line}\n`);
     }
     this.linesDrawn = lines.length;
   }
 
-  /** Leave the cursor on a fresh line below the bars. */
   public finish(): void {
     if (!this.isTty) {
       return;
     }
-    // No further redraws expected; cursor is already on the line after the bars.
     this.linesDrawn = 0;
   }
 }
@@ -151,8 +134,6 @@ class MultiBarRenderer {
 export async function modelPullCommand(modelId: string, options: Options): Promise<void> {
   const config = await loadConfig();
 
-  // 1. Kick off the pull. Server returns jobIds plus a flag if some pull was
-  //    already running for this model.
   const response = await postJson<PullResponse>(config, `/models/${encodeURIComponent(modelId)}/pull`, { serverIds: options.serverIds });
   if (response.jobIds.length === 0) {
     process.stdout.write('Nothing to pull.\n');
@@ -165,8 +146,6 @@ export async function modelPullCommand(modelId: string, options: Options): Promi
   const state = new Map<string, Job>();
   const renderer = new MultiBarRenderer();
 
-  // Stable visual order: jobs appear in the order their IDs came back from the
-  // server, so the bars don't reshuffle as updates arrive.
   const renderJobs = (): Job[] => response.jobIds.map((id) => state.get(id)).filter((j): j is Job => j !== undefined);
 
   let allDone = false;
@@ -184,7 +163,6 @@ export async function modelPullCommand(modelId: string, options: Options): Promi
       }
     } else if (event === 'remove') {
       const { id } = data as { id: string };
-      // Don't drop from state - we still want to display the final status.
       tracked.delete(id);
     }
 
@@ -201,8 +179,6 @@ export async function modelPullCommand(modelId: string, options: Options): Promi
 
   renderer.finish();
 
-  // SSE closed before every job reached a terminal state: treat as failure
-  // so scripts don't conclude "success" from a connection drop mid-pull.
   if (!allDone) {
     process.stderr.write(`${color.red('✗')} Job stream closed before all pulls completed; check the server.\n`);
     process.exit(1);

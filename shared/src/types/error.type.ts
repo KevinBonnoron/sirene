@@ -1,6 +1,3 @@
-/** All error codes the server can emit. Shared between server (throw site)
- *  and client (i18n translation): both reference this single union, so adding
- *  a code or renaming one is a compile-time event on both sides. */
 export type ErrorCode =
   // 500 fallback
   | 'internal'

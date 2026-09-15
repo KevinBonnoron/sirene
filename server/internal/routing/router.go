@@ -13,8 +13,6 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/servermodels"
 )
 
-// Router picks the inference server for an outgoing call: fewest in-flight
-// calls first, then highest priority.
 type Router struct {
 	servers  *infsrv.Service
 	cache    *servermodels.Cache
@@ -38,8 +36,6 @@ func StatusOf(rec *core.Record) string {
 	return h.Status
 }
 
-// Eligible returns enabled servers that are online, or unknown when none is
-// online yet, so a freshly added server can be tried before its first probe.
 func Eligible(all []*core.Record) []*core.Record {
 	var online, unknown []*core.Record
 	for _, rec := range all {

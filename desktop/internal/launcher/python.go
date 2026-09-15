@@ -60,10 +60,6 @@ func pythonArchive() (file string, url string, sha string, err error) {
 	return file, "https://github.com/astral-sh/python-build-standalone/releases/download/" + pythonTag + "/" + file, sha, nil
 }
 
-// EnsurePython downloads a standalone CPython into p.Python on first run.
-// The archive is verified against its pinned checksum before extraction, then
-// its single top-level "python/" directory is renamed into place so a failed
-// download never leaves a half-installed runtime.
 const pythonVersionMarker = ".sirene-python-version"
 
 func pythonRelease() string {
@@ -117,8 +113,6 @@ func EnsurePython(ctx context.Context, p Paths, logf func(string, ...any)) error
 	return nil
 }
 
-// downloadVerified streams url to path while hashing it and refuses the file
-// unless its SHA-256 matches want.
 func downloadVerified(ctx context.Context, url, want, path string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -150,7 +144,6 @@ func downloadVerified(ctx context.Context, url, want, path string) (string, erro
 	return path, nil
 }
 
-// insideDest reports whether target, resolved from within dest, stays under dest.
 func insideDest(dest, target string) bool {
 	rel, err := filepath.Rel(dest, target)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
@@ -199,8 +192,6 @@ func extractTarGz(r io.Reader, dest string) error {
 			}
 			f.Close()
 		case tar.TypeSymlink:
-			// Links must stay inside the tree: an absolute or escaping
-			// target would let later entries write anywhere on disk.
 			if filepath.IsAbs(hdr.Linkname) || !insideDest(dest, filepath.Join(filepath.Dir(target), hdr.Linkname)) {
 				return fmt.Errorf("unsafe symlink in archive: %s -> %s", hdr.Name, hdr.Linkname)
 			}

@@ -12,8 +12,7 @@ type Writer struct {
 	e *core.RequestEvent
 }
 
-// Begin commits the response as an event stream. Streams outlive any request
-// deadline, so the write deadline is cleared explicitly.
+// Streams outlive any request deadline, so the write deadline is cleared explicitly.
 func Begin(e *core.RequestEvent) *Writer {
 	h := e.Response.Header()
 	h.Set("Content-Type", "text/event-stream")

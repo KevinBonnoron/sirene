@@ -36,23 +36,19 @@ class HiggsAudioBackend(TTSBackend):
 
         resolved_device = self._resolve_device(device)
 
-        # Load the audio tokenizer from the tokenizer/ subdirectory
         tokenizer_path = model_path / "tokenizer"
-        # For MPS, use CPU due to embedding operation limitations
+        # MPS lacks the embedding ops the tokenizer needs.
         tokenizer_device = "cpu" if resolved_device == "mps" else resolved_device
         self._audio_tokenizer = load_higgs_audio_tokenizer(
             str(tokenizer_path), device=tokenizer_device
         )
 
-        # Import and create the model client
-        # We import generation.py's HiggsAudioModelClient for direct inference
         from boson_multimodal.model.higgs_audio import HiggsAudioModel
         from transformers import AutoConfig, AutoTokenizer
         from boson_multimodal.data_collator.higgs_audio_collator import (
             HiggsAudioSampleCollator,
         )
 
-        # Load model with bfloat16 on CUDA, float32 on CPU
         self._model = HiggsAudioModel.from_pretrained(
             str(model_path),
             device_map=resolved_device,
@@ -112,16 +108,13 @@ class HiggsAudioBackend(TTSBackend):
         messages = []
         audio_ids = []
 
-        # System message
         messages.append(Message(role="system", content=DEFAULT_SYSTEM_PROMPT))
 
-        # Voice cloning: add reference audio as context
         if params.has_reference_audio:
             with self._reference_audio(params) as ref_audio_path:
                 ref_tokens = self._audio_tokenizer.encode(ref_audio_path)
                 audio_ids.append(ref_tokens)
 
-                # Add reference transcript as user message + audio as assistant response
                 ref_text = params.joined_reference_text or ""
                 messages.append(Message(role="user", content=ref_text))
                 messages.append(
@@ -131,12 +124,10 @@ class HiggsAudioBackend(TTSBackend):
                     )
                 )
 
-        # Prepare generation
         text = params.text.strip()
         if not any(text.endswith(c) for c in [".", "!", "?", ",", ";", '"', "'"]):
             text += "."
 
-        # Build input tokens
         generation_messages = [Message(role="user", content=text)]
         chatml_sample = ChatMLSample(messages=messages + generation_messages)
         input_tokens, _, _, _ = prepare_chatml_sample(
@@ -148,7 +139,6 @@ class HiggsAudioBackend(TTSBackend):
         )
         input_tokens.extend(postfix)
 
-        # Prepare dataset sample
         curr_sample = ChatMLDatasetSample(
             input_ids=torch.LongTensor(input_tokens),
             label_ids=None,
@@ -177,7 +167,6 @@ class HiggsAudioBackend(TTSBackend):
             if isinstance(v, torch.Tensor):
                 batch[k] = v.contiguous().to(self._device)
 
-        # Generate
         with torch.inference_mode():
             outputs = self._model.generate(
                 **batch,
@@ -191,7 +180,6 @@ class HiggsAudioBackend(TTSBackend):
                 tokenizer=self._tokenizer,
             )
 
-        # Extract audio tokens
         audio_out_ids_list = []
         for ele in outputs[1]:
             audio_out_ids = ele
@@ -208,7 +196,6 @@ class HiggsAudioBackend(TTSBackend):
 
         concat_audio_ids = torch.concat(audio_out_ids_list, dim=1)
 
-        # Decode audio tokens to waveform
         if concat_audio_ids.device.type == "mps":
             concat_audio_ids = concat_audio_ids.detach().cpu()
 
@@ -216,7 +203,6 @@ class HiggsAudioBackend(TTSBackend):
             concat_audio_ids.unsqueeze(0)
         )[0, 0]
 
-        # Convert to numpy
         if isinstance(waveform, torch.Tensor):
             audio = waveform.float().cpu().numpy()
         else:

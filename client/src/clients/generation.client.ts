@@ -22,13 +22,11 @@ export const generationClient = universalClient(
       const generationId = response.headers.get('X-Generation-Id');
       const sampleRateHeader = response.headers.get('X-Sample-Rate');
 
-      // Non-PCM response (ElevenLabs / OpenAI): return blob directly
       if (!sampleRateHeader) {
         const audio = await response.blob();
         return { audio, generationId };
       }
 
-      // PCM stream: accumulate chunks and build WAV
       const sampleRate = parseInt(sampleRateHeader, 10);
       const body = response.body;
       if (!body) {

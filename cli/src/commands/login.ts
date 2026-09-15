@@ -5,8 +5,6 @@ import { readLine, sleep, tryOpenBrowser } from '../utils';
 interface Options {
   url?: string;
   key?: string;
-  /** Comma-separated capability list to request (e.g. "generate,voices:read").
-   *  Server validates each entry; omit for full access. */
   scopes?: string;
 }
 
@@ -23,9 +21,6 @@ type CliAuthPoll = { status: 'pending' } | { status: 'expired' } | { status: 'au
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_URL_PROMPT = 'http://localhost:5173';
 
-/** `null` means the flag wasn't passed (request full access). An empty
- *  string (`--scopes ""`) is treated the same so a typo doesn't ship a
- *  useless key. A non-empty value parses to the trimmed list. */
 function parseScopes(raw: string | undefined): string[] | null {
   if (!raw) {
     return null;
@@ -88,16 +83,9 @@ export async function loginCommand(options: Options): Promise<void> {
   if (!url) {
     url = await promptForUrl();
   }
-  // Validate every input path: a bad value from --url or the saved config
-  // would otherwise reach fetch() and fail with a much less helpful message.
   assertValidUrl(url);
 
-  // Headless / scripted path: `--key <value>` writes the credential straight
-  // through with no prompting. The shell can keep it out of history with
-  // `read -s K && sirene auth login --key "$K"`, or via `SIRENE_API_KEY`.
   if (options.key) {
-    // Probe before persisting so a bad URL or revoked key fails loudly here
-    // instead of silently writing junk to disk that breaks the next command.
     const probe: CliConfig = { url, apiKey: options.key };
     await getJson<unknown>(probe, '/me');
     await saveConfig(probe);
@@ -105,9 +93,7 @@ export async function loginCommand(options: Options): Promise<void> {
     return;
   }
 
-  // Default interactive path: open a browser and run the device-code flow.
-  // The same URL serves both API and UI: in prod via reverse proxy, in dev
-  // via Vite's `/api` proxy back to the backend.
+  // One URL serves both API and UI (reverse proxy in prod, Vite /api proxy in dev).
   const scopes = parseScopes(options.scopes);
   const { secret, name } = await loginViaWeb({ url, apiKey: undefined }, url, scopes);
 

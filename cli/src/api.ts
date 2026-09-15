@@ -14,9 +14,6 @@ interface RequestOptions {
   authRequired?: boolean;
 }
 
-/** Default request deadline. Long enough for the slowest realistic CLI call
- *  (e.g. fetching a generation), short enough that an unreachable / stuck
- *  server doesn't hang the user's terminal indefinitely. */
 const REQUEST_TIMEOUT_MS = 30_000;
 
 async function request(config: CliConfig, path: string, options: RequestOptions = {}): Promise<Response> {
@@ -35,8 +32,6 @@ async function request(config: CliConfig, path: string, options: RequestOptions 
     headers['Content-Type'] = 'application/json';
   }
 
-  // config.url is the server origin (no `/api` suffix); the CLI owns the path
-  // prefix so the user only ever deals with the URL they open in their browser.
   const url = `${config.url.replace(/\/+$/, '')}/api${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -88,8 +83,5 @@ function parseHeaderInt(value: string | null): number | undefined {
   }
 
   const n = Number(value);
-  // Sample rate / channel count / bit depth are positive integers by
-  // definition. A 0 or fractional value from a buggy server should fail
-  // closed rather than silently producing garbage WAV headers downstream.
   return Number.isInteger(n) && n > 0 ? n : undefined;
 }

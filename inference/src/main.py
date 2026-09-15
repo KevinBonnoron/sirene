@@ -14,8 +14,7 @@ from .routers import backends, cache, generate, health, models, transcribe
 from .services import registration
 from .services.model_manager import model_manager
 
-# Runtime packages dir (volume-backed in Docker) - add to sys.path so lazily
-# installed backend deps are importable without restarting the process.
+# Lazily installed backend deps land here; on sys.path so they import without a restart.
 _packages_dir = os.environ.get("PACKAGES_DIR")
 if _packages_dir:
     os.makedirs(_packages_dir, exist_ok=True)
@@ -36,9 +35,7 @@ logging.basicConfig(
     handlers=[_stdout_handler, _stderr_handler],
     force=True,
 )
-# Uvicorn installs its own handlers on these loggers at startup, which bypasses
-# basicConfig and produces the "INFO:     ..." format alongside our own. Strip
-# those handlers so everything propagates to root and shares one format.
+# Uvicorn installs its own handlers on these loggers, bypassing basicConfig with a second format.
 for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
     _lg = logging.getLogger(_name)
     _lg.handlers.clear()
@@ -81,20 +78,12 @@ app.add_middleware(
 
 @app.middleware("http")
 async def bearer_auth(request: Request, call_next):
-    # Auth is opt-in via INFERENCE_AUTH_TOKEN; INFERENCE_ALLOW_NO_AUTH=true is required
-    # at startup (see config.py) when no token is set, so this branch only triggers
-    # for explicitly-trusted private-network setups.
     if not settings.auth_token:
         return await call_next(request)
-    # /health must stay reachable without auth so probes from outside the trust boundary
-    # (load balancers, the Sirene app's health loop on first contact) can verify liveness.
-    # Restrict the bypass to GET/HEAD so a future non-probe handler on the same path
-    # can't accidentally inherit unauthenticated access.
-    # Tolerate trailing slashes since reverse proxies and curl users don't always strip them.
+    # Unauthenticated liveness probes; GET/HEAD only so nothing else on this path inherits the bypass.
     if request.url.path.rstrip("/") == "/health" and request.method in ("GET", "HEAD"):
         return await call_next(request)
-    # Compare against the bearer token only - accept any case for the scheme keyword and
-    # tolerate extra surrounding whitespace, both of which are valid per RFC 6750.
+    # Case-insensitive scheme and surrounding whitespace are valid per RFC 6750.
     header = request.headers.get("authorization", "").strip()
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or token.strip() != settings.auth_token:

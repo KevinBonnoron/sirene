@@ -16,9 +16,7 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
 )
 
-// Envelope turns every error returned by a Sirene handler into the
-// {code, message} body the client and CLI understand. Returning nil after
-// writing keeps PocketBase's own error handler out of the way.
+// Returning nil after writing keeps PocketBase's own error handler out of the way.
 func Envelope() *hook.Handler[*core.RequestEvent] {
 	return &hook.Handler[*core.RequestEvent]{
 		Id: "sireneEnvelope",
@@ -87,9 +85,7 @@ func writeError(e *core.RequestEvent, err error) error {
 	return e.JSON(http.StatusInternalServerError, map[string]string{"code": apierr.CodeInternal, "message": "Internal error"})
 }
 
-// Resolve identifies the caller. API keys (sk_ prefix) are looked up by hash
-// and load the owning user into e.Auth so PocketBase rules keep working;
-// PocketBase's own loadAuthToken middleware already resolved users tokens.
+// PocketBase's loadAuthToken already resolved user tokens; API keys load their owner into e.Auth so collection rules keep working.
 func Resolve(keys *APIKeys) *hook.Handler[*core.RequestEvent] {
 	return &hook.Handler[*core.RequestEvent]{
 		Id: "sireneResolve",
@@ -173,8 +169,6 @@ func RequireScope(scope string) *hook.Handler[*core.RequestEvent] {
 	}
 }
 
-// RequireJWT keeps credential-management endpoints out of reach of API keys,
-// so a key can never mint more keys or approve a CLI session.
 func RequireJWT() *hook.Handler[*core.RequestEvent] {
 	return &hook.Handler[*core.RequestEvent]{
 		Id: "sireneRequireJWT",

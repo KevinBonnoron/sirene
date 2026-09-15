@@ -11,9 +11,7 @@ import (
 	"time"
 )
 
-// Duration reports a clip's length in seconds, rounded to a tenth. WAV is
-// parsed natively; other formats fall back to ffprobe when it is installed
-// and otherwise report 0, which the UI treats as unknown.
+// Non-WAV clips fall back to ffprobe; 0 is what the UI treats as unknown.
 func Duration(ctx context.Context, data []byte) float64 {
 	if info, err := ParseWAV(bytes.NewReader(data)); err == nil {
 		return round1(info.Duration)

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_dac_codec(codec_path: str, device: str):
-    """Load the DAC codec model from config + weights, bypassing pyrootutils."""
+    # Bypasses pyrootutils.
     import torch
     from omegaconf import OmegaConf
     from hydra.utils import instantiate
@@ -31,7 +31,6 @@ def _load_dac_codec(codec_path: str, device: str):
     if "state_dict" in state_dict:
         state_dict = state_dict["state_dict"]
 
-    # Strip "generator." prefix if present
     if any("generator" in k for k in state_dict):
         state_dict = {
             k.replace("generator.", ""): v
@@ -64,11 +63,8 @@ class OpenAudioBackend(TTSBackend):
 
         resolved_device = self._resolve_device(device)
 
-        # Pick precision: bfloat16 on CUDA, float32 on CPU
         precision = torch.bfloat16 if resolved_device != "cpu" else torch.float32
 
-        # Stage 1: Load the DualARTransformer (LLM) via init_model
-        # init_model loads model weights + tokenizer from checkpoint_path
         self._model, self._decode_one_token = init_model(
             checkpoint_path=str(model_path),
             device=resolved_device,
@@ -76,7 +72,6 @@ class OpenAudioBackend(TTSBackend):
             compile=False,
         )
 
-        # Stage 2: Load the DAC codec for audio encode/decode
         codec_path = model_path / "codec.pth"
         if not codec_path.exists():
             raise FileNotFoundError(
@@ -103,7 +98,6 @@ class OpenAudioBackend(TTSBackend):
         return True
 
     def _encode_reference(self, audio_path: str):
-        """Encode reference audio into VQ tokens for voice cloning."""
         import torch
         import torchaudio
 
@@ -111,16 +105,13 @@ class OpenAudioBackend(TTSBackend):
 
         audio, sr = torchaudio.load(audio_path)
 
-        # Convert to mono
         if audio.shape[0] > 1:
             audio = audio.mean(0, keepdim=True)
 
-        # Resample to codec sample rate if needed
         if sr != self._sample_rate:
             resampler = torchaudio.transforms.Resample(sr, self._sample_rate)
             audio = resampler(audio)
 
-        # Encode: [1, 1, T] -> [1, num_codebooks, num_features]
         audios = audio[None].to(self._device)
         audio_lengths = torch.tensor(
             [audios.shape[2]], device=self._device, dtype=torch.long
@@ -129,7 +120,6 @@ class OpenAudioBackend(TTSBackend):
         with torch.no_grad():
             indices, _ = self._codec.encode(audios, audio_lengths)
 
-        # Remove batch dim -> [num_codebooks, num_features]
         prompt_tokens = indices[0]
         logger.info(
             f"[openaudio] Reference encoded: {prompt_tokens.shape}"
@@ -147,7 +137,6 @@ class OpenAudioBackend(TTSBackend):
 
         prompt_tokens = None
 
-        # Encode reference audio for voice cloning
         if params.has_reference_audio:
             with self._reference_audio(params) as ref_audio_path:
                 from ..services.prompt_cache import get_cache
@@ -164,7 +153,6 @@ class OpenAudioBackend(TTSBackend):
                     cache.put_prompt(prompt_key, prompt_tokens.cpu())
                     logger.info("[openaudio] Reference encoded and cached")
 
-        # Stage 1: Text -> semantic tokens via LLM
         codes_list = []
         for response in generate_long(
             model=self._model,
@@ -185,7 +173,6 @@ class OpenAudioBackend(TTSBackend):
         codes = torch.cat(codes_list, dim=1)
         logger.info(f"[openaudio] Generated {codes.shape[1]} semantic tokens")
 
-        # Stage 2: Semantic tokens -> audio via DAC codec
         feature_lengths = torch.tensor(
             [codes.shape[1]], device=self._device, dtype=torch.long
         )
@@ -194,7 +181,6 @@ class OpenAudioBackend(TTSBackend):
                 codes[None].to(self._device), feature_lengths
             )
 
-        # audio_hat shape: [1, 1, num_samples]
         audio = audio_hat[0, 0].float().cpu().numpy()
         audio = self._normalize_audio(audio)
 

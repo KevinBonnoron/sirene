@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from ..config import settings
+from ..services import registration
 from ..services.model_manager import model_manager
 
 router = APIRouter()
@@ -12,4 +13,5 @@ async def health():
         "status": "ok",
         "device": settings.device,
         "loaded_models": len(model_manager._loaded),
+        "registration": registration.status(),
     }

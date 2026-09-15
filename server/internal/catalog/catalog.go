@@ -9,9 +9,7 @@ import (
 //go:embed models.json
 var modelsJSON []byte
 
-// CatalogFile is either a bare path (same repo as the model) or an object
-// with a custom repo / remote path. It marshals back to the bare form when
-// possible so /models/catalog stays byte-identical to the manifest.
+// Marshals back to the bare path form when possible so /models/catalog stays byte-identical to the manifest.
 type CatalogFile struct {
 	Path       string
 	Repo       string

@@ -158,9 +158,6 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
   const [selectedScopes, setSelectedScopes] = useState<Set<ApiKeyScope>>(new Set());
 
   const create = useMutation({
-    // `null` signals "full access" to the server; an array is the explicit
-    // restricted set. An empty array is rejected server-side so we never
-    // send one here (the submit button is disabled when no scope is picked).
     mutationFn: () => apiKeyClient.create(name.trim(), fullAccess ? null : Array.from(selectedScopes)),
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['api-keys'] });
@@ -227,24 +224,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
   );
 }
 
-/** Multi-select for API-key scopes. The "Full access" toggle is the default
- *  because the most common use (CLI on a trusted laptop) wants everything.
- *  Turning it off reveals the per-capability switches so the user can narrow. */
-export function ScopePicker({
-  fullAccess,
-  onFullAccessChange,
-  selected,
-  onSelectedChange,
-  available,
-}: {
-  fullAccess: boolean;
-  onFullAccessChange: (next: boolean) => void;
-  selected: Set<ApiKeyScope>;
-  onSelectedChange: (next: Set<ApiKeyScope>) => void;
-  /** Restrict the picker to a subset (e.g. when the CLI requested only some).
-   *  Omitted = all known scopes. */
-  available?: readonly ApiKeyScope[];
-}) {
+export function ScopePicker({ fullAccess, onFullAccessChange, selected, onSelectedChange, available }: { fullAccess: boolean; onFullAccessChange: (next: boolean) => void; selected: Set<ApiKeyScope>; onSelectedChange: (next: Set<ApiKeyScope>) => void; available?: readonly ApiKeyScope[] }) {
   const { t } = useTranslation();
   const fullAccessId = useId();
   const list = useMemo<readonly ApiKeyScope[]>(() => available ?? API_KEY_SCOPES, [available]);

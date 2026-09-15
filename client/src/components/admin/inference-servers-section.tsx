@@ -59,8 +59,6 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
 export function InferenceServersSection() {
   const { t } = useTranslation();
   const { data: serversData } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
-  // useLiveQuery yields undefined on the very first render before the collection
-  // has hydrated; default to an empty array so neither .length nor .map throws.
   const servers = serversData ?? [];
   const [adding, setAdding] = useState(false);
 
@@ -101,16 +99,13 @@ function ServerRow({ server }: { server: InferenceServer }) {
   async function handleTest() {
     setTesting(true);
     try {
-      // Forced probe goes through the API because the browser can't reliably probe arbitrary
-      // inference URLs (CORS). PB realtime delivers the persisted result back here.
+      // Probing from the browser would hit CORS; the API probes and PB realtime brings the result back.
       const token = getStoredToken();
       const res = await fetch(`${config.server.url}/inference-servers/${server.id}/test`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        // Surface the server's `{ message }` body when present so the user gets a real
-        // explanation (DNS, 502 from the worker, etc.) instead of a bare HTTP status.
         const body = await res.json().catch(() => null);
         const message = body && typeof body.message === 'string' ? body.message : t('inferenceServers.testFailedStatus', { status: res.status });
         throw new Error(message);
@@ -190,8 +185,7 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const enabledId = `${reactId}-enabled`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
-  // PB hides authToken, so we can't pre-fill the existing value. Treat the field
-  // as "leave blank to keep current; type to overwrite" via the dirty flag.
+  // PB never returns authToken, so it can't be pre-filled: untouched keeps it, an empty submit clears it.
   const [authToken, setAuthToken] = useState('');
   const [authTokenDirty, setAuthTokenDirty] = useState(false);
   const [priority, setPriority] = useState(String(server?.priority ?? 0));
@@ -199,8 +193,6 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
-    // Bail before the disabled-button state propagates so a fast double-submit
-    // can't fire two create/update requests for the same form.
     if (saving || !name.trim() || !url.trim()) {
       return;
     }
@@ -211,7 +203,6 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
       enabled,
     };
     if (authTokenDirty) {
-      // Empty string clears the token server-side; non-empty replaces it.
       payload.authToken = authToken.trim();
     }
     setSaving(true);

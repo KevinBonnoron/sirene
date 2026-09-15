@@ -74,9 +74,7 @@ type Buffered struct {
 	ContentType  string
 }
 
-// StreamResult exposes a tee: the handler drains Reader to the client while a
-// background goroutine persists the same bytes as WAV. Finish must be called
-// once the handler stops reading, with the read error if any.
+// Finish must be called once the handler stops reading, with the read error if any.
 type StreamResult struct {
 	GenerationID string
 	SampleRate   int
@@ -101,7 +99,6 @@ func New(app core.App, m *models.Service, r *routing.Router, v *voices.Service) 
 	return &Service{app: app, models: m, router: r, voices: v}
 }
 
-// Wait blocks until pending background saves finish (bounded by the caller).
 func (s *Service) Wait(timeout time.Duration) {
 	done := make(chan struct{})
 	go func() {
@@ -356,8 +353,6 @@ func (s *Service) pick(ctx context.Context, r *resolved) (*core.Record, *inferen
 	return server, inference.NewClient(infsrv.TargetOf(server), s.app.Logger().Warn), nil
 }
 
-// The worker keeps reference audio keyed by the cache key; on a miss it
-// asks for the samples inline as data URIs.
 func (s *Service) withReferenceAudio(r *resolved) (inference.Request, error) {
 	req := r.req
 	req.ReferenceAudioData = make([]string, 0, len(r.samples))
@@ -437,8 +432,7 @@ func (s *Service) run(ctx context.Context, r *resolved, rec *core.Record, userID
 		return &Result{Buffered: &Buffered{GenerationID: rec.Id, Audio: data, ContentType: "audio/wav"}}, nil
 	}
 
-	// The worker call is deliberately detached from the request context so a
-	// client that disconnects mid-stream still gets its generation saved.
+	// Detached from the request context so a client that disconnects mid-stream still gets its generation saved.
 	upstream, err := client.GenerateStream(context.Background(), r.req)
 	if errors.Is(err, inference.ErrCacheMiss) && r.samples != nil {
 		req, rerr := s.withReferenceAudio(r)

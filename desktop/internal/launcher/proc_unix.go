@@ -7,8 +7,7 @@ import (
 	"syscall"
 )
 
-// A process group lets Stop take uvicorn's children (backend workers) down
-// with it instead of leaving orphans behind.
+// A process group lets Stop take uvicorn's backend workers down with it.
 func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

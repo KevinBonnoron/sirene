@@ -6,8 +6,6 @@ import { color } from '../utils';
 export async function modelListCommand(): Promise<void> {
   const config = await loadConfig();
 
-  // Catalog and installed run in parallel: they don't depend on each other
-  // and the round-trip dominates total time.
   const [catalog, installed] = await Promise.all([getJson<CatalogModel[]>(config, '/models/catalog'), getJson<Model[]>(config, '/models/installed')]);
 
   if (catalog.length === 0) {

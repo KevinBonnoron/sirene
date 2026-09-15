@@ -18,8 +18,6 @@ async function deleteModel(config: CliConfig, modelId: string, serverId?: string
   }
   const query = serverId ? `?serverId=${encodeURIComponent(serverId)}` : '';
   const url = `${config.url.replace(/\/+$/, '')}/api/models/${encodeURIComponent(modelId)}${query}`;
-  // Match the shared request helper: bound the call so an unreachable worker
-  // doesn't hang the CLI indefinitely waiting for a DELETE that won't return.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
   let response: Response;
@@ -47,9 +45,6 @@ async function deleteModel(config: CliConfig, modelId: string, serverId?: string
 export async function modelRmCommand(modelId: string, options: Options): Promise<void> {
   const config = await loadConfig();
 
-  // Confirmation guard: deletes are destructive and there's no undo (the
-  // model files are removed from the worker's disk). --force bypasses for
-  // scripts, but the default flow refuses without an explicit yes.
   if (!options.force) {
     const scope = options.serverId ? `from server "${options.serverId}"` : 'from every server it is installed on';
     if (!process.stdin.isTTY) {

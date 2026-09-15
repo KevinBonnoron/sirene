@@ -12,7 +12,6 @@ async def download_model_files(
     total_size: int,
     hf_token: str | None = None,
 ):
-    """Async generator yielding progress dicts as files download."""
     model_path.mkdir(parents=True, exist_ok=True)
 
     downloaded = 0

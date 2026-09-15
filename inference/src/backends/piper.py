@@ -9,7 +9,6 @@ from .base import GenerateParams, TTSBackend, TTSResult
 
 logger = logging.getLogger(__name__)
 
-# Special phoneme tokens used by Piper models
 _BOS = "^"
 _EOS = "$"
 _PAD = "_"
@@ -36,13 +35,11 @@ class PiperBackend(TTSBackend):
         logger.info(f"[piper] Loading model from {model_path} on {device}")
         self._model_path = model_path
 
-        # Find .onnx file (may be in subdirectories, e.g. fr/fr_FR/siwis/medium/)
         onnx_files = list(model_path.rglob("*.onnx"))
         if not onnx_files:
             raise FileNotFoundError(f"No .onnx file found in {model_path}")
         onnx_path = onnx_files[0]
 
-        # Load config from .onnx.json
         config_path = Path(f"{onnx_path}.json")
         if not config_path.exists():
             raise FileNotFoundError(f"Config not found at {config_path}")
@@ -67,7 +64,6 @@ class PiperBackend(TTSBackend):
             f"speakers={self._num_speakers}"
         )
 
-        # Create ONNX session
         providers = ["CPUExecutionProvider"]
         if device == "cuda":
             available = ort.get_available_providers()
@@ -94,7 +90,6 @@ class PiperBackend(TTSBackend):
         return self._sample_rate
 
     def _phonemize(self, text: str) -> list[list[str]]:
-        """Convert text to phoneme sequences (one per sentence) via espeak-ng."""
         result = subprocess.run(
             ["espeak-ng", "--ipa", "-q", "-v", self._espeak_voice, text],
             capture_output=True,
@@ -108,7 +103,6 @@ class PiperBackend(TTSBackend):
         if not output:
             return []
 
-        # Each line from espeak-ng is a clause/sentence
         sentences: list[list[str]] = []
         for line in output.splitlines():
             line = line.strip()
@@ -117,11 +111,9 @@ class PiperBackend(TTSBackend):
         return sentences
 
     def _phonemes_to_ids(self, phonemes: list[str]) -> list[int]:
-        """Convert a list of phoneme characters to token IDs using the model's phoneme_id_map."""
         id_map = self._phoneme_id_map
         ids: list[int] = []
 
-        # BOS
         if _BOS in id_map:
             ids.extend(id_map[_BOS])
 
@@ -130,11 +122,9 @@ class PiperBackend(TTSBackend):
                 logger.debug(f"[piper] Skipping unknown phoneme: {phoneme!r}")
                 continue
             ids.extend(id_map[phoneme])
-            # PAD between phonemes
             if _PAD in id_map:
                 ids.extend(id_map[_PAD])
 
-        # EOS
         if _EOS in id_map:
             ids.extend(id_map[_EOS])
 
@@ -146,7 +136,6 @@ class PiperBackend(TTSBackend):
 
         logger.info(f"[piper] Generating: {params.text[:80]}...")
 
-        # Phonemize text into sentences
         sentence_phonemes = self._phonemize(params.text)
         if not sentence_phonemes:
             return TTSResult(
@@ -154,12 +143,8 @@ class PiperBackend(TTSBackend):
                 sample_rate=self._sample_rate,
             )
 
-        # Adjust length_scale for speed (higher speed = shorter length)
         length_scale = self._length_scale / params.speed
 
-        # Per-generation override for noise_scale (variation seed). Falls back to the
-        # backend default when unset so we don't change behaviour for callers that
-        # don't pass it.
         noise_scale = params.noise_scale if params.noise_scale is not None else self._noise_scale
 
         scales = np.array(
@@ -167,7 +152,6 @@ class PiperBackend(TTSBackend):
             dtype=np.float32,
         )
 
-        # Resolve speaker ID for multi-speaker models
         speaker_id: int | None = None
         if self._num_speakers > 1:
             speaker_id = 0
@@ -181,7 +165,6 @@ class PiperBackend(TTSBackend):
             if not phoneme_ids:
                 continue
 
-            # Build ONNX inputs
             phoneme_ids_array = np.expand_dims(
                 np.array(phoneme_ids, dtype=np.int64), 0
             )
@@ -198,7 +181,6 @@ class PiperBackend(TTSBackend):
             if speaker_id is not None:
                 args["sid"] = np.array([speaker_id], dtype=np.int64)
 
-            # Run inference
             result = self._session.run(None, args)
             audio = result[0].squeeze()
             audio = np.asarray(audio, dtype=np.float32)

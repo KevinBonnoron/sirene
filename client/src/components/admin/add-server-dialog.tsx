@@ -16,11 +16,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-// Inference mode landed after the v0.0.1 tag was cut, so there is no tagged
-// release the installer can be pinned to today. Use `main` and surface a
-// security note in the dialog hint; once an inference-capable release exists
-// this should switch back to a fetched-version-based pin (the /version
-// endpoint is already wired).
+// TODO: pin to a tagged release (via /version) once one ships with inference mode.
 const INSTALL_REF = 'main';
 const INSTALL_URL = `https://raw.githubusercontent.com/KevinBonnoron/sirene/${INSTALL_REF}/install.sh`;
 const IMAGE = 'ghcr.io/kevinbonnoron/sirene-inference';

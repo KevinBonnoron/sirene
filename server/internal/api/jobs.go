@@ -46,8 +46,7 @@ func registerJobs(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		}
 	}).Bind(auth.RequireScope("models:read"), apis.SkipSuccessActivityLog())
 
-	// Dismissing a running job is refused; the raw body (no code) is what the
-	// client has always parsed here.
+	// The client parses the raw body (no code) here.
 	p.DELETE("/jobs/{id}", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
 		if err != nil {

@@ -14,7 +14,6 @@ import (
 
 const openAIBase = "https://api.openai.com/v1"
 
-// Voices accepted by the tts-1 model.
 var OpenAIVoices = []catalog.PresetVoice{
 	{ID: "alloy", Label: "Alloy", Description: "Neutral and balanced"},
 	{ID: "ash", Label: "Ash", Description: "Warm and conversational"},

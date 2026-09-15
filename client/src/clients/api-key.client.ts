@@ -7,8 +7,7 @@ export const apiKeyClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
     list: () => delegate.get<ApiKeySummary[]>('/api-keys'),
-    /** `scopes === null` mints a full-access key. Pass a non-empty array to
-     *  restrict; the server rejects an empty array. */
+    /** `null` mints a full-access key; the server rejects `[]`. */
     create: (name: string, scopes: ApiKeyScope[] | null) => delegate.post<ApiKeyCreated>('/api-keys', { name, scopes }),
     revoke: (id: string) => delegate.delete<void>(`/api-keys/${id}`),
   })),

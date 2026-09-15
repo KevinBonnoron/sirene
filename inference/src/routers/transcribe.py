@@ -30,7 +30,7 @@ def _get_model(model_path: str):
 
             if not torch.cuda.is_available():
                 raise RuntimeError("CUDA not available")
-            # Verify the driver actually works
+            # cuda.is_available() can be true with a broken driver.
             torch.zeros(1, device="cuda")
         except Exception as e:
             logger.warning(f"CUDA requested but unavailable ({e}), falling back to CPU")

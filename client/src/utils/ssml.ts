@@ -1,6 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
 
-/** Convert TipTap JSONContent back to the internal SSML/marker string. */
 export function contentToSSML(doc: JSONContent): string {
   return (doc.content ?? [])
     .map((para) =>
@@ -26,18 +25,13 @@ export function contentToSSML(doc: JSONContent): string {
     .join('\n');
 }
 
-/** Strip all SSML/marker syntax, returning plain text only. */
 export function stripSSML(text: string): string {
   return text.replace(/<[^>]+>/g, '').replace(/\[[^\]]+\]/g, '');
 }
 
-// Tiptap text nodes split when marks change. A single word "hello" wrapped in a mark gets
-// emitted as two adjacent text nodes ("hel" + "lo") that we must NOT separate with a space -
-// otherwise countWords doubles the count. Track block (paragraph) boundaries explicitly and
-// only insert a separator between blocks.
+// Tiptap splits a word into adjacent text nodes when marks change, so only block boundaries get a separator.
 const TIPTAP_BLOCK_TYPES = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock', 'listItem']);
 
-/** Count words in a Tiptap document, ignoring effect nodes / SSML markers. */
 export function countWords(doc: JSONContent): number {
   const blocks: string[] = [];
   let buffer = '';
@@ -68,7 +62,6 @@ export function countWords(doc: JSONContent): number {
 
 const WORDS_PER_SECOND = 3;
 
-/** Rough seconds estimate from a word count, used for the draft "~0:03" hint. */
 export function estimateSpeechDuration(wordCount: number, speedMultiplier = 1): number {
   if (!Number.isFinite(wordCount) || wordCount <= 0) {
     return 0;

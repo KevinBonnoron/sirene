@@ -5,8 +5,6 @@ import { color } from '../utils';
 
 const SETTABLE = new Set(['url', 'apiKey']);
 
-/** Annotate non-default sources only - we leave the unset state unmarked so it
- *  doesn't look like a deliberate choice. */
 function sourceTag(source: ConfigSource, envName: string): string {
   if (source === 'file') {
     return color.dim('  (saved)');
@@ -51,7 +49,6 @@ export async function configGetCommand(key?: string): Promise<void> {
   if (!SETTABLE.has(key)) {
     throw new Error(`Unknown config key: ${key} (valid: ${[...SETTABLE].join(', ')})`);
   }
-  // Scripted lookup: just the bare value, so callers can pipe it. No color.
   const config = await loadConfig();
   const value = (config as unknown as Record<string, string | undefined>)[key];
   if (value !== undefined) {
@@ -63,8 +60,6 @@ export async function configSetCommand(key: string, value: string): Promise<void
   if (!SETTABLE.has(key)) {
     throw new Error(`Unknown config key: ${key} (valid: ${[...SETTABLE].join(', ')})`);
   }
-  // Use the file-only view so an env-resolved value (e.g. `SIRENE_API_KEY`)
-  // doesn't get baked into config.json on every unrelated `config set`.
   const fileConfig = await loadFileConfig();
   const next = { ...fileConfig, [key]: value };
   await saveConfig(next);

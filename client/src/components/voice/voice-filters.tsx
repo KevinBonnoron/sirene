@@ -53,7 +53,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
     [catalog],
   );
 
-  // Build active badges
   const activeBadges: FilterBadge[] = useMemo(() => {
     const badges: FilterBadge[] = [];
     if (search) {
@@ -74,12 +73,10 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
     return badges;
   }, [search, visibilityFilter, languageFilter, modelFilter, tagFilters, t, getModelName]);
 
-  // Build suggestions filtered by input text
   const suggestions = useMemo(() => {
     const query = inputValue.toLowerCase();
     const items: SuggestionItem[] = [];
 
-    // Visibility
     if (hasPublicVoices && visibilityFilter === 'all') {
       const visOptions: { value: VisibilityFilter; labelKey: string }[] = [
         { value: 'mine', labelKey: 'voice.mine' },
@@ -93,7 +90,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
       }
     }
 
-    // Languages
     if (languages.length > 1) {
       for (const lang of languages) {
         if (lang === languageFilter) {
@@ -105,7 +101,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
       }
     }
 
-    // Models
     if (models.length > 1) {
       for (const modelId of models) {
         if (modelId === modelFilter) {
@@ -118,7 +113,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
       }
     }
 
-    // Tags
     for (const tag of allTags) {
       if (tagFilters.includes(tag)) {
         continue;
@@ -131,7 +125,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
     return items;
   }, [inputValue, hasPublicVoices, visibilityFilter, languages, languageFilter, models, modelFilter, allTags, tagFilters, t, getModelName]);
 
-  // Group suggestions by type for display
   const groupedSuggestions = useMemo(() => {
     const groups: { type: Exclude<FilterType, 'search'>; items: SuggestionItem[] }[] = [];
     const typeOrder: Exclude<FilterType, 'search'>[] = ['visibility', 'language', 'model', 'tag'];
@@ -144,7 +137,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
     return groups;
   }, [suggestions]);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -155,7 +147,6 @@ export function VoiceFilterBar({ search, setSearch, visibilityFilter, setVisibil
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Scroll highlighted item into view
   useEffect(() => {
     if (!listRef.current) {
       return;

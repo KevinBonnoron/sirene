@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// Downloads a real Python runtime and installs the inference service; only
-// runs when SIRENE_E2E=1 because it needs the network and a few minutes.
 func TestBootstrapEndToEnd(t *testing.T) {
 	if os.Getenv("SIRENE_E2E") != "1" {
 		t.Skip("set SIRENE_E2E=1 to run")

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TTSResult:
-    audio: np.ndarray  # float32 PCM samples, mono
+    audio: np.ndarray
     sample_rate: int
 
 
@@ -24,12 +24,11 @@ class GenerateParams:
     text: str
     voice_path: str | None = None
     reference_audio: list[str] | None = None
-    reference_audio_data: list[str] | None = None  # base64 data URIs
+    reference_audio_data: list[str] | None = None
     reference_cache_key: str | None = None
     reference_text: list[str] | None = None
-    # Set once the reference audio is resolved: how many samples, in order,
-    # made it into the concatenated clip. The transcript must describe exactly
-    # that audio or in-context cloning models speak the difference.
+    # Samples that made it into the concatenated clip; the transcript must match exactly
+    # or in-context cloning models speak the difference.
     included_reference_count: int | None = None
     instruct_text: str | None = None
     instruct_gender: str | None = None
@@ -39,7 +38,6 @@ class GenerateParams:
 
     @property
     def has_reference_audio(self) -> bool:
-        """True if any form of reference audio is available (URLs, binary data, or cache key)."""
         return bool(
             self.reference_audio
             or self.reference_audio_data
@@ -48,8 +46,6 @@ class GenerateParams:
 
     @property
     def joined_reference_text(self) -> str:
-        """Transcript of the reference clip: the segments of the samples that
-        were actually concatenated, in order."""
         texts = list(self.reference_text or [])
         if self.included_reference_count is not None:
             texts = texts[: self.included_reference_count]
@@ -67,7 +63,6 @@ class TTSBackend(ABC):
 
     @property
     def max_reference_duration(self) -> float:
-        """Maximum reference audio duration in seconds. Override per backend."""
         return 25.0
 
     @abstractmethod
@@ -88,7 +83,6 @@ class TTSBackend(ABC):
     def _generate(self, params: GenerateParams) -> TTSResult: ...
 
     def unload_model(self) -> None:
-        """Unload the model and free GPU memory. Override to clean up extra resources."""
         logger.info(f"[{self.name}] Unloading model")
         if self._model is not None:
             del self._model
@@ -115,8 +109,6 @@ class TTSBackend(ABC):
         return False
 
     def generate_stream(self, params: GenerateParams):
-        """Yield audio in chunks. Defaults to generating full audio then chunking.
-        Override for backends with native streaming support."""
         result = self.generate(params)
         chunk_duration = 0.5
         chunk_size = int(result.sample_rate * chunk_duration)
@@ -126,7 +118,6 @@ class TTSBackend(ABC):
 
     @staticmethod
     def _resolve_device(device: str) -> str:
-        """Resolve the requested device, falling back to CPU if CUDA is unavailable."""
         if not device.startswith("cuda"):
             return "cpu"
         try:
@@ -142,7 +133,6 @@ class TTSBackend(ABC):
 
     @staticmethod
     def _normalize_audio(audio: np.ndarray) -> np.ndarray:
-        """Peak-normalize audio to [-1.0, 1.0] if any sample exceeds that range."""
         max_val = np.abs(audio).max()
         if max_val < 1e-6:
             logger.warning(
@@ -158,14 +148,6 @@ class TTSBackend(ABC):
     def _reference_audio(
         self, params: "GenerateParams", max_duration: float | None = None
     ):
-        """Resolve reference audio with L1 caching, yield the file path.
-
-        Uses params.reference_cache_key as the cache key when provided (stable,
-        set by the server from sample IDs). Falls back to URL-based key for
-        backward compatibility. Audio is sourced from params.reference_audio_data
-        (base64 data URIs) on cache miss, avoiding any network call from the
-        inference server.
-        """
         from ..services.prompt_cache import get_cache
 
         if max_duration is None:
@@ -180,8 +162,7 @@ class TTSBackend(ABC):
         else:
             raise ValueError("No reference audio provided")
 
-        # A clip cached before the sample count was tracked is rebuilt: without
-        # the count the transcript cannot be trimmed to match it.
+        # Clips cached without a sample count are rebuilt: the transcript cannot be trimmed to match.
         cached_path = cache.get_audio(key)
         included = cache.get_audio_included(key)
         if cached_path and included is not None:
@@ -212,7 +193,6 @@ class TTSBackend(ABC):
             cached_path = cache.put_audio(key, temp_path, included=included)
             yield cached_path
         except Exception:
-            # Cache store failed, fall back to temp path
             if os.path.exists(temp_path):
                 try:
                     yield temp_path
@@ -222,11 +202,6 @@ class TTSBackend(ABC):
                 raise
 
     def needs_reference_audio(self, params: "GenerateParams") -> bool:
-        """Return True if reference audio is needed but not yet cached.
-
-        Returns False immediately if audio data is already embedded in the request,
-        since the data will be decoded and cached during generation.
-        """
         if params.reference_audio_data:
             return False
 
@@ -247,8 +222,6 @@ class TTSBackend(ABC):
     def _decode_and_concatenate_reference(
         self, data_uris: list[str], max_duration: float | None = None
     ) -> tuple[str, int]:
-        """Decode base64 data URIs, concatenate whole samples up to max_duration,
-        and return the temp file path plus how many samples were included."""
         import base64
         import soundfile as sf
 
@@ -270,7 +243,6 @@ class TTSBackend(ABC):
             mime = header.split(":")[1].split(";")[0]
             return base64.b64decode(encoded), _MIME_TO_EXT.get(mime, ".wav")
 
-        # Fast path: single file
         if len(data_uris) == 1:
             data, suffix = _decode_one(data_uris[0])
             tmp = tempfile.NamedTemporaryFile(
@@ -321,10 +293,8 @@ class TTSBackend(ABC):
         max_duration: float,
         sr: int,
     ) -> bool:
-        """Append a whole sample if it fits within max_duration; a sample is never
-        cut in the middle, otherwise its transcript would no longer match. The
-        first sample is the only one allowed to be trimmed, so that a single
-        long recording still yields a usable clip. Returns False once full."""
+        # Samples are never cut mid-way (the transcript would drift); only the first may be
+        # trimmed so a single long recording still yields a clip.
         max_samples = int(max_duration * sr)
         current = sum(len(a) for a in all_audio)
         if not all_audio:
@@ -359,15 +329,12 @@ class TTSBackend(ABC):
     def _download_and_concatenate_reference(
         self, urls: list[str], max_duration: float | None = None
     ) -> tuple[str, int]:
-        """Download multiple reference audio URLs, concatenate whole samples up to
-        max_duration, and return the temp file path plus how many were included."""
         import httpx
         import soundfile as sf
 
         if max_duration is None:
             max_duration = self.max_reference_duration
 
-        # Fast path: single URL - just download and return
         if len(urls) == 1:
             return self._download_single_reference(urls[0]), 1
 
@@ -395,7 +362,7 @@ class TTSBackend(ABC):
             try:
                 audio, sr = sf.read(tmp.name, dtype="float32")
                 if audio.ndim > 1:
-                    audio = audio.mean(axis=1)  # mono
+                    audio = audio.mean(axis=1)
 
                 if target_sr is None:
                     target_sr = sr
@@ -416,7 +383,6 @@ class TTSBackend(ABC):
         return path, len(all_audio)
 
     def _download_single_reference(self, url: str) -> str:
-        """Download a single reference audio URL and return a temp file path."""
         import httpx
 
         logger.info(f"[{self.name}] Downloading reference audio from {url[:80]}...")

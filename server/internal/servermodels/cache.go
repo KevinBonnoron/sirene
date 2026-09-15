@@ -21,8 +21,6 @@ type entry struct {
 	fingerprint string
 }
 
-// Cache remembers what each inference server has installed. Entries expire
-// after a minute and are dropped explicitly after pulls, deletes and edits.
 type Cache struct {
 	app     core.App
 	servers *infsrv.Service
@@ -54,8 +52,6 @@ func healthStatus(rec *core.Record) string {
 	return h.Status
 }
 
-// InstalledByServer only considers enabled servers that are not known to be
-// offline; a single failing worker is logged and skipped.
 func (c *Cache) InstalledByServer(ctx context.Context) (map[string]map[string]struct{}, error) {
 	entries, err := c.collect(ctx)
 	if err != nil {

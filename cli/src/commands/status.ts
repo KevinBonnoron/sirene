@@ -35,8 +35,6 @@ export async function authStatusCommand(): Promise<void> {
     }
     process.stdout.write(`  Key:  ${maskKey(config.apiKey)}\n`);
   } catch (err) {
-    // Authenticated context is broken (revoked / wrong server / etc). Surface
-    // the cause but exit non-zero so scripts can branch on it.
     process.stdout.write(`✗ Not authenticated to ${config.url}\n`);
     process.stdout.write(`  Key:  ${maskKey(config.apiKey)}\n`);
     if (err instanceof ApiError) {

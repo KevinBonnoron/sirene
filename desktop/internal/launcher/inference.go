@@ -25,8 +25,6 @@ var inferenceSrc embed.FS
 
 const depsMarker = ".deps-installed"
 
-// SyncSource writes the embedded inference service to p.Inference and reports
-// the hash of its dependency manifest, so a changed pyproject reinstalls deps.
 func SyncSource(p Paths) (string, error) {
 	root, err := fs.Sub(inferenceSrc, "inference_src")
 	if err != nil {
@@ -38,8 +36,7 @@ func SyncSource(p Paths) (string, error) {
 	if err := os.MkdirAll(p.Inference, 0o700); err != nil {
 		return "", err
 	}
-	// Replace the managed tree wholesale: an update that turns a file into a
-	// directory (or back) would otherwise fail every sync from then on.
+	// Wholesale replace: a file turning into a directory (or back) would otherwise fail every later sync.
 	if err := os.RemoveAll(filepath.Join(p.Inference, "src")); err != nil {
 		return "", err
 	}
@@ -67,10 +64,7 @@ func SyncSource(p Paths) (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
-// EnsureDeps installs the inference service and its base dependencies into
-// the standalone Python; heavy backends stay lazy (installed by the worker
-// into p.Packages on first use). The marker lives with the interpreter so
-// a reinstalled Python starts without it.
+// The marker lives with the interpreter so a reinstalled Python starts without it.
 func EnsureDeps(ctx context.Context, p Paths, manifestHash string, logf func(string, ...any)) error {
 	marker := filepath.Join(p.Python, depsMarker)
 	if current, err := os.ReadFile(marker); err == nil && string(current) == manifestHash {
@@ -107,7 +101,6 @@ func (w logWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// Process is a running uvicorn worker.
 type Process struct {
 	cmd  *exec.Cmd
 	done chan struct{}
@@ -135,9 +128,7 @@ func (p *Process) Wait() error {
 	return p.err
 }
 
-// Reservation holds a loopback port open until the worker is about to bind
-// it, so the port announced to the server cannot be taken by another local
-// process while Python is being installed.
+// Holds the port open until the worker binds it, so nothing else grabs it while Python installs.
 type Reservation struct {
 	listener net.Listener
 }
@@ -201,10 +192,6 @@ func Start(ctx context.Context, p Paths, port *Reservation, logf func(string, ..
 	return proc, nil
 }
 
-// Bootstrap prepares Python and the inference service, then starts it and
-// waits for its health endpoint. It is meant to run in the background while
-// the UI is already usable; the "Local" inference server simply reports
-// offline until it answers.
 func Bootstrap(ctx context.Context, p Paths, port *Reservation, logf func(string, ...any)) (*Process, error) {
 	// Start releases it right before binding; this covers every earlier failure.
 	defer port.Release()

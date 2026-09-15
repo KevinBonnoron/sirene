@@ -36,9 +36,7 @@ export function SetupForm() {
       setServerError('');
       try {
         await register(value.email, value.password, value.name);
-        // Write the flip into the cache before navigating: an invalidation
-        // would leave the stale answer in place while it refetches and bounce
-        // the user straight back here.
+        // Invalidating instead would let the route guard read the stale answer and bounce back here.
         qc.setQueryData(SETUP_STATUS_QUERY_KEY, { needsSetup: false });
         navigate({ to: '/' });
       } catch (err) {

@@ -91,9 +91,6 @@ export function PiperImportDialog() {
     return new Set(installationsByName.get(slug)?.serverIds ?? []);
   }, [slug, installationsByName]);
 
-  // Submitted serverIds need to drop stale entries (offline or already-installed by the
-  // time the user clicks Import). The UI already disables those rows, but `selectedServerIds`
-  // is only updated on click/slug-change so it can lag behind the live server state.
   const effectiveSelectedServerIds = useMemo(() => {
     const byId = new Map(enabledServers.map((s) => [s.id, s]));
     return selectedServerIds.filter((id) => {
@@ -112,9 +109,6 @@ export function PiperImportDialog() {
     dispatch({ type: 'setSelectedServerIds', ids: candidates });
   }, [slug, enabledServers, installedOnIds]);
 
-  // Drop entries that became ineligible (offline or already installed) after selection
-  // so the stored selection stays in sync with what the UI actually shows checked. The
-  // dispatch is gated on a real change to avoid an update loop.
   useEffect(() => {
     if (effectiveSelectedServerIds.length === selectedServerIds.length) {
       return;
@@ -122,9 +116,7 @@ export function PiperImportDialog() {
     dispatch({ type: 'setSelectedServerIds', ids: effectiveSelectedServerIds });
   }, [effectiveSelectedServerIds, selectedServerIds.length]);
 
-  // Guards stale `File.text()` resolutions. Fast successive drops can resolve out of
-  // order, and the older read overwriting the newer file changes the derived slug and
-  // submitted bytes silently.
+  // Successive `File.text()` reads can resolve out of order; only the latest one may win.
   const latestConfigRead = useRef(0);
 
   function handleConfigFile(f: File | null) {
@@ -157,9 +149,6 @@ export function PiperImportDialog() {
   }
 
   const isMultiServer = enabledServers.length > 1;
-  // Single-server mode: the implicit target is the only server, but we must still
-  // check it's actually usable (online and not already running this slug). Without
-  // this guard, the form happily submits requests that the server will reject.
   const noTargets = (() => {
     if (enabledServers.length === 0) {
       return true;
@@ -186,10 +175,6 @@ export function PiperImportDialog() {
         formData.append('serverIds', JSON.stringify(effectiveSelectedServerIds));
       }
       const result = await modelClient.importPiper(formData);
-      // The actual upload runs as a background job per target server (visible in
-      // the notification bell). result.jobIds.length tells the user how many uploads
-      // were kicked off and lets them track them there instead of guessing whether
-      // the toast meant "queued" or "done".
       toast.success(t('model.importPiperSuccess', { id: result.id, count: result.jobIds.length }));
       dispatch({ type: 'reset' });
     } catch (e) {

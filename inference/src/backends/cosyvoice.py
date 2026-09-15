@@ -12,14 +12,8 @@ _mask_patched = False
 
 
 def _patch_qwen2_attention_mask():
-    """Fix CosyVoice's Qwen2Encoder.forward_one_step attention mask for CPU.
-
-    The upstream code passes an attention_mask of shape (batch, 1) during
-    autoregressive decoding with KV cache.  HuggingFace Qwen2 expects
-    (batch, past_len + current_len).  On GPU with SDPA/Flash Attention this
-    is silently handled, but on CPU (eager attention) it causes the model to
-    ignore all cached context, producing garbage output.
-    """
+    # Upstream passes a (batch, 1) attention_mask during KV-cached decoding; CPU eager
+    # attention then drops all cached context, so rebuild it as (batch, past + current).
     global _mask_patched
     if _mask_patched:
         return
@@ -77,7 +71,6 @@ class CosyVoiceBackend(TTSBackend):
 
         logger.info(f"[cosyvoice] Loading model from {model_path}")
 
-        # CosyVoice handles device selection internally (auto-detects CUDA).
         self._model = AutoModel(model_dir=str(model_path))
         self._sample_rate = self._model.sample_rate
         self._model_path = model_path
@@ -90,7 +83,6 @@ class CosyVoiceBackend(TTSBackend):
         return True
 
     def _collect_audio(self, generator) -> np.ndarray:
-        """Collect all audio chunks from a CosyVoice generator into one array."""
         chunks = []
         for result in generator:
             speech = result.get("tts_speech")
@@ -103,13 +95,8 @@ class CosyVoiceBackend(TTSBackend):
         return np.concatenate(chunks).astype(np.float32)
 
     def _reset_model_state(self):
-        """Reset mutable model state between inference calls.
-
-        CosyVoice's model keeps instance-level variables (token_hop_len,
-        internal dicts) that can leak between sequential calls. Explicitly
-        resetting them avoids subtle regeneration bugs.
-        """
-        model = self._model.model  # underlying CosyVoice2Model/3Model
+        # CosyVoice keeps per-call state on the model instance that leaks between sequential calls.
+        model = self._model.model
         model.token_hop_len = 25
         model.tts_speech_token_dict.clear()
         model.llm_end_dict.clear()
@@ -118,7 +105,6 @@ class CosyVoiceBackend(TTSBackend):
             model.flow_cache_dict.clear()
         if hasattr(model, "mel_overlap_dict"):
             model.mel_overlap_dict.clear()
-        # Clear vLLM queue if present
         if hasattr(model.llm, "vllm_output_queue"):
             model.llm.vllm_output_queue.clear()
 
@@ -132,7 +118,6 @@ class CosyVoiceBackend(TTSBackend):
     def _infer_instruct(
         self, params: GenerateParams, ref_audio_path: str | None, *, stream: bool = False,
     ):
-        """Run instruct mode inference (CosyVoice2/3 only)."""
         if not hasattr(self._model, "inference_instruct2"):
             raise ValueError(
                 "Instruct mode (voice design) requires CosyVoice2 or CosyVoice3. "
@@ -164,14 +149,13 @@ class CosyVoiceBackend(TTSBackend):
     def _infer(
         self, params: GenerateParams, ref_audio_path: str, ref_text: str, *, stream: bool = False,
     ):
-        """Run zero-shot inference (requires reference audio + transcript)."""
         if not ref_text:
             raise ValueError(
                 "CosyVoice requires reference_text (a transcript of the "
                 "reference audio) for zero-shot voice cloning."
             )
 
-        # CosyVoice3 requires the <|endofprompt|> token in the prompt text.
+        # CosyVoice3 requires <|endofprompt|> in the prompt text.
         if "<|endofprompt|>" not in ref_text:
             ref_text = ref_text.rstrip() + "<|endofprompt|>"
 
@@ -236,7 +220,6 @@ class CosyVoiceBackend(TTSBackend):
                 yield from self._stream_with_fallback(params, ref_audio_path, instruct=False)
 
     def _stream_with_fallback(self, params: GenerateParams, ref_audio_path: str | None, *, instruct: bool):
-        """Stream audio chunks, falling back to non-streaming on vocoder error."""
         has_audio = False
         try:
             if instruct:

@@ -11,8 +11,6 @@ export const Route = createFileRoute('/_app')({
     }
     const user = await context.queryClient.ensureQueryData(authMeQueryOptions);
     if (!user) {
-      // Preserve the destination so /login can bounce back after auth (the
-      // CLI device-code flow lands on /cli-auth?code=...).
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },

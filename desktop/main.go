@@ -98,8 +98,6 @@ func main() {
 	}
 }
 
-// freePort asks the kernel for an unused loopback port; both the server and
-// the inference worker need one up front (uvicorn takes --port).
 func freePort() (int, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

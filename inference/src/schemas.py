@@ -7,14 +7,12 @@ class GenerateRequest(BaseModel):
     model_path: str
     voice_path: str | None = None
     reference_audio: list[str] | str | None = None
-    reference_audio_data: list[str] | None = None  # base64 data URIs, e.g. "data:audio/wav;base64,..."
+    reference_audio_data: list[str] | None = None
     reference_cache_key: str | None = None
     reference_text: list[str] | str | None = None
     instruct_text: str | None = None
     instruct_gender: str | None = None
     speed: float = Field(default=1.0, ge=0.1, le=5.0)
-    # Generation-level noise/variation. Currently consumed only by Piper (overrides its
-    # static noise_scale). None means "use the backend's default".
     noise_scale: float | None = Field(default=None, ge=0.0, le=2.0)
     language: str = "en"
 

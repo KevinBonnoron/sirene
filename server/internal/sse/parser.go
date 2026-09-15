@@ -12,15 +12,11 @@ type Event struct {
 	Data string
 }
 
-// MaxEventSize bounds one event's accumulated data so a misbehaving worker
-// cannot grow memory without bound.
 const MaxEventSize = 4 << 20
 
 var ErrEventTooLarge = errors.New("sse: event exceeds MaxEventSize")
 
-// Read parses a text/event-stream body and calls fn for every event,
-// including a trailing one that was never terminated by a blank line.
-// It tolerates CRLF and comment lines (sse-starlette pings).
+// Comment lines are sse-starlette pings; a trailing event with no blank line is still delivered.
 func Read(r io.Reader, fn func(Event) error) error {
 	br := bufio.NewReaderSize(r, 64<<10)
 	var name string

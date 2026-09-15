@@ -5,7 +5,6 @@ import (
 	m "github.com/pocketbase/pocketbase/migrations"
 )
 
-// Settings hold provider API keys; the API only ever returns them masked.
 func init() {
 	m.Register(func(app core.App) error {
 		settings, err := app.FindCollectionByNameOrId("settings")

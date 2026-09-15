@@ -83,6 +83,27 @@ _REGISTRY: dict[str, BackendDeps] = {
 }
 
 
+_PIP_REASONS = (
+    ("No space left on device", "no space left on the inference server's disk (PACKAGES_DIR volume)"),
+    ("No matching distribution", "no compatible package found for this Python or platform"),
+    ("Could not find a version", "no compatible package found for this Python or platform"),
+    ("Temporary failure in name resolution", "network unreachable from the inference server"),
+    ("Read timed out", "network timeout while downloading packages"),
+    ("ResolutionImpossible", "dependency conflict between installed backends"),
+)
+
+
+def summarize_pip_error(stderr: str) -> str:
+    for needle, reason in _PIP_REASONS:
+        if needle in stderr:
+            return reason
+    lines = [ln.strip() for ln in stderr.splitlines() if ln.strip()]
+    for ln in reversed(lines):
+        if ln.startswith("ERROR:") and "Exception:" not in ln:
+            return ln[len("ERROR:"):].strip()[:300]
+    return (lines[-1] if lines else "unknown error")[:300]
+
+
 def list_installable_backends() -> list[str]:
     return list(_REGISTRY.keys())
 
@@ -129,7 +150,7 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
     if proc.returncode != 0:
         error = stderr.decode(errors="replace") if stderr else "Unknown error"
         logger.error("pip install failed for %s: %s", backend_name, error)
-        yield {"status": "error", "message": f"Failed to install {backend_name} dependencies: {error[-1000:]}"}
+        yield {"status": "error", "message": f"Failed to install {backend_name} dependencies: {summarize_pip_error(error)}"}
         raise RuntimeError(error)
 
     # Make newly installed packages importable in the current process

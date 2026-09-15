@@ -26,6 +26,7 @@ export type ErrorCode =
   | 'inferenceServer.invalidRegistrationToken'
   | 'inferenceServer.invalidUrl'
   | 'inferenceServer.nameTaken'
+  | 'inferenceServer.statsUnsupported'
   // Model
   | 'model.alreadyInstalled'
   | 'model.configInvalidJson'

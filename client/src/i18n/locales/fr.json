@@ -253,7 +253,8 @@
     "profile": "Profil",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inférence"
+    "inferenceServers": "Inférence",
+    "dashboard": "Tableau de bord"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -484,7 +485,29 @@
       "cpu": "Modèles CPU uniquement",
       "gpu": "Modèles GPU uniquement",
       "none": "Aucun (à la main)"
-    }
+    },
+    "disabled": "Désactivé",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} modèle",
+    "modelCount_other": "{{count}} modèles",
+    "priorityValue": "Priorité {{count}}"
+  },
+  "dashboard": {
+    "subtitle": "Ce que chaque worker d'inférence consomme en ce moment, rafraîchi toutes les cinq secondes.",
+    "loading": "Lecture...",
+    "unavailable": "Ce worker est antérieur à la route des statistiques. Mettez son image à jour pour voir l'utilisation ici.",
+    "cpu": "CPU du worker",
+    "memory": "Mémoire du worker",
+    "gpu": "GPU",
+    "vram": "VRAM du worker",
+    "disk": "Disque des modèles",
+    "cores": "part des {{count}} cœurs",
+    "gpuUtilization": "utilisation du GPU entier",
+    "loadedModels": "Chargés en mémoire",
+    "noneLoaded": "Aucun modèle chargé",
+    "activity": "En cours",
+    "error": "Impossible de lire les statistiques de ce serveur."
   },
   "cliAuth": {
     "title": "Autoriser le CLI",
@@ -656,6 +679,7 @@
     "inferenceServer.invalidRegistrationToken": "Jeton d'enregistrement invalide ou expiré",
     "inferenceServer.invalidUrl": "L'URL du serveur d'inférence doit être une URL http(s) absolue",
     "inferenceServer.nameTaken": "Trop de serveurs d'inférence portent ce nom",
+    "inferenceServer.statsUnsupported": "Ce serveur d'inférence n'expose pas de statistiques d'utilisation",
     "settings.invalidKey": "Clé de paramètre invalide",
     "openai.keyNotConfigured": "Clé API OpenAI non configurée. Allez dans Paramètres pour l'ajouter.",
     "elevenlabs.keyNotConfigured": "Clé API ElevenLabs non configurée. Allez dans Paramètres pour l'ajouter.",

@@ -6,6 +6,8 @@ export interface InferenceServerHealth {
   at: string;
   status: InferenceServerHealthStatus | '';
   error: string;
+  /** cpu, cuda or mps as reported by the worker; empty when unknown */
+  device?: string;
 }
 
 export interface InferenceServer extends PocketBaseRecord {

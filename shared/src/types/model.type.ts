@@ -25,6 +25,17 @@ export interface CatalogModel {
   language?: string;
   supportsInstruct?: boolean;
   supportsEffects?: boolean;
+  license?: string;
+  /** undefined means unknown */
+  commercial?: boolean;
+  /** cpu: runs comfortably on CPU; gpu: a GPU is recommended */
+  hardware?: 'cpu' | 'gpu';
+  /** GB, only when the upstream documents a figure */
+  minVram?: number;
+  /** ISO 639-1 codes; "*" means 100+ languages */
+  languages?: string[];
+  recommended?: boolean;
+  legacy?: boolean;
 }
 
 export type ModelStatus = 'pulling' | 'installed' | 'error';

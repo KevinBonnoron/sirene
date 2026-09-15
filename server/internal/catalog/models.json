@@ -74,7 +74,21 @@
         "id": "ff_siwis",
         "label": "Siwis (F)"
       }
-    ]
+    ],
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "cpu",
+    "languages": [
+      "en",
+      "ja",
+      "zh",
+      "es",
+      "fr",
+      "hi",
+      "it",
+      "pt"
+    ],
+    "recommended": true
   },
   {
     "id": "qwen3-tts-1.7B",
@@ -102,7 +116,23 @@
       "cloning"
     ],
     "maxReferenceDuration": 30,
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+    ],
+    "recommended": true
   },
   {
     "id": "qwen3-tts-1.7B-custom-voice",
@@ -129,7 +159,6 @@
     "types": [
       "preset"
     ],
-    "supportsInstruct": true,
     "presetVoices": [
       {
         "id": "Vivian",
@@ -167,6 +196,22 @@
         "id": "Sohee",
         "label": "Sohee"
       }
+    ],
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
     ]
   },
   {
@@ -194,7 +239,23 @@
     "types": [
       "design"
     ],
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+    ],
+    "recommended": true
   },
   {
     "id": "qwen3-tts-0.6B",
@@ -222,7 +283,22 @@
       "cloning"
     ],
     "maxReferenceDuration": 30,
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
+    ]
   },
   {
     "id": "qwen3-tts-0.6B-custom-voice",
@@ -249,7 +325,6 @@
     "types": [
       "preset"
     ],
-    "supportsInstruct": true,
     "presetVoices": [
       {
         "id": "Vivian",
@@ -287,6 +362,22 @@
         "id": "Sohee",
         "label": "Sohee"
       }
+    ],
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "ru",
+      "pt",
+      "es",
+      "it"
     ]
   },
   {
@@ -305,7 +396,14 @@
     "types": [
       "cloning"
     ],
-    "maxReferenceDuration": 25
+    "maxReferenceDuration": 25,
+    "license": "CC-BY-NC-4.0",
+    "commercial": false,
+    "hardware": "gpu",
+    "languages": [
+      "en",
+      "zh"
+    ]
   },
   {
     "id": "cosyvoice3-0.5B",
@@ -339,7 +437,22 @@
       "design"
     ],
     "maxReferenceDuration": 20,
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ru"
+    ],
+    "recommended": true
   },
   {
     "id": "cosyvoice2-0.5B",
@@ -373,7 +486,22 @@
       "design"
     ],
     "maxReferenceDuration": 20,
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Apache-2.0",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "es",
+      "fr",
+      "it",
+      "ru"
+    ],
+    "legacy": true
   },
   {
     "id": "openaudio-s1-mini",
@@ -396,7 +524,26 @@
     ],
     "maxReferenceDuration": 25,
     "gated": true,
-    "supportsEffects": true
+    "supportsEffects": true,
+    "license": "CC-BY-NC-SA-4.0",
+    "commercial": false,
+    "hardware": "gpu",
+    "languages": [
+      "en",
+      "zh",
+      "ja",
+      "de",
+      "fr",
+      "es",
+      "ko",
+      "ar",
+      "ru",
+      "nl",
+      "it",
+      "pl",
+      "pt"
+    ],
+    "legacy": true
   },
   {
     "id": "chatterbox-en",
@@ -417,7 +564,13 @@
     "types": [
       "cloning"
     ],
-    "maxReferenceDuration": 25
+    "maxReferenceDuration": 25,
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "en"
+    ]
   },
   {
     "id": "chatterbox-multilingual",
@@ -439,7 +592,35 @@
     "types": [
       "cloning"
     ],
-    "maxReferenceDuration": 25
+    "maxReferenceDuration": 25,
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "ar",
+      "da",
+      "de",
+      "el",
+      "en",
+      "es",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "ms",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "sv",
+      "sw",
+      "tr",
+      "zh"
+    ]
   },
   {
     "id": "piper-ar_JO-kareem-medium",
@@ -462,6 +643,10 @@
         "id": "default",
         "label": "Kareem"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "ar"
     ]
   },
   {
@@ -485,6 +670,10 @@
         "id": "default",
         "label": "Dimitar"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "bg"
     ]
   },
   {
@@ -508,6 +697,10 @@
         "id": "default",
         "label": "Ona"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "ca"
     ]
   },
   {
@@ -531,6 +724,10 @@
         "id": "default",
         "label": "Jirka"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "cs"
     ]
   },
   {
@@ -554,6 +751,10 @@
         "id": "default",
         "label": "Talesyntese"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "da"
     ]
   },
   {
@@ -577,6 +778,10 @@
         "id": "default",
         "label": "Thorsten"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "de"
     ]
   },
   {
@@ -600,6 +805,10 @@
         "id": "default",
         "label": "Rapunzelina"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "el"
     ]
   },
   {
@@ -623,6 +832,10 @@
         "id": "default",
         "label": "Alba"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "en"
     ]
   },
   {
@@ -646,6 +859,10 @@
         "id": "default",
         "label": "Amy"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "en"
     ]
   },
   {
@@ -669,6 +886,10 @@
         "id": "default",
         "label": "Lessac"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "en"
     ]
   },
   {
@@ -692,6 +913,10 @@
         "id": "default",
         "label": "Carrie"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "es"
     ]
   },
   {
@@ -715,6 +940,10 @@
         "id": "default",
         "label": "Harri"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "fi"
     ]
   },
   {
@@ -738,6 +967,10 @@
         "id": "default",
         "label": "Siwis"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "fr"
     ]
   },
   {
@@ -761,6 +994,10 @@
         "id": "default",
         "label": "Anna"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "hu"
     ]
   },
   {
@@ -784,6 +1021,10 @@
         "id": "default",
         "label": "Bui"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "is"
     ]
   },
   {
@@ -807,6 +1048,10 @@
         "id": "default",
         "label": "Riccardo"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "it"
     ]
   },
   {
@@ -830,6 +1075,10 @@
         "id": "default",
         "label": "Natia"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "ka"
     ]
   },
   {
@@ -853,6 +1102,10 @@
         "id": "default",
         "label": "Flemishguy"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "nl"
     ]
   },
   {
@@ -876,6 +1129,10 @@
         "id": "default",
         "label": "Talesyntese"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "no"
     ]
   },
   {
@@ -899,6 +1156,10 @@
         "id": "default",
         "label": "Faber"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "pt"
     ]
   },
   {
@@ -922,6 +1183,10 @@
         "id": "default",
         "label": "Mihai"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "ro"
     ]
   },
   {
@@ -945,6 +1210,10 @@
         "id": "default",
         "label": "Irinia"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "ru"
     ]
   },
   {
@@ -968,6 +1237,10 @@
         "id": "default",
         "label": "Lili"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "sk"
     ]
   },
   {
@@ -991,6 +1264,10 @@
         "id": "default",
         "label": "Talesyntese"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "sv"
     ]
   },
   {
@@ -1014,6 +1291,10 @@
         "id": "default",
         "label": "DFKI"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "tr"
     ]
   },
   {
@@ -1037,6 +1318,10 @@
         "id": "default",
         "label": "Ukrainian TTS"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "uk"
     ]
   },
   {
@@ -1060,6 +1345,10 @@
         "id": "default",
         "label": "Tcort"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "vi"
     ]
   },
   {
@@ -1083,6 +1372,10 @@
         "id": "default",
         "label": "Huayan"
       }
+    ],
+    "hardware": "cpu",
+    "languages": [
+      "zh"
     ]
   },
   {
@@ -1204,6 +1497,21 @@
         "id": "ar_male",
         "label": "Arabic (M)"
       }
+    ],
+    "license": "CC-BY-NC-4.0",
+    "commercial": false,
+    "hardware": "gpu",
+    "minVram": 16,
+    "languages": [
+      "en",
+      "fr",
+      "es",
+      "de",
+      "it",
+      "pt",
+      "nl",
+      "ar",
+      "hi"
     ]
   },
   {
@@ -1240,7 +1548,10 @@
       "cloning"
     ],
     "maxReferenceDuration": 25,
-    "supportsInstruct": true
+    "supportsInstruct": true,
+    "license": "Boson Higgs Audio 2 Community",
+    "commercial": true,
+    "hardware": "gpu"
   },
   {
     "id": "openai-tts-v1",
@@ -1311,7 +1622,8 @@
         "label": "Verse",
         "description": "Versatile and expressive"
       }
-    ]
+    ],
+    "commercial": true
   },
   {
     "id": "elevenlabs-v1",
@@ -1325,7 +1637,8 @@
     "size": 0,
     "types": [
       "api"
-    ]
+    ],
+    "commercial": true
   },
   {
     "id": "whisper-tiny",
@@ -1344,6 +1657,12 @@
     "size": 75000000,
     "types": [
       "transcription"
+    ],
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "cpu",
+    "languages": [
+      "*"
     ]
   },
   {
@@ -1363,7 +1682,14 @@
     "size": 145000000,
     "types": [
       "transcription"
-    ]
+    ],
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "cpu",
+    "languages": [
+      "*"
+    ],
+    "recommended": true
   },
   {
     "id": "whisper-small",
@@ -1382,6 +1708,12 @@
     "size": 465000000,
     "types": [
       "transcription"
+    ],
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "cpu",
+    "languages": [
+      "*"
     ]
   },
   {
@@ -1401,6 +1733,12 @@
     "size": 1500000000,
     "types": [
       "transcription"
+    ],
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "*"
     ]
   },
   {
@@ -1420,6 +1758,12 @@
     "size": 3000000000,
     "types": [
       "transcription"
+    ],
+    "license": "MIT",
+    "commercial": true,
+    "hardware": "gpu",
+    "languages": [
+      "*"
     ]
   }
 ]

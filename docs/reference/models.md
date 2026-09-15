@@ -7,36 +7,28 @@
 - Models are downloaded on demand from the web interface
 - The Python service downloads into the volume and lazy-loads into GPU memory
 
-## Manifest System
+## Catalog
 
-Each model has a JSON manifest embedded in the `manifests/` directory that describes its files, download URLs, and variants.
+The catalog is a single JSON file embedded in the server, `server/internal/catalog/models.json`, served as-is by `GET /api/models/catalog`. One entry per installable model:
 
-**Example manifest:**
+| Field | Meaning |
+|-------|---------|
+| `id`, `name`, `description` | Identity shown in the UI |
+| `backend`, `backendDisplayName`, `backendDescription` | Inference backend that runs the model; the UI groups entries by backend |
+| `repo`, `files`, `size` | Hugging Face repository, files to download (a file may point at another repo), total size in bytes |
+| `types` | `preset`, `cloning`, `design`, `transcription`, `api` |
+| `presetVoices` | Built-in voices for preset models |
+| `maxReferenceDuration`, `supportsInstruct`, `supportsEffects` | Cloning limits and prompt features |
+| `gated` | The repository needs a Hugging Face token |
+| `license`, `commercial` | License of the weights and whether commercial use is allowed (`commercial` absent means unknown) |
+| `hardware`, `minVram` | `cpu` runs comfortably on CPU, `gpu` means a GPU is recommended; `minVram` in GB only when the upstream documents it |
+| `languages` | ISO 639-1 codes, `"*"` for 100+ languages |
+| `recommended` | Shown first in its group |
+| `legacy` | Hidden unless "Show legacy models" is on (superseded or unmaintained upstream) |
 
-```json
-{
-  "name": "qwen3-tts",
-  "description": "Qwen3-TTS by Alibaba",
-  "backend": "qwen",
-  "license": "Apache-2.0",
-  "variants": {
-    "1.7B": {
-      "files": ["model.safetensors", "config.json", "tokenizer.json"],
-      "url": "https://huggingface.co/Qwen/Qwen3-TTS/resolve/main/",
-      "size": 3400000000
-    },
-    "0.6B": {
-      "files": ["model.safetensors", "config.json", "tokenizer.json"],
-      "url": "https://huggingface.co/Qwen/Qwen3-TTS-0.6B/resolve/main/",
-      "size": 1200000000
-    }
-  },
-  "defaults": {
-    "variant": "1.7B",
-    "sample_rate": 24000
-  }
-}
-```
+The Models page uses these fields for its filters (CPU, commercial use, installed, HF token) and badges. A GPU badge turns orange when no online inference server reports a GPU: the worker's `/health` returns its effective device, which the health loop stores on the server entry.
+
+Piper voices are one catalog entry each but the page shows them as a single group with a language picker; installed voices appear as tiles under it.
 
 ## Download Flow
 

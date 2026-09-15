@@ -25,7 +25,6 @@ export async function voiceListCommand(): Promise<void> {
 
 export async function voiceShowCommand(id: string): Promise<void> {
   const config = await loadConfig();
-  // Same parallel rationale as `model list`: the second call gates nothing.
   const [voice, samples] = await Promise.all([getJson<Voice>(config, `/voices/${encodeURIComponent(id)}`), getJson<VoiceSample[]>(config, `/voices/${encodeURIComponent(id)}/samples`)]);
 
   const line = (label: string, value: string) => `${color.bold(`${label}:`.padEnd(14))}${value}\n`;

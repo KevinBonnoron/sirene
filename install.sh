@@ -18,7 +18,12 @@ set -euo pipefail
 #   INFERENCE_URL  http://...               (server mode only - seeds the registry at boot)
 #   PORT           default 8000             (inference mode only)
 #   SERVER_URL     default detected via hostname -I (inference mode only)
+#                  the URL Sirene will use to reach this machine
 #   IMAGE          override the inference image (inference mode only)
+#   SIRENE_URL     https://...              (inference mode only) register this
+#   SIRENE_REGISTRATION_TOKEN               worker with that Sirene automatically;
+#                  both are printed by Sirene → Administration → Add server
+#   SERVER_NAME    name shown in Sirene (inference mode only - default: hostname)
 #   DATA_DIR       override where models/packages live on disk
 #                  default: <install dir>/data
 #   CLI_VERSION    pin a specific release tag (cli mode only - default: latest)
@@ -407,11 +412,35 @@ if [ "$INSTALL_MODE" = "inference" ]; then
     ok "saved auth token to $(pwd)/auth_token (mode 600)"
   fi
 
+  if [ -z "${SERVER_URL:-}" ]; then
+    IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -n "$IP" ]; then
+      SERVER_URL="http://${IP}:${INFERENCE_PORT}"
+    else
+      SERVER_URL="http://<your-host>:${INFERENCE_PORT}"
+    fi
+  fi
+
+  REGISTER=0
+  if [ -n "${SIRENE_URL:-}" ] && [ -n "${SIRENE_REGISTRATION_TOKEN:-}" ]; then
+    REGISTER=1
+    case "$SERVER_URL" in
+      *'<your-host>'*) die "could not detect this machine's address - set SERVER_URL=http://<host>:${INFERENCE_PORT} so Sirene can reach it" ;;
+    esac
+  elif [ -n "${SIRENE_URL:-}" ] || [ -n "${SIRENE_REGISTRATION_TOKEN:-}" ]; then
+    die "SIRENE_URL and SIRENE_REGISTRATION_TOKEN must be set together"
+  fi
+
   info "pulling $IMAGE ..."
   $SUDO docker pull "$IMAGE" >/dev/null
 
   GPU_ARGS=""
   [ "$DEVICE" = "cuda" ] && GPU_ARGS="--gpus all"
+
+  REGISTER_ARGS=()
+  if [ $REGISTER -eq 1 ]; then
+    REGISTER_ARGS=(-e "SIRENE_URL=$SIRENE_URL" -e "SIRENE_REGISTRATION_TOKEN=$SIRENE_REGISTRATION_TOKEN" -e "INFERENCE_PUBLIC_URL=$SERVER_URL" -e "INFERENCE_NAME=${SERVER_NAME:-$(hostname)}")
+  fi
 
   info "starting sirene-inference on port $INFERENCE_PORT ..."
   # shellcheck disable=SC2086
@@ -423,6 +452,7 @@ if [ "$INSTALL_MODE" = "inference" ]; then
     -v "${DATA_DIR_ABS}/models:/app/data/models" \
     -v "${DATA_DIR_ABS}/packages:/app/data/packages" \
     $GPU_ARGS \
+    "${REGISTER_ARGS[@]}" \
     "$IMAGE" >/dev/null
 
   info "waiting for the inference server to become healthy..."
@@ -439,21 +469,38 @@ if [ "$INSTALL_MODE" = "inference" ]; then
     die "inference server did not become healthy within 2 minutes"
   fi
 
-  if [ -z "${SERVER_URL:-}" ]; then
-    IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    if [ -n "$IP" ]; then
-      SERVER_URL="http://${IP}:${INFERENCE_PORT}"
+  if [ $REGISTER -eq 1 ]; then
+    info "registering with $SIRENE_URL ..."
+    REG_STATUS="pending"
+    for _ in $(seq 1 30); do
+      REG_JSON=$(curl -fsS "http://localhost:${INFERENCE_PORT}/health" 2>/dev/null || true)
+      REG_STATUS=$(printf '%s' "$REG_JSON" | sed -n 's/.*"registration":{"status":"\([a-z]*\)".*/\1/p')
+      case "$REG_STATUS" in
+        registered|failed) break ;;
+      esac
+      sleep 2
+    done
+    echo
+    if [ "$REG_STATUS" = "registered" ]; then
+      printf "  ${GREEN}${BOLD}Inference server installed and registered with Sirene.${RESET}\n"
+      printf "  ${DIM}It appears under Administration → Inference servers as ${RESET}%s${DIM} (${RESET}%s${DIM}).${RESET}\n" "${SERVER_NAME:-$(hostname)}" "$SERVER_URL"
     else
-      SERVER_URL="http://<your-host>:${INFERENCE_PORT}"
+      REG_ERROR=$(printf '%s' "$REG_JSON" | sed -n 's/.*"registration":{[^}]*"error":"\([^"]*\)".*/\1/p')
+      printf "  ${YELLOW}${BOLD}Inference server installed, but registration did not complete.${RESET}\n"
+      [ -n "$REG_ERROR" ] && printf "  ${DIM}%s${RESET}\n" "$REG_ERROR"
+      printf "  ${DIM}Check 'docker logs sirene-inference', or add it by hand in Sirene → Administration → Add server:${RESET}\n"
+      echo
+      printf "    ${YELLOW}URL${RESET}        %s\n" "$SERVER_URL"
+      printf "    ${YELLOW}Auth token${RESET} %s\n" "$AUTH_TOKEN"
     fi
+  else
+    echo
+    printf "  ${GREEN}${BOLD}Inference server installed.${RESET}\n"
+    printf "  ${DIM}Paste these into Sirene → Administration → Inference servers → Add server:${RESET}\n"
+    echo
+    printf "    ${YELLOW}URL${RESET}        %s\n" "$SERVER_URL"
+    printf "    ${YELLOW}Auth token${RESET} %s\n" "$AUTH_TOKEN"
   fi
-
-  echo
-  printf "  ${GREEN}${BOLD}Inference server installed.${RESET}\n"
-  printf "  ${DIM}Paste these into Sirene → Settings → Inference servers → Add server:${RESET}\n"
-  echo
-  printf "    ${YELLOW}URL${RESET}        %s\n" "$SERVER_URL"
-  printf "    ${YELLOW}Auth token${RESET} %s\n" "$AUTH_TOKEN"
   echo
   printf "  ${DIM}Models:${RESET} %s\n" "$DATA_DIR_ABS"
   printf "  ${DIM}Token:${RESET}  %s\n" "$(pwd)/auth_token"

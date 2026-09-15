@@ -26,7 +26,6 @@ export function CliAuthPage() {
   const [fullAccess, setFullAccess] = useState(true);
   const [selectedScopes, setSelectedScopes] = useState<Set<ApiKeyScope>>(new Set());
 
-  // Pre-fill the name with a sensible default once we have a confirmed code.
   useEffect(() => {
     if (confirmedCode && name === '') {
       setName(`CLI ${new Date().toISOString().slice(0, 10)}`);
@@ -42,9 +41,6 @@ export function CliAuthPage() {
 
   const requestedScopes = useMemo<readonly ApiKeyScope[] | null>(() => lookup.data?.requestedScopes ?? null, [lookup.data]);
 
-  // When the CLI requested a specific scope set, pre-select it and lock the
-  // picker to that subset; the server enforces "granted ⊆ requested" anyway.
-  // When the CLI requested nothing (null), default to full access.
   useEffect(() => {
     if (!lookup.data) {
       return;
@@ -59,9 +55,6 @@ export function CliAuthPage() {
   }, [lookup.data, requestedScopes]);
 
   const approve = useMutation({
-    // Mirror the server contract: `null` for full access, an array for an
-    // explicit restricted set. The picker prevents submission with an empty
-    // selection, so we never have to send `[]`.
     mutationFn: () => cliAuthClient.approve(confirmedCode ?? '', name.trim(), fullAccess ? null : Array.from(selectedScopes)),
     onSuccess: () => {
       setDone(true);
@@ -69,8 +62,6 @@ export function CliAuthPage() {
     onError: (err) => toast.error(explainApiError(err, t('cliAuth.approveFailed'))),
   });
 
-  // Initial state: no code yet (or invalid). Ask the user to paste the code
-  // their terminal is showing.
   if (!confirmedCode) {
     return (
       <Card className="mx-auto mt-12 max-w-md">

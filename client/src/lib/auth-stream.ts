@@ -6,10 +6,7 @@ interface StreamHandle {
   close: () => void;
 }
 
-/** Minimal fetch-based SSE client. Used instead of EventSource when the server gates
- *  the endpoint with the standard `Authorization: Bearer ...` header - EventSource has
- *  no header support, and pushing the token through a query param would leak it into
- *  proxy/server access logs. */
+// EventSource can't send an Authorization header, and a query-param token would leak into access logs.
 export function openAuthenticatedStream(url: string, handler: SSEHandler): StreamHandle {
   const controller = new AbortController();
   let closed = false;
@@ -41,16 +38,11 @@ export function openAuthenticatedStream(url: string, handler: SSEHandler): Strea
     }
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-    // Per the SSE spec a stream may use LF, CRLF, or even bare CR line endings,
-    // so normalise everything to LF up front and split on blank lines either way.
     let buffer = '';
     const EVENT_BOUNDARY = /\r\n\r\n|\r\r|\n\n/;
     while (!closed) {
       const { value, done } = await reader.read();
       if (done) {
-        // Servers can close cleanly without a trailing blank line, leaving the
-        // last event still in the buffer. Flush it so the final job/remove update
-        // doesn't get dropped during a graceful shutdown.
         const trailing = buffer.trim();
         if (trailing) {
           const event = parseEvent(trailing);
@@ -78,7 +70,6 @@ export function openAuthenticatedStream(url: string, handler: SSEHandler): Strea
 function parseEvent(block: string): { event: string; data: string } | null {
   let event = 'message';
   const dataLines: string[] = [];
-  // Normalise CRLF / CR to LF so the per-line walk below stays simple.
   for (const line of block.replace(/\r\n?/g, '\n').split('\n')) {
     if (line.startsWith(':') || line.length === 0) {
       continue;

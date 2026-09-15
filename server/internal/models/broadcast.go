@@ -2,8 +2,6 @@ package models
 
 import "sync"
 
-// Broadcaster fans out an opaque "models changed" ping. Each subscriber gets
-// a capacity-1 channel, so bursts collapse into one pending notification.
 type Broadcaster struct {
 	mu   sync.Mutex
 	subs map[chan struct{}]struct{}

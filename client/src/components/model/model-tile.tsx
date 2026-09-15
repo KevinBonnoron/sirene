@@ -43,9 +43,7 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   const isMultiServer = !isApi && enabledServers.length > 1;
   const showCoverage = !isApi && status === 'installed' && enabledServers.length > 1 && installedServerIds.length < enabledServers.length;
   const installedNames = installedServerIds.map((id) => enabledServers.find((s) => s.id === id)?.name).filter((n): n is string => !!n);
-  // Mirrors the server-side filter in model.service.ts: 'online' or 'unknown' (never probed)
-  // are eligible; 'offline' is not. Without this, the Install button stays clickable when
-  // every enabled server is down and the API rejects with 503 NoOnlineServerError.
+  // Mirrors the server-side eligibility filter in model.service.ts ('unknown' counts as eligible).
   const hasOnlineServer = enabledServers.some((s) => s.lastHealth.status !== 'offline');
 
   async function handleRemove(serverId?: string) {
@@ -190,7 +188,6 @@ function PerServerMenu({ catalog, isCustom, servers, installedServerIds, onPull,
       .filter((id): id is string => !!id),
   );
 
-  // Custom (uploaded) models can't be transferred - only show servers where they actually live.
   const visibleServers = isCustom ? servers.filter((s) => installedSet.has(s.id)) : servers;
   const missingOnline = isCustom ? [] : servers.filter((s) => !installedSet.has(s.id) && s.lastHealth.status === 'online' && !pullingByServer.has(s.id));
 

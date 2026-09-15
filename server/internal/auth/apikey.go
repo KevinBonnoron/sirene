@@ -114,7 +114,6 @@ func (k *APIKeys) Revoke(userID, id string) error {
 	return k.app.Delete(rec)
 }
 
-// Resolve returns nil, nil for an unknown or malformed key.
 func (k *APIKeys) Resolve(secret string) (*ResolvedKey, error) {
 	if !strings.HasPrefix(secret, KeyPrefix) {
 		return nil, nil
@@ -149,9 +148,6 @@ func (k *APIKeys) touch(id string) {
 	}
 }
 
-// readScopes reports (nil, false) for full access, (list, false) for a valid
-// restriction and (nil, true) when the stored value is unusable. Malformed
-// data never widens access.
 func readScopes(rec *core.Record) ([]string, bool) {
 	raw := strings.TrimSpace(rec.GetString("scopes"))
 	if raw == "" || raw == "null" {

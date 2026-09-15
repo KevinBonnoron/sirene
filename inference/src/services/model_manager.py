@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-    """Manages loaded backend instances with LRU eviction."""
 
     def __init__(self):
         self._loaded: OrderedDict[tuple[str, str], TTSBackend] = OrderedDict()
@@ -32,7 +31,6 @@ class ModelManager:
         yield from backend.generate_stream(params)
 
     def get_backend(self, backend_name: str, model_path: str) -> TTSBackend:
-        """Load (if needed) and return the backend instance without generating."""
         return self._get_or_load(backend_name, model_path)
 
     def _get_or_load(self, backend_name: str, model_path: str) -> TTSBackend:

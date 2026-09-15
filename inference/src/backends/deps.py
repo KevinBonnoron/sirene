@@ -13,19 +13,15 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
-# Pinned together because torch / torchaudio / torchvision share native bindings
-# (e.g. `torchvision::nms` is registered against a specific libtorch ABI). vllm
-# 0.18.0 pulls torchvision 0.25 which pairs with torch 2.10; mixing this with an
-# older torch yields "operator does not exist" runtime errors at import time.
+# torch/torchaudio/torchvision share native bindings (torchvision::nms is bound to a libtorch ABI);
+# vllm 0.18.0 pulls torchvision 0.25, which pairs only with torch 2.10.
 _TORCH = ["torch>=2.10.0,<2.11", "torchaudio>=2.10.0,<2.11", "torchvision>=0.25.0,<0.26"]
 
 
 @dataclass
 class BackendDeps:
-    # All modules must be importable for the backend to be considered installed
     check_modules: list[str]
     packages: list[str] = field(default_factory=list)
-    # Extra PyPI index (e.g. CPU torch wheel)
     extra_index_url: str | None = None
 
 
@@ -42,10 +38,7 @@ _REGISTRY: dict[str, BackendDeps] = {
         check_modules=["onnxruntime", "misaki.en"],
         packages=["onnxruntime>=1.20.0", "misaki[en,zh]>=0.7.0"],
     ),
-    # `torch` (and friends) listed in `check_modules` so a partial install
-    # (wheel resolution failed mid-way, leaving the wrapper package importable
-    # but its native deps broken) is detected by `is_installed()` rather than
-    # surfacing as a runtime ImportError on the first generation.
+    # torch in check_modules so a partial install (wrapper importable, native deps broken) reads as not installed.
     "qwen": BackendDeps(
         check_modules=["torch", "qwen_tts"],
         packages=[*_TORCH, "transformers>=4.47.0", "qwen-tts>=0.1.0"],
@@ -83,6 +76,27 @@ _REGISTRY: dict[str, BackendDeps] = {
 }
 
 
+_PIP_REASONS = (
+    ("No space left on device", "no space left on the inference server's disk (PACKAGES_DIR volume)"),
+    ("No matching distribution", "no compatible package found for this Python or platform"),
+    ("Could not find a version", "no compatible package found for this Python or platform"),
+    ("Temporary failure in name resolution", "network unreachable from the inference server"),
+    ("Read timed out", "network timeout while downloading packages"),
+    ("ResolutionImpossible", "dependency conflict between installed backends"),
+)
+
+
+def summarize_pip_error(stderr: str) -> str:
+    for needle, reason in _PIP_REASONS:
+        if needle in stderr:
+            return reason
+    lines = [ln.strip() for ln in stderr.splitlines() if ln.strip()]
+    for ln in reversed(lines):
+        if ln.startswith("ERROR:") and "Exception:" not in ln:
+            return ln[len("ERROR:"):].strip()[:300]
+    return (lines[-1] if lines else "unknown error")[:300]
+
+
 def list_installable_backends() -> list[str]:
     return list(_REGISTRY.keys())
 
@@ -95,7 +109,6 @@ def is_installed(backend_name: str) -> bool:
 
 
 async def install_backend_deps(backend_name: str, device: str = "cpu"):
-    """Async generator yielding SSE-compatible progress dicts."""
     deps = _REGISTRY.get(backend_name)
     if deps is None or is_installed(backend_name):
         return
@@ -129,15 +142,13 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
     if proc.returncode != 0:
         error = stderr.decode(errors="replace") if stderr else "Unknown error"
         logger.error("pip install failed for %s: %s", backend_name, error)
-        yield {"status": "error", "message": f"Failed to install {backend_name} dependencies: {error[-1000:]}"}
+        yield {"status": "error", "message": f"Failed to install {backend_name} dependencies: {summarize_pip_error(error)}"}
         raise RuntimeError(error)
 
-    # Make newly installed packages importable in the current process
     if packages_dir and packages_dir not in sys.path:
         sys.path.insert(0, packages_dir)
     importlib.invalidate_caches()
 
-    # Post-install steps for backends with non-PyPI extras
     if backend_name == "chatterbox":
         await _install_chatterbox_extras()
     elif backend_name == "cosyvoice":

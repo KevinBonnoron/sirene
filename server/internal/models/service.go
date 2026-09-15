@@ -31,8 +31,7 @@ var apiKeySetting = map[string]string{
 	"openai":     "openai_api_key",
 }
 
-// Installation mirrors shared Model: derived from worker inventories plus
-// in-flight pull jobs.
+// Mirrors the shared Model type.
 type Installation struct {
 	ID        string   `json:"id"`
 	Status    string   `json:"status"`
@@ -56,7 +55,6 @@ func New(app core.App, servers *infsrv.Service, cache *servermodels.Cache, route
 	return &Service{app: app, servers: servers, cache: cache, router: router, jobs: store, settings: st, Changes: NewBroadcaster()}
 }
 
-// Wait blocks until background pulls and imports finish, at most timeout.
 func (s *Service) Wait(timeout time.Duration) {
 	done := make(chan struct{})
 	go func() {
@@ -87,8 +85,6 @@ func (s *Service) ScanCustom(ctx context.Context) ([]catalog.Model, error) {
 	return out, nil
 }
 
-// FullCatalog merges the static manifest with custom models scanned from the
-// workers, hiding API-backed models whose key the user has not configured.
 func (s *Service) FullCatalog(ctx context.Context, userID string) ([]catalog.Model, error) {
 	custom, err := s.ScanCustom(ctx)
 	if err != nil {
@@ -174,9 +170,6 @@ func jobTarget(modelID, serverID string) string {
 	return modelID + "::" + serverID
 }
 
-// resolveTargets picks the servers a pull/import should fan out to: every
-// eligible server unless the caller named some, minus those that already
-// have the model.
 func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs *[]string, verb string) ([]*core.Record, error) {
 	all, err := s.servers.ListEnabled()
 	if err != nil {
@@ -308,8 +301,6 @@ type Upload struct {
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9_]`)
 
-// ImportPiper validates an uploaded Piper bundle, derives the catalog slug
-// from the espeak voice and sample rate, and fans the import out.
 func (s *Service) ImportPiper(ctx context.Context, name string, onnx, config Upload, serverIDs *[]string) (slug string, jobIDs []string, err error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -398,7 +389,6 @@ func (s *Service) runImport(jobID string, rec *core.Record, name string, onnx, c
 	s.Changes.Notify()
 }
 
-// Remove deletes the model from one server or from every server that has it.
 func (s *Service) Remove(ctx context.Context, modelID, serverID string) error {
 	byServer, err := s.cache.InstalledByServer(ctx)
 	if err != nil {
@@ -481,7 +471,6 @@ func (s *Service) RequireProviderKey(userID, backend string) (string, error) {
 	return key, nil
 }
 
-// ExportCustom streams a custom model's zip from a server that has it.
 func (s *Service) ExportCustom(ctx context.Context, modelID string) (*http.Response, context.CancelFunc, error) {
 	custom, err := s.ScanCustom(ctx)
 	if err != nil {

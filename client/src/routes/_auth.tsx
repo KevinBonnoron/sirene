@@ -12,7 +12,6 @@ export const Route = createFileRoute('/_auth')({
       throw redirect({ to: '/setup' });
     }
     const user = await context.queryClient.ensureQueryData(authMeQueryOptions);
-    // With a ?redirect= the component effect performs a full-page replace.
     if (user && !safeRedirect(new URLSearchParams(location.searchStr).get('redirect'))) {
       throw redirect({ to: '/' });
     }
@@ -24,8 +23,6 @@ function AuthLayoutRoute() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Runs after an in-page login: honour ?redirect= so the CLI device-code
-  // flow lands back on /cli-auth?code=... once the user has signed in.
   useEffect(() => {
     if (!user) {
       return;

@@ -24,17 +24,12 @@ class JobsStore {
   };
 
   public dismiss(id: string) {
-    // Server only allows dismissing terminal jobs (completed/failed). Optimistically
-    // hiding a running job would briefly remove an in-flight task from the UI until
-    // the next stream event puts it back. Skip the optimism for running jobs and let
-    // the server's `remove` broadcast drive the local state.
+    // The server refuses to dismiss running jobs, so no optimistic removal for those.
     const target = this.jobs.find((j) => j.id === id);
     if (target && target.status !== 'running') {
       this.replace(this.jobs.filter((j) => j.id !== id));
     }
-    void jobsClient.dismiss(id).catch(() => {
-      // If the dismiss failed, the next snapshot/event will re-add the job.
-    });
+    void jobsClient.dismiss(id).catch(() => {});
   }
 
   private acquire() {
@@ -42,8 +37,6 @@ class JobsStore {
     if (this.stream) {
       return;
     }
-    // Fetch-based SSE so the auth token travels in an Authorization header
-    // (EventSource forces query-param tokens, which leak to logs).
     this.stream = openAuthenticatedStream(`${config.server.url}/jobs/stream`, ({ event, data }) => {
       if (event === 'snapshot') {
         this.replace(JSON.parse(data) as Job[]);

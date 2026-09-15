@@ -7,7 +7,7 @@ from .base import GenerateParams, TTSBackend, TTSResult
 
 logger = logging.getLogger(__name__)
 
-# Language code -> full name mapping required by qwen-tts API
+# qwen-tts expects full language names.
 LANGUAGE_MAP: dict[str, str] = {
     "en": "English",
     "zh": "Chinese",
@@ -69,7 +69,6 @@ class QwenBackend(TTSBackend):
         language = self._resolve_language(params.language)
 
         if params.voice_path:
-            # CustomVoice preset mode - select a pre-trained speaker
             logger.info(f"[qwen] CustomVoice mode: speaker={params.voice_path}")
             wavs, sr = self._model.generate_custom_voice(
                 text=params.text,
@@ -78,7 +77,6 @@ class QwenBackend(TTSBackend):
                 instruct=params.instruct_text or None,
             )
         elif params.instruct_text and not params.has_reference_audio:
-            # VoiceDesign mode - create voice from text description
             gender = params.instruct_gender or "male"
             logger.info(
                 f"[qwen] VoiceDesign mode: gender={gender}, instruct={params.instruct_text[:80]}"
@@ -90,7 +88,6 @@ class QwenBackend(TTSBackend):
                 gender=gender,
             )
         elif params.has_reference_audio:
-            # Voice cloning mode - use reference audio
             with self._reference_audio(params) as ref_audio_path:
                 ref_text = params.joined_reference_text
                 from ..services.prompt_cache import get_cache

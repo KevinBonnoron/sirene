@@ -22,9 +22,6 @@ func IsKnownScope(scope string) bool {
 	return slices.Contains(Scopes, scope)
 }
 
-// NormalizeScopes validates a caller-supplied scope list: nil means full
-// access, an empty list is refused (callers must say "null" explicitly), and
-// every entry must be a known scope.
 func NormalizeScopes(scopes *[]string) ([]string, error) {
 	if scopes == nil {
 		return nil, nil

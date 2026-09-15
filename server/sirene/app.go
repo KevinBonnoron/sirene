@@ -35,15 +35,10 @@ import (
 const maxBodySize = 100 << 20
 
 type Options struct {
-	// DataDir is PocketBase's data directory; empty keeps the --dir flag default.
-	DataDir string
-	// InferenceURL seeds the "Local" inference server.
-	InferenceURL string
-	// UIDir serves the web UI from disk instead of the embedded build.
-	UIDir string
-	// Automigrate writes Go migration files when collections change in the dashboard.
-	Automigrate bool
-	// MigrationsDir is where Automigrate writes.
+	DataDir       string
+	InferenceURL  string
+	UIDir         string
+	Automigrate   bool
 	MigrationsDir string
 }
 
@@ -83,6 +78,7 @@ func New(opts Options) *pocketbase.PocketBase {
 		CliAuth:    auth.NewCliAuth(keys),
 		Settings:   st,
 		Servers:    servers,
+		Registry:   infsrv.NewRegistrations(),
 		Cache:      cache,
 		Router:     rt,
 		Jobs:       store,
@@ -93,8 +89,7 @@ func New(opts Options) *pocketbase.PocketBase {
 	}
 
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-		// PocketBase defaults both to 5 minutes, which would cut SSE
-		// subscriptions and long generation streams.
+		// PocketBase defaults these to 5 minutes, which cuts SSE and long generation streams.
 		se.Server.ReadTimeout = 0
 		se.Server.WriteTimeout = 0
 		se.Server.ReadHeaderTimeout = 30 * time.Second
@@ -113,8 +108,7 @@ func New(opts Options) *pocketbase.PocketBase {
 
 		api.Register(se, deps)
 
-		// A catch-all per method rather than Any: an unmethoded pattern
-		// conflicts with the GET-only SPA fallback in Go's ServeMux.
+		// Per method rather than Any: an unmethoded pattern conflicts with the GET-only SPA fallback in ServeMux.
 		notFound := func(e *core.RequestEvent) error {
 			return e.JSON(http.StatusNotFound, map[string]string{"code": apierr.CodeNotFound, "message": "Not found"})
 		}
@@ -139,8 +133,6 @@ func New(opts Options) *pocketbase.PocketBase {
 	return app
 }
 
-// Serve runs the server in-process on addr until Shutdown is called; it is
-// what embedders (the desktop app) use instead of the CLI.
 func Serve(app *pocketbase.PocketBase, addr string) error {
 	if err := app.Bootstrap(); err != nil {
 		return err
@@ -151,7 +143,6 @@ func Serve(app *pocketbase.PocketBase, addr string) error {
 	return apis.Serve(app, apis.ServeConfig{HttpAddr: addr, ShowStartBanner: false})
 }
 
-// Shutdown triggers the same termination path as SIGINT on the CLI.
 func Shutdown(app *pocketbase.PocketBase) {
 	_ = app.OnTerminate().Trigger(&core.TerminateEvent{App: app}, func(e *core.TerminateEvent) error {
 		return e.App.ResetBootstrapState()
@@ -165,8 +156,7 @@ func uiFS(dir string) fs.FS {
 	return ui.FS()
 }
 
-// PocketBase's default installer also opens a browser tab on every boot
-// without a superuser, which gets in the way of headless runs and tests.
+// PocketBase's default installer opens a browser tab on every superuser-less boot, which breaks headless runs.
 func printInstallerLink(app core.App, superuser *core.Record, baseURL string) error {
 	token, err := superuser.NewStaticAuthToken(30 * time.Minute)
 	if err != nil {

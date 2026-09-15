@@ -21,8 +21,6 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/voicezip"
 )
 
-// Fields a client may set through the voice endpoints. The owner is always
-// the caller; ids and timestamps are never writable.
 var WritableFields = []string{"name", "description", "language", "model", "options", "tags", "public", "avatar"}
 
 type Service struct {
@@ -45,8 +43,7 @@ func (s *Service) List(userID string) ([]*core.Record, error) {
 	return recs, err
 }
 
-// Readable: the owner, or anyone when the voice is public. Missing and
-// foreign private voices are indistinguishable so ids cannot be probed.
+// Missing and foreign private voices are indistinguishable so ids cannot be probed.
 func (s *Service) Readable(id, userID string) (*core.Record, error) {
 	rec, err := s.app.FindRecordById("voices", id)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && rec.GetString("user") != userID && !rec.GetBool("public")) {
@@ -150,8 +147,6 @@ func (s *Service) AddSample(ctx context.Context, voiceID, userID string, fh *mul
 	return rec, nil
 }
 
-// SaveDesigned persists a voice-designer result: the voice and its single
-// seed sample, atomically.
 func (s *Service) SaveDesigned(userID, name, description, language, model, transcript string, fh *multipart.FileHeader) (*core.Record, error) {
 	if language == "" {
 		language = "en"

@@ -2,9 +2,7 @@ package hooks
 
 import "github.com/pocketbase/pocketbase/core"
 
-// The first account on an instance owns it. Counting inside the create hook
-// runs in the same transaction as the insert, and the partial unique index
-// idx_users_single_admin backs it up against concurrent registrations.
+// Counting inside the create hook runs in the insert's transaction; idx_users_single_admin guards concurrent registrations.
 func Register(app core.App) {
 	app.OnRecordCreate("users").BindFunc(func(e *core.RecordEvent) error {
 		count, err := e.App.CountRecords("users")

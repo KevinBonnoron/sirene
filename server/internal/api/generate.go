@@ -91,8 +91,7 @@ func registerGenerate(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		_ = http.NewResponseController(e.Response).SetWriteDeadline(time.Time{})
 		e.Response.WriteHeader(http.StatusOK)
 
-		// Keep draining after the client goes away so the save branch of the
-		// tee still completes.
+		// Keep draining after the client goes away so the save branch of the tee completes.
 		buf := make([]byte, 32<<10)
 		clientAlive := true
 		for {

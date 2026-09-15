@@ -38,9 +38,7 @@ export function TakeEditor({ ref, initialContent, placeholder, editable = true, 
   submitRef.current = onSubmit;
   const activeChangeRef = useRef(onActiveChange);
   activeChangeRef.current = onActiveChange;
-  // Placeholder is configured once at editor mount, but the prop can change at runtime
-  // (e.g. on language switch). Read it from a ref via the function form so the extension
-  // always sees the latest value, then force a redraw when the prop changes.
+  // The Placeholder extension is configured once at mount, so it reads the live prop through a ref.
   const placeholderRef = useRef(placeholder ?? '');
   placeholderRef.current = placeholder ?? '';
 
@@ -91,8 +89,6 @@ export function TakeEditor({ ref, initialContent, placeholder, editable = true, 
     editor?.setEditable(editable);
   }, [editor, editable]);
 
-  // Force a no-op transaction so the Placeholder extension re-runs its function and picks up
-  // the new value when the prop changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: placeholder isn't read inside but its change is what we want to react to
   useEffect(() => {
     if (!editor) {

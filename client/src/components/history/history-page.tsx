@@ -29,7 +29,6 @@ export function HistoryPage() {
 
   const { data: voices } = useLiveQuery((q) => q.from({ voices: voiceCollection }));
 
-  // Build a voice name map
   const voiceMap = useMemo(() => {
     const map = new Map<string, string>();
     if (voices) {
@@ -40,7 +39,6 @@ export function HistoryPage() {
     return map;
   }, [voices]);
 
-  // Voices that actually have generations, sorted by name
   const filterableVoices = useMemo(() => {
     return voiceIds.map((id) => ({ id, name: voiceMap.get(id) ?? t('voice.unknownVoice') })).sort((a, b) => a.name.localeCompare(b.name));
   }, [voiceIds, voiceMap, t]);

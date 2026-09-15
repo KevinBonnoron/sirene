@@ -1,7 +1,3 @@
-/** Read a single line from stdin with optional hidden echo (for secrets).
- *  Hand-rolled rather than using `readline` so we can: print `*` per typed
- *  character in hidden mode, handle Ctrl-C cleanly, and avoid pulling in any
- *  extra module that Bun's single-file `--compile` would have to bundle. */
 export function readLine(prompt: string, hidden = false): Promise<string> {
   return new Promise((resolve, reject) => {
     process.stdout.write(prompt);
@@ -34,8 +30,6 @@ export function readLine(prompt: string, hidden = false): Promise<string> {
         }
 
         if (code === 3) {
-          // Ctrl-C: drop the listener too so a subsequent prompt in the same
-          // process doesn't stack handlers and double-process keypresses.
           cleanup();
           if (hidden) {
             process.stdout.write('\n');

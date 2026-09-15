@@ -107,9 +107,7 @@ export function Waveform({ src, height = 32, autoPlay = false }: { src: string |
         }
       }
     });
-    ws.on('error', () => {
-      /* suppress fetch abort errors */
-    });
+    ws.on('error', () => {});
 
     if (src instanceof Blob) {
       ws.loadBlob(src).catch(() => {});

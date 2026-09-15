@@ -10,8 +10,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 )
 
-// Reader wraps a record file so callers never touch storage paths directly;
-// the same code works for local and S3 storage.
 type Reader struct {
 	io.Reader
 	closers []io.Closer
@@ -49,8 +47,6 @@ func ReadAll(app core.App, rec *core.Record, filename string) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
-// Form is a parsed multipart or urlencoded body with helpers that mirror the
-// FormData reads the Hono handlers used to do.
 type Form struct {
 	values map[string][]string
 	files  map[string][]*multipart.FileHeader
@@ -74,8 +70,6 @@ func (f *Form) Has(key string) bool {
 	return len(f.values[key]) > 0 || len(f.files[key]) > 0
 }
 
-// Value returns the first text value; ok is false when the field is absent
-// or arrived as a file.
 func (f *Form) Value(key string) (string, bool) {
 	if v, ok := f.values[key]; ok && len(v) > 0 {
 		return v[0], true
@@ -110,9 +104,6 @@ func (f *Form) FileBytes(key string) ([]byte, *multipart.FileHeader, error) {
 	return data, fh, err
 }
 
-// Apply copies the allowed fields onto the record. Text values go through
-// PocketBase's field setters, which normalise JSON strings and booleans;
-// file parts become uploads and an empty string clears a file field.
 func (f *Form) Apply(rec *core.Record, allowed []string) error {
 	for _, key := range allowed {
 		if fh, ok := f.File(key); ok {

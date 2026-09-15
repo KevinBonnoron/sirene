@@ -41,13 +41,11 @@ export function ModelsPage() {
 
   const [filter, setFilter] = useState<FilterKey | null>(null);
 
-  // Available model types (only those present in catalog)
   const types = useMemo(() => {
     const set = new Set(catalog.flatMap((c) => c.types));
     return (['preset', 'cloning', 'design', 'api', 'transcription'] as const).filter((t) => set.has(t));
   }, [catalog]);
 
-  // Extra filter keys (only shown when relevant models exist)
   const extraFilters = useMemo(() => {
     const keys: FilterKey[] = [];
     if (catalog.some((c) => c.gated)) {
@@ -56,7 +54,6 @@ export function ModelsPage() {
     return keys;
   }, [catalog]);
 
-  // Filter models
   const filteredModels = useMemo(() => {
     if (!filter) {
       return catalog;
@@ -71,7 +68,6 @@ export function ModelsPage() {
 
   const groups = groupByBackend(filteredModels, installationsByName);
 
-  // Check if piper backend exists
   const hasPiper = catalog.some((c) => c.backend === 'piper');
 
   return (

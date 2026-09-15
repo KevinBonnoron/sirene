@@ -12,7 +12,7 @@ import (
 
 const maxUncompressed = 500 << 20
 
-// Archive is voice.json; key order matches the export the Bun server wrote.
+// Key order matches the export the Bun server wrote.
 type Archive struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
@@ -166,7 +166,6 @@ func Parse(data []byte) (*Parsed, error) {
 	return p, nil
 }
 
-// Entry returns nil, nil when the archive has no such file.
 func (p *Parsed) Entry(name string) ([]byte, error) {
 	f, ok := p.files[name]
 	if !ok {

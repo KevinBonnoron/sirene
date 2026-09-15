@@ -7,7 +7,7 @@ export interface CliAuthLookup {
   code: string;
   expiresAt: string;
   status: 'pending' | 'authorized' | 'consumed';
-  /** Scopes the CLI passed on `/start`. `null` = full access requested. */
+  /** `null` = full access requested. */
   requestedScopes: ApiKeyScope[] | null;
 }
 

@@ -14,8 +14,6 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 )
 
-// Restricted API keys only learn their own id and scopes: a third-party
-// integration has no business reading the owner's email or admin status.
 func registerMe(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	p.GET("/me", func(e *core.RequestEvent) error {
 		id := auth.IdentityOf(e)
@@ -40,9 +38,7 @@ func registerMe(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		return e.JSON(http.StatusOK, out)
 	})
 
-	// Email is the login identifier and there is no SMTP for PocketBase's own
-	// confirmation flow, so the change is made in-process, gated by the
-	// current password and a browser session.
+	// No SMTP for PocketBase's email-change confirmation flow, so the change is made in-process.
 	p.PATCH("/me/email", func(e *core.RequestEvent) error {
 		var body struct {
 			Email           *string `json:"email"`

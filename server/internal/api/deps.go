@@ -20,6 +20,7 @@ type Deps struct {
 	CliAuth    *auth.CliAuth
 	Settings   *settings.Service
 	Servers    *infsrv.Service
+	Registry   *infsrv.Registrations
 	Cache      *servermodels.Cache
 	Router     *routing.Router
 	Jobs       *jobs.Store

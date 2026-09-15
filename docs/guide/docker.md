@@ -77,23 +77,41 @@ Same as above but the inference service uses the CUDA image and requires the [NV
 
 ### Standalone inference (script install)
 
-Once Sirene is running, you can add **additional inference servers** to the fleet. On a fresh Linux machine (root or sudo required), run:
+Once Sirene is running, you can add **additional inference servers** to the fleet. Open **Administration → Inference servers → Add server**: the dialog prints an install command that embeds a registration token (valid one hour, only allows registering). On a fresh Linux machine (root or sudo required), run it:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=inference bash
+curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=inference SIRENE_URL=https://sirene.example.com SIRENE_REGISTRATION_TOKEN=sr_... bash
 ```
 
 The script:
 1. Detects your distro (Ubuntu / Debian) and NVIDIA GPU
 2. Installs Docker and the NVIDIA Container Toolkit if missing
 3. Pulls the inference image and starts it with a randomly generated auth token
-4. Prints the inference server's URL and the auth token at the end
+4. Waits for the worker to register itself with Sirene and reports the result
 
-Then in Sirene → **Settings → Inference servers → Add server**: paste the URL and the auth token, give it a name, save.
+The worker calls `POST /api/inference-servers/register` once at startup with its public URL (`SERVER_URL`, detected from the machine's first address when unset) and its auth token. Sirene upserts the entry by URL, so rerunning the installer or restarting the container never creates duplicates. The call is best effort: if Sirene is unreachable the worker keeps running and the script prints the URL and token to add by hand.
+
+Without `SIRENE_URL` the script behaves as before and prints the URL and auth token to paste into the manual form.
 
 The auth token stays on the inference server (as `INFERENCE_AUTH_TOKEN`) and is sent by Sirene on every request as `Authorization: Bearer ...` - the inference server rejects anything else.
 
-> **Why not auto-register from the inference server?** Sirene calls inference servers; they never call Sirene at runtime. Adding a one-time reverse callback for setup convenience would require the inference server to reach Sirene's URL, which is brittle (private networks, firewalls, dev setups). Pasting two values is simpler.
+### Remote inference (Railway, RunPod or any Docker host)
+
+The **Add server** dialog generates the exact command or configuration for each target: Linux script, `docker run`, Docker Compose, Railway or RunPod, on CPU or NVIDIA GPU.
+
+On Railway, use the published template: the **Add server** dialog has a **Deploy on Railway** button that opens [railway.com/deploy/sirene-inference](https://railway.com/deploy/sirene-inference). Railway asks for two values, `SIRENE_URL` and `SIRENE_REGISTRATION_TOKEN`, both shown in the dialog; the image, the volume on `/app/data`, the public HTTP port and a generated `INFERENCE_AUTH_TOKEN` are part of the template.
+
+On any other Docker host, deploy `ghcr.io/kevinbonnoron/sirene-inference:latest` (or `:cuda` on a GPU host) with the environment variables shown in the **Add server** dialog:
+
+| Variable | Value |
+|----------|-------|
+| `SIRENE_URL` | Public URL of your Sirene server |
+| `SIRENE_REGISTRATION_TOKEN` | Token from the dialog (one hour) |
+| `INFERENCE_AUTH_TOKEN` | A long random secret; the dialog generates one |
+| `INFERENCE_PUBLIC_URL` | Public URL of the worker. Optional on Railway and RunPod, derived from `RAILWAY_PUBLIC_DOMAIN` or `RUNPOD_POD_ID` |
+| `INFERENCE_NAME` | Name shown in Sirene. Optional, defaults to `RAILWAY_SERVICE_NAME` or the hostname |
+
+The image listens on `PORT` when the host injects one (Railway does) and on 8000 otherwise. Attach a persistent volume at `/app/data` so models and lazily installed backends survive redeploys.
 
 The same `install.sh` covers all three modes: `INSTALL_MODE=full` (default - server + inference), `INSTALL_MODE=server` (just the app), `INSTALL_MODE=inference` (just an inference server).
 

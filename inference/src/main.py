@@ -1,8 +1,9 @@
+import asyncio
 import importlib
 import logging
 import os
 import sys
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .routers import backends, cache, generate, health, models, transcribe
+from .services import registration
 from .services.model_manager import model_manager
 
 # Runtime packages dir (volume-backed in Docker) - add to sys.path so lazily
@@ -21,9 +23,17 @@ if _packages_dir:
         sys.path.insert(0, _packages_dir)
         importlib.invalidate_caches()
 
+# Hosting dashboards paint everything on stderr red.
+_log_format = logging.Formatter("%(levelname)s %(asctime)s [%(name)s]: %(message)s")
+_stdout_handler = logging.StreamHandler(sys.stdout)
+_stdout_handler.addFilter(lambda record: record.levelno < logging.WARNING)
+_stderr_handler = logging.StreamHandler(sys.stderr)
+_stderr_handler.setLevel(logging.WARNING)
+for _handler in (_stdout_handler, _stderr_handler):
+    _handler.setFormatter(_log_format)
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    format="%(levelname)s %(asctime)s [%(name)s]: %(message)s",
+    handlers=[_stdout_handler, _stderr_handler],
     force=True,
 )
 # Uvicorn installs its own handlers on these loggers at startup, which bypasses
@@ -46,7 +56,11 @@ async def lifespan(app: FastAPI):
     logger.info(
         f"Prompt cache: {settings.cache_dir} (max {settings.cache_max_disk_mb}MB)"
     )
+    registration_task = asyncio.create_task(registration.register())
     yield
+    registration_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await registration_task
     model_manager.unload_all()
     logger.info("All models unloaded, shutting down")
 

@@ -69,4 +69,4 @@ ENV PACKAGES_DIR=/app/data/packages
 
 EXPOSE 8000
 
-CMD ["/opt/inference-venv/bin/uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "-c", "exec /opt/inference-venv/bin/uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

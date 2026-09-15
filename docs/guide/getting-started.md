@@ -33,19 +33,16 @@ See the [Docker guide](./docker.md) for more options.
 
 ## Adding more inference servers
 
-If you have a separate Linux machine with a GPU, you can add it as an inference server:
+If you have a separate Linux machine with a GPU, or a hosting provider such as Railway, you can add it as an inference server:
 
-1. On that machine, run:
+1. In Sirene → **Administration → Inference servers → Add server**. The dialog shows an install command carrying a one-hour registration token.
+2. Run that command on the machine, or deploy the Docker image with the listed environment variables.
+3. The worker registers itself with Sirene when it starts. It appears in the list within a few seconds, health-checked.
 
-   ```bash
-   curl -sSL https://raw.githubusercontent.com/KevinBonnoron/sirene/main/install.sh | INSTALL_MODE=inference bash
-   ```
-
-2. The script prints a **URL** and an **auth token** when it finishes
-3. In Sirene → **Settings → Inference servers → Add server**, paste both, give it a name, save
+Nothing needs to be pasted back: the worker sends its own URL and auth token during registration. The manual form (URL + token) is still available under **Add manually** for workers that are already running.
 
 > **Keep the auth token secret.** It grants full control of the inference server. Do not paste it into chats, screenshots, or logs, and rotate it if you suspect it has leaked.
 >
-> **Rotating a token.** Delete `auth_token` on the inference host, rerun the installer to mint a new value, then update the matching entry in Sirene → **Settings → Inference servers** with the new token. Until the entry is updated, every request to that inference server will return 401.
+> **Rotating a token.** Delete `auth_token` on the inference host and rerun the installer with a fresh registration token: the worker re-registers with the new value. Without registration, update the matching entry in Sirene by hand; until then every request to that inference server returns 401.
 
 See the [Docker guide](./docker.md#standalone-inference-script-install) for details.

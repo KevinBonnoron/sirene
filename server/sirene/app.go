@@ -83,6 +83,7 @@ func New(opts Options) *pocketbase.PocketBase {
 		CliAuth:    auth.NewCliAuth(keys),
 		Settings:   st,
 		Servers:    servers,
+		Registry:   infsrv.NewRegistrations(),
 		Cache:      cache,
 		Router:     rt,
 		Jobs:       store,

@@ -29,6 +29,11 @@ The first account created in the web UI becomes the Sirene administrator. The Po
 | `INFERENCE_DEVICE` | `cuda` | Device (`cuda` or `cpu`) |
 | `INFERENCE_MAX_LOADED_MODELS` | `2` | Max models loaded in memory simultaneously |
 | `INFERENCE_AUTH_TOKEN` | - | Bearer token required on every request except `/health` |
+| `SIRENE_URL` | - | Register this worker with that Sirene server at startup (with `SIRENE_REGISTRATION_TOKEN`) |
+| `SIRENE_REGISTRATION_TOKEN` | - | One-hour token from Administration → Add server; only allows registering |
+| `INFERENCE_PUBLIC_URL` | derived from `RAILWAY_PUBLIC_DOMAIN` or `RUNPOD_POD_ID` | URL Sirene uses to reach this worker when registering |
+| `INFERENCE_NAME` | `$RAILWAY_SERVICE_NAME` or hostname | Name of the registered server |
+| `PORT` | `8000` | Listening port of the Docker image (PaaS-injected) |
 | `INFERENCE_ALLOW_NO_AUTH` | `false` | Allow running without a token (trusted networks only) |
 | `PACKAGES_DIR` | - | Persistent directory for lazily installed backend packages |
 

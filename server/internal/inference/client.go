@@ -115,23 +115,34 @@ func NewClient(target Target, logf func(string, ...any)) *Client {
 	return &Client{target: target, logf: logf}
 }
 
-func Health(ctx context.Context, t Target) error {
+type HealthInfo struct {
+	Device string `json:"device"`
+}
+
+func Health(ctx context.Context, t Target) (HealthInfo, error) {
+	var info HealthInfo
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	req, err := t.newRequest(ctx, http.MethodGet, "/health", nil)
 	if err != nil {
-		return err
+		return info, err
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return info, err
 	}
 	defer res.Body.Close()
-	io.Copy(io.Discard, res.Body)
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
+	body, err := io.ReadAll(io.LimitReader(res.Body, 64<<10))
+	if err != nil {
+		return info, err
 	}
-	return t.checkAuth(ctx)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return info, fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
+	}
+	if err := json.Unmarshal(body, &info); err != nil {
+		return info, fmt.Errorf("health check returned an invalid payload: %w", err)
+	}
+	return info, t.checkAuth(ctx)
 }
 
 // /health is open, so a wrong token only shows on an authenticated route.

@@ -1,6 +1,6 @@
 import type { CatalogModel, InferenceServer, Model } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
-import { AudioLines, Cloud, Download, FileAudio, KeyRound, Loader2, Mic, Server, Sparkles, Trash2 } from 'lucide-react';
+import { Download, Loader2, Server, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -9,20 +9,12 @@ import { inferenceServerCollection } from '@/collections';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useJobs } from '@/hooks/use-jobs';
 import { cn } from '@/lib/utils';
 import { downloadBlob } from '@/utils/download';
-import { formatFileSize } from '@/utils/format';
 
-type ModelStatus = 'available' | 'pulling' | 'installed' | 'error';
-
-interface Props {
-  catalog: CatalogModel;
-  installation?: Model;
-  onPull: (id: string, serverIds?: string[]) => void;
-}
+export type ModelStatus = 'available' | 'pulling' | 'installed' | 'error';
 
 const STATUS_DOT: Record<'online' | 'offline' | 'unknown' | '', string> = {
   online: 'bg-accent-sage',
@@ -31,20 +23,29 @@ const STATUS_DOT: Record<'online' | 'offline' | 'unknown' | '', string> = {
   '': 'bg-muted-foreground/40',
 };
 
-export function ModelTile({ catalog, installation, onPull }: Props) {
-  const { t } = useTranslation();
-  const isApi = catalog.types.includes('api');
-  const status: ModelStatus = installation?.status ?? 'available';
-  const progress = installation?.progress ?? 0;
-  const isCustom = catalog.repo === '';
+export function useServerFleet() {
   const { data: servers } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).where(({ s }) => s.enabled));
   const enabledServers = servers ?? [];
+  const online = enabledServers.filter((s) => s.lastHealth.status !== 'offline');
+  return {
+    enabledServers,
+    hasOnlineServer: online.length > 0,
+    gpuAvailable: online.some((s) => s.lastHealth.device !== undefined && s.lastHealth.device !== '' && s.lastHealth.device !== 'cpu'),
+  };
+}
+
+interface Props {
+  catalog: CatalogModel;
+  installation?: Model;
+  onPull: (id: string, serverIds?: string[]) => void;
+}
+
+export function ModelActions({ catalog, installation, onPull }: Props) {
+  const { t } = useTranslation();
+  const { enabledServers, hasOnlineServer } = useServerFleet();
+  const status: ModelStatus = installation?.status ?? 'available';
+  const isCustom = catalog.repo === '';
   const installedServerIds = installation?.serverIds ?? [];
-  const isMultiServer = !isApi && enabledServers.length > 1;
-  const showCoverage = !isApi && status === 'installed' && enabledServers.length > 1 && installedServerIds.length < enabledServers.length;
-  const installedNames = installedServerIds.map((id) => enabledServers.find((s) => s.id === id)?.name).filter((n): n is string => !!n);
-  // Mirrors the server-side eligibility filter in model.service.ts ('unknown' counts as eligible).
-  const hasOnlineServer = enabledServers.some((s) => s.lastHealth.status !== 'offline');
 
   async function handleRemove(serverId?: string) {
     try {
@@ -65,76 +66,17 @@ export function ModelTile({ catalog, installation, onPull }: Props) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-colors', isApi ? 'border-accent-sky/40 bg-accent-sky/5' : status === 'installed' && 'border-accent-sage/40 bg-accent-sage/5')}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-serif text-sm tracking-tight" title={catalog.name}>
-            {catalog.name}
-          </p>
-          {isApi ? (
-            <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-2xs font-medium text-accent-sky">
-              <Cloud className="size-2.5" />
-              {t('model.cloudApi')}
-            </span>
-          ) : (
-            <span className="font-mono text-xs text-dim">{formatFileSize(catalog.size)}</span>
-          )}
-        </div>
-        {!isApi && (
-          <div className="flex shrink-0 gap-0.5">
-            {status === 'installed' && isCustom && (
-              <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" onClick={handleExport} aria-label={t('common.download')}>
-                <Download className="size-3.5" />
-              </Button>
-            )}
-            {isMultiServer ? (
-              <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} />
-            ) : (
-              <SingleServerActions status={status} isCustom={isCustom} hasOnlineServer={hasOnlineServer} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />
-            )}
-          </div>
-        )}
-      </div>
-      {status === 'pulling' && <Progress value={progress} className="h-1" />}
-      {status === 'error' && installation?.error && <p className="truncate text-xs text-destructive">{installation.error}</p>}
-      {showCoverage && (
-        <p className="flex items-center gap-1 text-2xs text-muted-foreground" title={installedNames.join(', ')}>
-          <Server className="size-2.5" />
-          {t('model.installedOn', { count: installedServerIds.length, total: enabledServers.length })}
-        </p>
+    <div className="flex shrink-0 items-center gap-0.5">
+      {status === 'installed' && isCustom && (
+        <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" onClick={handleExport} aria-label={t('common.download')}>
+          <Download className="size-3.5" />
+        </Button>
       )}
-      <div className="flex flex-wrap items-center gap-1">
-        {catalog.types.includes('preset') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-sky/15 px-1 py-px text-2xs font-medium text-accent-sky">
-            <AudioLines className="size-2.5" />
-            {t('voice.preset')}
-          </span>
-        )}
-        {catalog.types.includes('cloning') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-violet/15 px-1 py-px text-2xs font-medium text-accent-violet">
-            <Mic className="size-2.5" />
-            {t('voice.cloning')}
-          </span>
-        )}
-        {catalog.types.includes('transcription') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-green/15 px-1 py-px text-2xs font-medium text-accent-green">
-            <FileAudio className="size-2.5" />
-            {t('model.stt')}
-          </span>
-        )}
-        {catalog.types.includes('design') && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1 py-px text-2xs font-medium text-primary">
-            <Sparkles className="size-2.5" />
-            {t('voice.voiceDesign')}
-          </span>
-        )}
-        {catalog.gated && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-accent-rust/15 px-1 py-px text-2xs font-medium text-accent-rust" title={t('model.hfTokenTooltip')}>
-            <KeyRound className="size-2.5" />
-            {t('model.hfToken')}
-          </span>
-        )}
-      </div>
+      {enabledServers.length > 1 ? (
+        <PerServerMenu catalog={catalog} isCustom={isCustom} servers={enabledServers} installedServerIds={installedServerIds} onPull={onPull} onRemove={handleRemove} />
+      ) : (
+        <SingleServerActions status={status} isCustom={isCustom} hasOnlineServer={hasOnlineServer} onPull={() => onPull(catalog.id)} onRemove={() => handleRemove()} />
+      )}
     </div>
   );
 }
@@ -152,8 +94,6 @@ function SingleServerActions({ status, isCustom, hasOnlineServer, onPull, onRemo
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              {/* aria-disabled (not disabled) keeps the button focusable so the tooltip can
-                   open via keyboard. pointerEvents stays enabled so hover triggers it too. */}
               <Button size="icon" variant="outline" className="size-7 opacity-50" aria-disabled aria-label={t('model.actionInstallNoServer')} onClick={(e) => e.preventDefault()}>
                 <Download className="size-3.5" />
               </Button>

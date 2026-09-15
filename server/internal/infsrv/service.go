@@ -236,15 +236,27 @@ func (s *Service) runRound(ctx context.Context) {
 
 func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 	status, message := "online", ""
-	if err := inference.Health(ctx, TargetOf(rec)); err != nil {
+	info, err := inference.Health(ctx, TargetOf(rec))
+	if err != nil {
 		status, message = "offline", err.Error()
+		info = lastKnown(rec)
 	}
 	rec.Set("lastHealth", map[string]any{
 		"at":     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 		"status": status,
 		"error":  message,
+		"device": info.Device,
 	})
 	return s.app.Save(rec)
+}
+
+// A failed probe must not forget what the worker runs on, or a CPU worker would accept GPU models until it comes back.
+func lastKnown(rec *core.Record) inference.HealthInfo {
+	var prev struct {
+		Device string `json:"device"`
+	}
+	_ = rec.UnmarshalJSONField("lastHealth", &prev)
+	return inference.HealthInfo{Device: prev.Device}
 }
 
 func unknownHealth() map[string]any {

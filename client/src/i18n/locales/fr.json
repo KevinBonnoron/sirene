@@ -173,7 +173,60 @@
     "actionInstallOnServer": "Installer sur {{name}}",
     "actionRemoveFromServer": "Supprimer de {{name}}",
     "removeFromAllConfirmTitle": "Supprimer de tous les serveurs ?",
-    "removeFromAllConfirmDescription": "Cela supprimera « {{name}} » des {{count}} serveurs où il est installé. Cette action est irréversible."
+    "removeFromAllConfirmDescription": "Cela supprimera « {{name}} » des {{count}} serveurs où il est installé. Cette action est irréversible.",
+    "recommended": "Recommandé",
+    "cpuFriendly": "CPU",
+    "gpu": "GPU",
+    "gpuVram": "GPU {{count}} Go",
+    "gpuRecommended": "GPU recommandé",
+    "noGpuServer": "GPU recommandé, aucun serveur GPU en ligne",
+    "nonCommercial": "Non commercial",
+    "commercialOk": "Usage commercial autorisé",
+    "languageCount": "{{count}} langues",
+    "allLanguages": "100+ langues",
+    "legacy": "Ancien",
+    "piper": {
+      "selectVoice": "Ajouter une voix...",
+      "install": "Installer",
+      "perVoice": "{{size}} par voix",
+      "filter": "Filtrer par langue ou par voix..."
+    },
+    "installedCount_one": "{{count}} installé",
+    "installedCount_other": "{{count}} installés",
+    "variantCount_one": "{{count}} variante",
+    "variantCount_other": "{{count}} variantes",
+    "voiceCount_one": "{{count}} voix",
+    "voiceCount_other": "{{count}} voix",
+    "expand": "Afficher les variantes de {{name}}",
+    "cloudSection": "Services cloud",
+    "empty": {
+      "title": "Aucun modèle installé",
+      "description": "Un seul modèle suffit pour commencer à générer. L'assistant choisit le bon selon ce que vous voulez faire et votre matériel."
+    },
+    "add": {
+      "title": "Ajouter un modèle",
+      "question": "Que voulez-vous faire ?",
+      "withGpu": "Vos serveurs d'inférence ont un GPU : les modèles recommandés tournent à pleine vitesse.",
+      "withoutGpu": "Aucun de vos serveurs d'inférence en ligne n'a de GPU, les modèles qui tournent bien sur CPU viennent en premier.",
+      "purposes": {
+        "preset": "Voix prêtes à l'emploi",
+        "cloning": "Cloner une voix",
+        "design": "Concevoir une voix",
+        "transcription": "Transcrire de l'audio",
+        "import": "Importer une voix Piper"
+      },
+      "hints": {
+        "preset": "Lire un texte avec des voix intégrées en plusieurs langues.",
+        "cloning": "Reproduire une voix à partir de quelques secondes d'audio.",
+        "design": "Décrire une voix avec des mots et laisser le modèle l'inventer.",
+        "transcription": "Transformer un enregistrement en texte, utile aussi pour annoter les échantillons.",
+        "import": "Ajouter votre propre voix ONNX avec son fichier de configuration."
+      },
+      "showMore_one": "Voir {{count}} autre option",
+      "showMore_other": "Voir {{count}} autres options"
+    },
+    "installedOnServer": "Installé sur {{name}}",
+    "notInstalledOnServer": "Absent de {{name}}"
   },
   "notifications": {
     "title": "Activité",

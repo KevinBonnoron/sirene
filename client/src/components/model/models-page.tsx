@@ -1,120 +1,91 @@
-import type { CatalogModel, CatalogModelType, Model } from '@sirene/shared';
+import { Box, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionTopbar } from '@/components/layout/section-topbar';
-import { ModelCard } from '@/components/model/model-card';
-import { PiperImportDialog } from '@/components/model/piper-import-dialog';
+import { AddModelDialog } from '@/components/model/add-model-dialog';
+import { type Entry, type Family, FamilyRow } from '@/components/model/model-list';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useModels, usePullModel } from '@/hooks/use-models';
 import { cn } from '@/lib/utils';
 
-function groupByBackend(models: CatalogModel[], installations: Map<string, Model>) {
-  const groups = new Map<string, { catalog: CatalogModel; installation?: Model }[]>();
-  for (const c of models) {
-    const list = groups.get(c.backend) ?? [];
-    list.push({ catalog: c, installation: installations.get(c.id) });
-    groups.set(c.backend, list);
+function buildFamilies(entries: Entry[]): Family[] {
+  const map = new Map<string, Family>();
+  for (const entry of entries) {
+    const c = entry.catalog;
+    const fam = map.get(c.backend) ?? { key: c.backend, name: c.backendDisplayName, description: c.backendDescription, entries: [] };
+    fam.entries.push(entry);
+    map.set(c.backend, fam);
   }
-  return groups;
+  const families = [...map.values()];
+  for (const fam of families) {
+    fam.entries.sort((a, b) => a.catalog.name.localeCompare(b.catalog.name));
+  }
+  const rank = (f: Family) => (f.entries[0]?.catalog.types.includes('transcription') ? 1 : 0);
+  return families.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
-
-const chipBase = 'rounded-full border px-3 py-1 text-xs font-medium transition-colors';
-const chipDefault = 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground';
-
-type FilterKey = CatalogModelType | 'gated';
-
-const filterConfig: Record<FilterKey, { label: string; active: string }> = {
-  preset: { label: 'voice.preset', active: 'border-accent-sky/60 bg-accent-sky/15 text-accent-sky' },
-  cloning: { label: 'voice.cloning', active: 'border-accent-violet/60 bg-accent-violet/15 text-accent-violet' },
-  design: { label: 'voice.voiceDesign', active: 'border-primary/60 bg-primary/15 text-primary' },
-  api: { label: 'voice.cloud', active: 'border-accent-sky/60 bg-accent-sky/15 text-accent-sky' },
-  transcription: { label: 'model.stt', active: 'border-accent-green/60 bg-accent-green/15 text-accent-green' },
-  gated: { label: 'model.hfToken', active: 'border-accent-rust/60 bg-accent-rust/15 text-accent-rust' },
-};
 
 export function ModelsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { catalog, installationsByName, isLoading } = useModels();
   const { pullModel } = usePullModel();
+  const [addOpen, setAddOpen] = useState(false);
 
-  const [filter, setFilter] = useState<FilterKey | null>(null);
-
-  const types = useMemo(() => {
-    const set = new Set(catalog.flatMap((c) => c.types));
-    return (['preset', 'cloning', 'design', 'api', 'transcription'] as const).filter((t) => set.has(t));
-  }, [catalog]);
-
-  const extraFilters = useMemo(() => {
-    const keys: FilterKey[] = [];
-    if (catalog.some((c) => c.gated)) {
-      keys.push('gated');
-    }
-    return keys;
-  }, [catalog]);
-
-  const filteredModels = useMemo(() => {
-    if (!filter) {
-      return catalog;
-    }
-
-    if (filter === 'gated') {
-      return catalog.filter((c) => c.gated);
-    }
-
-    return catalog.filter((c) => c.types.includes(filter));
-  }, [catalog, filter]);
-
-  const groups = groupByBackend(filteredModels, installationsByName);
-
-  const hasPiper = catalog.some((c) => c.backend === 'piper');
+  const entries = useMemo<Entry[]>(() => catalog.map((c) => ({ catalog: c, installation: installationsByName.get(c.id) })), [catalog, installationsByName]);
+  const local = useMemo(() => entries.filter((e) => e.installation && !e.catalog.types.includes('api')), [entries]);
+  const cloud = useMemo(() => entries.filter((e) => e.catalog.types.includes('api')), [entries]);
+  const families = useMemo(() => buildFamilies(local), [local]);
 
   return (
     <div className="flex h-full flex-col">
-      <SectionTopbar label={t('nav.models')} subtitle={t('model.subtitle')} actions={hasPiper ? <PiperImportDialog /> : undefined} />
-      <main className={`custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
+      <SectionTopbar
+        label={t('nav.models')}
+        subtitle={t('model.subtitle')}
+        actions={
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" />
+            {t('model.add.title')}
+          </Button>
+        }
+      />
+      <main className={cn('custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6', isMobile && 'pb-24')}>
         {isLoading ? (
-          <div className="grid gap-4">
-            <Skeleton className="h-48" />
-            <Skeleton className="h-48" />
-            <Skeleton className="h-48" />
+          <Skeleton className="h-40" />
+        ) : local.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+              <Box className="size-6 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="font-serif text-lg tracking-tight">{t('model.empty.title')}</h2>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t('model.empty.description')}</p>
+            </div>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" />
+              {t('model.add.title')}
+            </Button>
           </div>
         ) : (
-          <>
-            {/* Filter chips */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setFilter(null)} className={cn(chipBase, !filter ? 'border-primary bg-primary text-primary-foreground' : chipDefault)}>
-                {t('voice.all')}
-              </button>
-              {types.map((value) => {
-                const cfg = filterConfig[value];
-                return (
-                  <button key={value} type="button" onClick={() => setFilter(filter === value ? null : value)} className={cn(chipBase, filter === value ? cfg.active : chipDefault)}>
-                    {t(cfg.label)}
-                  </button>
-                );
-              })}
-              {extraFilters.map((key) => {
-                const cfg = filterConfig[key];
-                return (
-                  <button key={key} type="button" onClick={() => setFilter(filter === key ? null : key)} className={cn(chipBase, filter === key ? cfg.active : chipDefault)}>
-                    {t(cfg.label)}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Backend groups */}
-            <div className="space-y-4">
-              {[...groups.entries()].map(([backend, models]) => (
-                <ModelCard key={backend} backend={backend} description={models[0]?.catalog.backendDescription ?? ''} models={models} onPull={pullModel} />
+          <div className="divide-y divide-border rounded-lg border border-border bg-card">
+            {families.map((family) => (
+              <FamilyRow key={family.key} family={family} onPull={pullModel} defaultOpen />
+            ))}
+          </div>
+        )}
+        {!isLoading && cloud.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="px-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{t('model.cloudSection')}</h2>
+            <div className="divide-y divide-border rounded-lg border border-border bg-card">
+              {buildFamilies(cloud).map((family) => (
+                <FamilyRow key={family.key} family={family} onPull={pullModel} />
               ))}
-              {groups.size === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t('model.noMatch')}</p>}
             </div>
-          </>
+          </section>
         )}
       </main>
+      <AddModelDialog entries={entries} onPull={pullModel} open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }

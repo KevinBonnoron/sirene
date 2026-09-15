@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { modelClient } from '@/clients/model.client';
 import { inferenceServerCollection } from '@/collections';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useModels } from '@/hooks/use-models';
 import { cn } from '@/lib/utils';
@@ -75,9 +74,9 @@ function computeSlug(name: string, configInfo: PiperState['configInfo']): string
   return `piper-${locale}-${speaker}-${quality}`;
 }
 
-export function PiperImportDialog() {
+export function PiperImportForm({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
-  const [{ open, loading, name, onnxFile, configFile, configInfo, selectedServerIds }, dispatch] = useReducer(piperReducer, piperInitial);
+  const [{ loading, name, onnxFile, configFile, configInfo, selectedServerIds }, dispatch] = useReducer(piperReducer, piperInitial);
 
   const { data: serversData } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).where(({ s }) => s.enabled));
   const enabledServers = useMemo<InferenceServer[]>(() => serversData ?? [], [serversData]);
@@ -177,6 +176,7 @@ export function PiperImportDialog() {
       const result = await modelClient.importPiper(formData);
       toast.success(t('model.importPiperSuccess', { id: result.id, count: result.jobIds.length }));
       dispatch({ type: 'reset' });
+      onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('voice.importFailed'));
       dispatch({ type: 'setLoading', value: false });
@@ -184,103 +184,82 @@ export function PiperImportDialog() {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          dispatch({ type: 'reset' });
-        } else {
-          dispatch({ type: 'setOpen', value: true });
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="size-3.5" /> {t('common.import')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('model.importPiperTitle')}</DialogTitle>
-          <DialogDescription>{t('model.importPiperDescription')}</DialogDescription>
-        </DialogHeader>
+    <div className="space-y-4">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="piper-name" className="text-sm font-medium">
+            {t('model.modelName')}
+          </label>
+          <Input id="piper-name" placeholder={t('model.modelNamePlaceholder')} value={name} onChange={(e) => dispatch({ type: 'setName', value: e.target.value })} />
+          {name.trim() && (
+            <p className="text-xs text-muted-foreground">
+              {t('model.modelId', {
+                id:
+                  slug ??
+                  `piper-??-${name
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, '_')
+                    .replace(/[^a-z0-9_]/g, '')}-medium`,
+              })}
+            </p>
+          )}
+        </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="piper-name" className="text-sm font-medium">
-              {t('model.modelName')}
-            </label>
-            <Input id="piper-name" placeholder={t('model.modelNamePlaceholder')} value={name} onChange={(e) => dispatch({ type: 'setName', value: e.target.value })} />
-            {name.trim() && (
-              <p className="text-xs text-muted-foreground">
-                {t('model.modelId', {
-                  id:
-                    slug ??
-                    `piper-??-${name
-                      .trim()
-                      .toLowerCase()
-                      .replace(/\s+/g, '_')
-                      .replace(/[^a-z0-9_]/g, '')}-medium`,
-                })}
-              </p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t('model.onnxFile')}</p>
+          <FileDrop label={t('model.dropOnnx')} accept=".onnx" file={onnxFile} onFile={(f) => dispatch({ type: 'setOnnxFile', file: f })} />
+        </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{t('model.onnxFile')}</p>
-            <FileDrop label={t('model.dropOnnx')} accept=".onnx" file={onnxFile} onFile={(f) => dispatch({ type: 'setOnnxFile', file: f })} />
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{t('model.configFile')}</p>
-            <FileDrop label={t('model.dropConfig')} accept=".json" file={configFile} onFile={handleConfigFile} />
-            {configInfo && (
-              <div className="flex gap-2">
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs">espeak: {configInfo.voice}</span>
-                {configInfo.speakers > 1 && <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{t('model.speakers', { count: configInfo.speakers })}</span>}
-              </div>
-            )}
-          </div>
-
-          {isMultiServer && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">{t('model.installOn')}</p>
-              <ul className="space-y-1">
-                {enabledServers.map((server) => {
-                  const status = (server.lastHealth.status || 'unknown') as 'online' | 'offline' | 'unknown';
-                  const alreadyInstalled = installedOnIds.has(server.id);
-                  const offline = status === 'offline';
-                  const disabled = alreadyInstalled || offline;
-                  const checked = effectiveSelectedServerIds.includes(server.id);
-                  return (
-                    <li key={server.id}>
-                      <label className={cn('flex cursor-pointer items-center gap-2 rounded-md border border-border-subtle bg-card/40 px-2 py-1.5 text-xs', disabled && 'cursor-not-allowed opacity-60')}>
-                        <input type="checkbox" checked={checked && !disabled} disabled={disabled} onChange={() => toggleServer(server.id)} className="size-3.5" />
-                        <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[status])} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate font-medium">{server.name}</span>
-                        {alreadyInstalled && <span className="text-muted-foreground">{t('model.alreadyInstalled')}</span>}
-                        {offline && !alreadyInstalled && <span className="text-muted-foreground">{t('inferenceServers.statusOffline')}</span>}
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t('model.configFile')}</p>
+          <FileDrop label={t('model.dropConfig')} accept=".json" file={configFile} onFile={handleConfigFile} />
+          {configInfo && (
+            <div className="flex gap-2">
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs">espeak: {configInfo.voice}</span>
+              {configInfo.speakers > 1 && <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{t('model.speakers', { count: configInfo.speakers })}</span>}
             </div>
           )}
         </div>
 
-        <Button onClick={handleImport} disabled={!onnxFile || !configFile || !name.trim() || loading || noTargets} className="w-full">
-          {loading ? (
-            <>
-              <Loader2 className="size-4 animate-spin" /> {t('voice.importing')}
-            </>
-          ) : (
-            <>
-              <Plus className="size-4" /> {t('common.import')}
-            </>
-          )}
-        </Button>
-      </DialogContent>
-    </Dialog>
+        {isMultiServer && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t('model.installOn')}</p>
+            <ul className="space-y-1">
+              {enabledServers.map((server) => {
+                const status = (server.lastHealth.status || 'unknown') as 'online' | 'offline' | 'unknown';
+                const alreadyInstalled = installedOnIds.has(server.id);
+                const offline = status === 'offline';
+                const disabled = alreadyInstalled || offline;
+                const checked = effectiveSelectedServerIds.includes(server.id);
+                return (
+                  <li key={server.id}>
+                    <label className={cn('flex cursor-pointer items-center gap-2 rounded-md border border-border-subtle bg-card/40 px-2 py-1.5 text-xs', disabled && 'cursor-not-allowed opacity-60')}>
+                      <input type="checkbox" checked={checked && !disabled} disabled={disabled} onChange={() => toggleServer(server.id)} className="size-3.5" />
+                      <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[status])} aria-hidden />
+                      <span className="min-w-0 flex-1 truncate font-medium">{server.name}</span>
+                      {alreadyInstalled && <span className="text-muted-foreground">{t('model.alreadyInstalled')}</span>}
+                      {offline && !alreadyInstalled && <span className="text-muted-foreground">{t('inferenceServers.statusOffline')}</span>}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <Button onClick={handleImport} disabled={!onnxFile || !configFile || !name.trim() || loading || noTargets} className="w-full">
+        {loading ? (
+          <>
+            <Loader2 className="size-4 animate-spin" /> {t('voice.importing')}
+          </>
+        ) : (
+          <>
+            <Plus className="size-4" /> {t('common.import')}
+          </>
+        )}
+      </Button>
+    </div>
   );
 }

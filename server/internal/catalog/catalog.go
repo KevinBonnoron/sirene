@@ -68,6 +68,13 @@ type Model struct {
 	Language             string        `json:"language,omitempty"`
 	SupportsInstruct     bool          `json:"supportsInstruct,omitempty"`
 	SupportsEffects      bool          `json:"supportsEffects,omitempty"`
+	License              string        `json:"license,omitempty"`
+	Commercial           *bool         `json:"commercial,omitempty"`
+	Hardware             string        `json:"hardware,omitempty"`
+	MinVram              int           `json:"minVram,omitempty"`
+	Languages            []string      `json:"languages,omitempty"`
+	Recommended          bool          `json:"recommended,omitempty"`
+	Legacy               bool          `json:"legacy,omitempty"`
 }
 
 func (m Model) HasType(t string) bool {

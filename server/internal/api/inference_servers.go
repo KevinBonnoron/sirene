@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net"
 	"net/http"
@@ -147,6 +148,25 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		token, expiresAt := d.Registry.Issue()
 		return e.JSON(http.StatusCreated, map[string]any{"token": token, "expiresAt": expiresAt.UTC().Format(time.RFC3339)})
 	})
+
+	s.GET("/{id}/stats", func(e *core.RequestEvent) error {
+		id, err := pathParam(e, "id")
+		if err != nil {
+			return err
+		}
+		rec, err := d.Servers.Get(id)
+		if err != nil {
+			return err
+		}
+		body, err := inference.NewClient(infsrv.TargetOf(rec), nil).Stats(e.Request.Context())
+		if errors.Is(err, inference.ErrStatsUnsupported) {
+			return apierr.NotFound(apierr.CodeInferenceServerStatsUnsupported, "This inference server does not expose usage statistics")
+		}
+		if err != nil {
+			return err
+		}
+		return e.Blob(http.StatusOK, "application/json", body)
+	}).Bind(auth.RequireScope("inference-servers:read"))
 
 	w.POST("/{id}/test", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")

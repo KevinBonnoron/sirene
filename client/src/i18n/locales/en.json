@@ -253,7 +253,8 @@
     "profile": "Profile",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inference"
+    "inferenceServers": "Inference",
+    "dashboard": "Dashboard"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -551,7 +552,29 @@
       "cpu": "CPU models only",
       "gpu": "GPU models only",
       "none": "None (by hand)"
-    }
+    },
+    "disabled": "Disabled",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} model",
+    "modelCount_other": "{{count}} models",
+    "priorityValue": "Priority {{count}}"
+  },
+  "dashboard": {
+    "subtitle": "What each inference worker is using right now, refreshed every five seconds.",
+    "loading": "Reading...",
+    "unavailable": "This worker predates the stats route. Update its image to see usage here.",
+    "cpu": "Worker CPU",
+    "memory": "Worker memory",
+    "gpu": "GPU",
+    "vram": "Worker VRAM",
+    "disk": "Models disk",
+    "cores": "share of {{count}} cores",
+    "gpuUtilization": "whole GPU utilisation",
+    "loadedModels": "Loaded in memory",
+    "noneLoaded": "No model loaded",
+    "activity": "In progress",
+    "error": "Could not read stats from this server."
   },
   "deleteGeneration": {
     "title": "Delete generation?",
@@ -656,6 +679,7 @@
     "inferenceServer.invalidRegistrationToken": "Invalid or expired registration token",
     "inferenceServer.invalidUrl": "The inference server URL must be an absolute http(s) URL",
     "inferenceServer.nameTaken": "Too many inference servers share this name",
+    "inferenceServer.statsUnsupported": "This inference server does not expose usage statistics",
     "settings.invalidKey": "Invalid setting key",
     "openai.keyNotConfigured": "OpenAI API key not configured. Go to Settings to add it.",
     "elevenlabs.keyNotConfigured": "ElevenLabs API key not configured. Go to Settings to add it.",

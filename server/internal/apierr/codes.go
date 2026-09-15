@@ -26,6 +26,7 @@ const (
 	CodeInferenceServerInvalidRegistrationToken = "inferenceServer.invalidRegistrationToken"
 	CodeInferenceServerInvalidURL               = "inferenceServer.invalidUrl"
 	CodeInferenceServerNameTaken                = "inferenceServer.nameTaken"
+	CodeInferenceServerStatsUnsupported         = "inferenceServer.statsUnsupported"
 
 	CodeModelAlreadyInstalled       = "model.alreadyInstalled"
 	CodeModelConfigInvalidJson      = "model.configInvalidJson"
@@ -82,7 +83,7 @@ var AllCodes = []string{
 	CodeAuthInvalidCredentials, CodeAuthInvalidToken, CodeAuthRegistrationFailed, CodeAuthRequired, CodeAuthForbidden, CodeAuthMissingScope, CodeAuthEmailTaken,
 	CodeApiKeyNotFound, CodeApiKeyUnknownScope,
 	CodeCliAuthSessionAlreadyUsed, CodeCliAuthSessionNotFound,
-	CodeGenerationNotFound, CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken,
+	CodeGenerationNotFound, CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken, CodeInferenceServerStatsUnsupported,
 	CodeModelAlreadyInstalled, CodeModelConfigInvalidJson, CodeModelConfigNotPiper, CodeModelCustomNotFound, CodeModelDeleteFailed, CodeModelExportFailed,
 	CodeModelInvalidName, CodeModelInvalidServerSelection, CodeModelNameConflict, CodeModelNoAcceptingServer, CodeModelNoOnlineServer, CodeModelNotFound, CodeModelNotInCatalog,
 	CodeModelNotInstalled, CodeModelNotInstalledOnServer, CodeModelPiperFieldsRequired, CodeModelServerIdsInvalid, CodeModelServerIdsNotJson, CodeModelWhisperNotInstalled,

@@ -1,6 +1,6 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
+import { AudioLines, Box, Clock, Gauge, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generationCollection, sessionCollection } from '@/collections';
@@ -37,7 +37,10 @@ export function AppSidebar() {
     { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];
-  const adminItems = [{ label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server }];
+  const adminItems = [
+    { label: t('nav.dashboard'), href: '/admin/dashboard', icon: Gauge },
+    { label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server },
+  ];
 
   return (
     <Sidebar collapsible="icon">
@@ -63,26 +66,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {user?.role === 'admin' && (
-          <SidebarGroup>
-            <SidebarGroupLabel>{t('nav.admin')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={currentPath === item.href} tooltip={item.label}>
-                      <Link to={item.href}>
-                        <item.icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {recentSessions.length > 0 && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -123,6 +106,25 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        {user?.role === 'admin' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t('nav.admin')}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={currentPath === item.href} tooltip={item.label}>
+                      <Link to={item.href}>
+                        <item.icon className="size-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

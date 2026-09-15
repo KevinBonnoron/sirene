@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .routers import backends, cache, generate, health, models, transcribe
+from .routers import backends, cache, generate, health, models, stats, transcribe
 from .services import registration
 from .services.model_manager import model_manager
 
@@ -97,6 +97,7 @@ app.include_router(backends.router)
 app.include_router(models.router)
 app.include_router(transcribe.router)
 app.include_router(cache.router)
+app.include_router(stats.router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -252,7 +252,8 @@
     "profile": "Profil",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inférence"
+    "inferenceServers": "Inférence",
+    "dashboard": "Tableau de bord"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -477,7 +478,30 @@
       "deployOnRailway": "Déployer sur Railway"
     },
     "autoSync": "Recevoir les modèles automatiquement",
-    "autoSyncHint": "Quand ce serveur rejoint la flotte ou est activé, les modèles présents sur les autres serveurs y sont aussi installés, si son matériel convient."
+    "autoSyncHint": "Quand ce serveur rejoint la flotte ou est activé, les modèles présents sur les autres serveurs y sont aussi installés, si son matériel convient.",
+    "disabled": "Désactivé",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} modèle",
+    "modelCount_other": "{{count}} modèles",
+    "priorityValue": "Priorité {{count}}",
+    "autoSyncOff": "Synchro manuelle"
+  },
+  "dashboard": {
+    "subtitle": "Utilisation en direct de vos serveurs d'inférence, rafraîchie toutes les cinq secondes.",
+    "loading": "Lecture...",
+    "unavailable": "Statistiques indisponibles sur ce serveur (ancienne version du worker ?).",
+    "cpu": "CPU",
+    "memory": "Mémoire",
+    "gpu": "GPU",
+    "vram": "VRAM",
+    "disk": "Disque des modèles",
+    "cores": "{{count}} cœurs",
+    "process": "worker {{size}}",
+    "gpuUtilization": "utilisation",
+    "loadedModels": "Chargés en mémoire",
+    "noneLoaded": "Aucun modèle chargé",
+    "activity": "En cours"
   },
   "cliAuth": {
     "title": "Autoriser le CLI",

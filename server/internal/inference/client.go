@@ -148,6 +148,28 @@ type ModelsList struct {
 	Custom    []catalog.Model `json:"custom"`
 }
 
+func (c *Client) Stats(ctx context.Context) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	req, err := c.target.newRequest(ctx, http.MethodGet, "/stats", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.target.do(req, "stats")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, upstreamError("stats", res, c.logf)
+	}
+	body, err := io.ReadAll(io.LimitReader(res.Body, 256<<10))
+	if err != nil || !json.Valid(body) {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "stats failed: invalid response")
+	}
+	return body, nil
+}
+
 func (c *Client) ListModels(ctx context.Context) (*ModelsList, error) {
 	ctx, cancel := context.WithTimeout(ctx, listTimeout)
 	defer cancel()

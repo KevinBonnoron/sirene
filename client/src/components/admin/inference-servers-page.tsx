@@ -1,17 +1,19 @@
 import type { InferenceServer } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
-import { Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Cpu, Loader2, Pencil, Plus, RefreshCw, Server, Trash2, X, Zap } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { inferenceServerClient } from '@/clients/inference-server.client';
 import { inferenceServerCollection } from '@/collections';
+import { SectionTopbar } from '@/components/layout/section-topbar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useModels } from '@/hooks/use-models';
 import { explainApiError } from '@/lib/api-error';
 import { getStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
@@ -56,44 +58,65 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
   return t('inferenceServers.lastChecked', { when });
 }
 
-export function InferenceServersSection() {
+export function InferenceServersPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { data: serversData } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
   const servers = serversData ?? [];
+  const { installations } = useModels();
   const [adding, setAdding] = useState(false);
 
+  const modelCount = (id: string) => installations.filter((i) => i.status === 'installed' && i.serverIds.includes(id)).length;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('inferenceServers.title')}</CardTitle>
-        <CardDescription>{t('inferenceServers.description')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {servers.length === 0 && <p className="text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>}
-
-        {servers.map((server) => (
-          <ServerRow key={server.id} server={server} />
-        ))}
-
-        <Button variant="outline" size="sm" onClick={() => setAdding(true)} className="gap-2">
-          <Plus className="size-3.5" />
-          {t('inferenceServers.addServer')}
-        </Button>
-
-        <AddServerDialog open={adding} onOpenChange={setAdding} />
-      </CardContent>
-    </Card>
+    <div className="flex h-full flex-col">
+      <SectionTopbar
+        label={t('inferenceServers.title')}
+        subtitle={t('inferenceServers.description')}
+        actions={
+          <Button size="sm" onClick={() => setAdding(true)}>
+            <Plus className="size-4" />
+            {t('inferenceServers.addServer')}
+          </Button>
+        }
+      />
+      <main className={cn('custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6', isMobile && 'pb-24')}>
+        {servers.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+              <Server className="size-6 text-muted-foreground" />
+            </div>
+            <p className="max-w-sm text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="size-4" />
+              {t('inferenceServers.addServer')}
+            </Button>
+          </div>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border bg-card">
+            {servers.map((server) => (
+              <ServerRow key={server.id} server={server} modelCount={modelCount(server.id)} />
+            ))}
+          </div>
+        )}
+      </main>
+      <AddServerDialog open={adding} onOpenChange={setAdding} />
+    </div>
   );
 }
 
-function ServerRow({ server }: { server: InferenceServer }) {
+function ServerRow({ server, modelCount }: { server: InferenceServer; modelCount: number }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (editing) {
-    return <ServerForm server={server} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />;
+    return (
+      <div className="p-4">
+        <ServerForm server={server} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
+      </div>
+    );
   }
 
   async function handleTest() {
@@ -128,33 +151,49 @@ function ServerRow({ server }: { server: InferenceServer }) {
 
   const status = statusOf(server);
   const statusKey = `inferenceServers.status${status.charAt(0).toUpperCase()}${status.slice(1)}`;
+  const device = server.lastHealth.device;
+  const gpu = !!device && device !== 'cpu';
 
   return (
     <>
-      <div className={cn('flex items-center gap-3 rounded-lg border border-border-subtle bg-card/40 p-3', !server.enabled && 'opacity-60')}>
-        <span className={cn('size-2 shrink-0 rounded-full', STATUS_DOT[status])} aria-hidden />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-sm" title={server.name}>
-            {server.name}
-          </p>
-          <p className="truncate font-mono text-xs text-muted-foreground" title={server.url}>
+      <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]', !server.enabled && 'opacity-60')}>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('size-2 shrink-0 rounded-full', STATUS_DOT[status])} aria-hidden />
+            <h3 className="font-serif text-base tracking-tight">{server.name}</h3>
+            {!server.enabled && <span className="rounded bg-muted px-1 py-px text-2xs font-medium text-muted-foreground">{t('inferenceServers.disabled')}</span>}
+            {device && (
+              <span className={cn('inline-flex items-center gap-1 rounded px-1 py-px text-2xs font-medium', gpu ? 'bg-primary/15 text-primary' : 'bg-accent-sage/15 text-accent-sage')}>
+                {gpu ? <Zap className="size-2.5" /> : <Cpu className="size-2.5" />}
+                {gpu ? t('inferenceServers.deviceGpu', { device }) : t('inferenceServers.deviceCpu')}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={server.url}>
             {server.url}
           </p>
-          <p className="text-xs">
+          <p className="mt-0.5 text-xs">
             <span className={cn('font-medium', STATUS_TEXT[status])}>{t(statusKey)}</span>
             <span className="ml-2 text-muted-foreground">{formatRelative(server.lastHealth.at, t)}</span>
-            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">- {server.lastHealth.error}</span>}
+            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">{server.lastHealth.error}</span>}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-8" aria-label={t('inferenceServers.test')}>
-          {testing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="size-8 text-muted-foreground" aria-label={t('common.edit')}>
-          <Pencil className="size-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => setConfirmingDelete(true)} className="size-8 text-muted-foreground hover:text-destructive" aria-label={t('common.delete')}>
-          <Trash2 className="size-3.5" />
-        </Button>
+        <div className="hidden text-right text-xs text-muted-foreground sm:block">
+          <p>{t('inferenceServers.modelCount', { count: modelCount })}</p>
+          <p className="mt-0.5">{t('inferenceServers.priorityValue', { count: server.priority })}</p>
+          {!server.autoSync && <p className="mt-0.5 text-dim">{t('inferenceServers.autoSyncOff')}</p>}
+        </div>
+        <div className="col-start-2 row-start-1 flex items-center gap-0.5 sm:col-start-auto sm:row-start-auto">
+          <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-7 text-muted-foreground" aria-label={t('inferenceServers.test')}>
+            {testing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="size-7 text-muted-foreground" aria-label={t('common.edit')}>
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setConfirmingDelete(true)} className="size-7 text-muted-foreground hover:text-destructive" aria-label={t('common.delete')}>
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       <AlertDialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>

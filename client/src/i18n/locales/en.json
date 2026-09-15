@@ -159,21 +159,67 @@
     "allBackends": "All backends",
     "status_installed": "Installed",
     "status_available": "Available",
-    "installedOn": "Installed on {{count}}/{{total}} servers",
-    "manage": "Manage on servers",
-    "perServer": "Per server",
-    "installOnAll": "Install on all {{count}} servers",
-    "installOnAllMissing": "Install on the {{count}} remaining servers",
-    "removeFromAll": "Remove from all servers",
     "noMatch": "No models match your filters.",
     "actionInstall": "Install model",
     "actionInstallNoServer": "No online inference server - check settings",
     "actionInstalling": "Installing model",
     "actionRemove": "Remove model",
-    "actionInstallOnServer": "Install on {{name}}",
-    "actionRemoveFromServer": "Remove from {{name}}",
-    "removeFromAllConfirmTitle": "Remove from all servers?",
-    "removeFromAllConfirmDescription": "This will remove \"{{name}}\" from all {{count}} servers it is installed on. This action cannot be undone."
+    "recommended": "Recommended",
+    "cpuFriendly": "CPU",
+    "gpu": "GPU",
+    "gpuVram": "GPU {{count}} GB",
+    "gpuRecommended": "GPU recommended",
+    "noGpuServer": "GPU recommended, no online GPU server",
+    "nonCommercial": "Non-commercial",
+    "commercialOk": "Commercial use allowed",
+    "languageCount": "{{count}} languages",
+    "allLanguages": "100+ languages",
+    "legacy": "Legacy",
+    "piper": {
+      "selectVoice": "Add a voice...",
+      "install": "Install",
+      "perVoice": "{{size}} per voice",
+      "filter": "Filter by language or voice..."
+    },
+    "installedCount_one": "{{count}} installed",
+    "installedCount_other": "{{count}} installed",
+    "variantCount_one": "{{count}} variant",
+    "variantCount_other": "{{count}} variants",
+    "voiceCount_one": "{{count}} voice",
+    "voiceCount_other": "{{count}} voices",
+    "expand": "Show {{name}} variants",
+    "cloudSection": "Cloud services",
+    "empty": {
+      "title": "No model installed yet",
+      "description": "One model is enough to start generating. The assistant picks the right one for what you want to do and for your hardware."
+    },
+    "add": {
+      "title": "Add a model",
+      "question": "What do you want to do?",
+      "withGpu": "Your inference servers have a GPU: the recommended models run at full speed.",
+      "withoutGpu": "None of your online inference servers has a GPU, so models that run well on CPU come first.",
+      "purposes": {
+        "preset": "Ready-made voices",
+        "cloning": "Clone a voice",
+        "design": "Design a voice",
+        "transcription": "Transcribe audio",
+        "import": "Import a Piper voice"
+      },
+      "hints": {
+        "preset": "Read text with built-in voices in many languages.",
+        "cloning": "Reproduce a voice from a few seconds of audio.",
+        "design": "Describe a voice in words and let the model invent it.",
+        "transcription": "Turn recordings into text, also used to label voice samples.",
+        "import": "Add your own ONNX voice with its config file."
+      },
+      "showMore_one": "Show {{count}} more option",
+      "showMore_other": "Show {{count}} more options"
+    },
+    "missingOn": "Missing on {{names}}",
+    "complete": "Complete",
+    "removeConfirmTitle": "Remove {{name}}?",
+    "removeConfirmDescription": "The model files are deleted from the inference server. Voices using it stop working until it is installed again.",
+    "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again."
   },
   "notifications": {
     "title": "Activity",
@@ -206,7 +252,8 @@
     "profile": "Profile",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inference"
+    "inferenceServers": "Inference",
+    "dashboard": "Dashboard"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -496,7 +543,32 @@
       "manualLabel": "Add manually",
       "manualHint": "For a worker that is already running: paste its URL and the token it was started with.",
       "deployOnRailway": "Deploy on Railway"
-    }
+    },
+    "autoSync": "Receive models automatically",
+    "autoSyncHint": "When this server joins or is enabled, models present on the other servers are installed here too, if its hardware fits.",
+    "disabled": "Disabled",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} model",
+    "modelCount_other": "{{count}} models",
+    "priorityValue": "Priority {{count}}",
+    "autoSyncOff": "Manual sync"
+  },
+  "dashboard": {
+    "subtitle": "Live usage of your inference servers, refreshed every five seconds.",
+    "loading": "Reading...",
+    "unavailable": "Stats unavailable on this server (older worker version?).",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "gpu": "GPU",
+    "vram": "VRAM",
+    "disk": "Models disk",
+    "cores": "{{count}} cores",
+    "process": "worker {{size}}",
+    "gpuUtilization": "utilization",
+    "loadedModels": "Loaded in memory",
+    "noneLoaded": "No model loaded",
+    "activity": "In progress"
   },
   "deleteGeneration": {
     "title": "Delete generation?",

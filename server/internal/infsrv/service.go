@@ -25,6 +25,7 @@ type WriteInput struct {
 	Enabled   bool
 	Priority  int
 	AuthToken *string
+	AutoSync  *bool
 }
 
 type UpdateInput struct {
@@ -33,6 +34,7 @@ type UpdateInput struct {
 	Enabled   *bool
 	Priority  *int
 	AuthToken *string
+	AutoSync  *bool
 }
 
 type Service struct {
@@ -86,6 +88,7 @@ func (s *Service) Create(in WriteInput) (*core.Record, error) {
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
 	}
+	rec.Set("autoSync", in.AutoSync == nil || *in.AutoSync)
 	rec.Set("lastHealth", unknownHealth())
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -115,6 +118,9 @@ func (s *Service) Update(id string, in UpdateInput) (*core.Record, error) {
 	}
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
+	}
+	if in.AutoSync != nil {
+		rec.Set("autoSync", *in.AutoSync)
 	}
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -236,13 +242,15 @@ func (s *Service) runRound(ctx context.Context) {
 
 func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 	status, message := "online", ""
-	if err := inference.Health(ctx, TargetOf(rec)); err != nil {
+	info, err := inference.Health(ctx, TargetOf(rec))
+	if err != nil {
 		status, message = "offline", err.Error()
 	}
 	rec.Set("lastHealth", map[string]any{
 		"at":     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 		"status": status,
 		"error":  message,
+		"device": info.Device,
 	})
 	return s.app.Save(rec)
 }

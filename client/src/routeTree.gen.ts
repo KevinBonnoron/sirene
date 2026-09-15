@@ -25,6 +25,7 @@ import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
 import { Route as AppAdminInferenceServersRouteImport } from './routes/_app/admin/inference-servers'
+import { Route as AppAdminDashboardRouteImport } from './routes/_app/admin/dashboard'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -105,6 +106,11 @@ const AppAdminInferenceServersRoute =
     path: '/inference-servers',
     getParentRoute: () => AppAdminRoute,
   } as any)
+const AppAdminDashboardRoute = AppAdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
+  '/admin/dashboard': typeof AppAdminDashboardRoute
   '/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/admin/': typeof AppAdminIndexRoute
 }
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
+  '/admin/dashboard': typeof AppAdminDashboardRoute
   '/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/admin': typeof AppAdminIndexRoute
 }
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/_auth/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/admin/dashboard': typeof AppAdminDashboardRoute
   '/_app/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/_app/admin/': typeof AppAdminIndexRoute
 }
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
+    | '/admin/dashboard'
     | '/admin/inference-servers'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
+    | '/admin/dashboard'
     | '/admin/inference-servers'
     | '/admin'
   id:
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/_auth/register'
     | '/share/$sessionId'
     | '/_app/'
+    | '/_app/admin/dashboard'
     | '/_app/admin/inference-servers'
     | '/_app/admin/'
   fileRoutesById: FileRoutesById
@@ -329,15 +341,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminInferenceServersRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/_app/admin/dashboard': {
+      id: '/_app/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AppAdminDashboardRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
 interface AppAdminRouteChildren {
+  AppAdminDashboardRoute: typeof AppAdminDashboardRoute
   AppAdminInferenceServersRoute: typeof AppAdminInferenceServersRoute
   AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminDashboardRoute: AppAdminDashboardRoute,
   AppAdminInferenceServersRoute: AppAdminInferenceServersRoute,
   AppAdminIndexRoute: AppAdminIndexRoute,
 }

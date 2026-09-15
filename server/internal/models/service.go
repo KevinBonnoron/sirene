@@ -494,3 +494,52 @@ func (s *Service) ExportCustom(ctx context.Context, modelID string) (*http.Respo
 	}
 	return res, cancel, nil
 }
+
+// ReplicateTo pulls onto one server every catalog model that other servers
+// already have, when the server opted in and its hardware fits. Best effort:
+// failures surface as job errors, never to the caller.
+func (s *Service) ReplicateTo(serverID string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		rec, err := s.servers.Get(serverID)
+		if err != nil || !rec.GetBool("autoSync") || !rec.GetBool("enabled") || routing.StatusOf(rec) != "online" {
+			return
+		}
+		var health struct {
+			Device string `json:"device"`
+		}
+		_ = rec.UnmarshalJSONField("lastHealth", &health)
+		device := health.Device
+		s.cache.Invalidate(serverID)
+		byServer, err := s.cache.InstalledByServer(ctx)
+		if err != nil {
+			s.app.Logger().Warn("[replicate] listing installed models failed", "server", rec.GetString("name"), "error", err)
+			return
+		}
+		wanted := map[string]struct{}{}
+		for id, installed := range byServer {
+			if id == serverID {
+				continue
+			}
+			for modelID := range installed {
+				wanted[modelID] = struct{}{}
+			}
+		}
+		for _, m := range catalog.Models {
+			if _, ok := wanted[m.ID]; !ok || m.HasType("api") {
+				continue
+			}
+			if _, has := byServer[serverID][m.ID]; has {
+				continue
+			}
+			if m.Hardware == "gpu" && device == "cpu" {
+				continue
+			}
+			ids := []string{serverID}
+			if _, _, err := s.StartDownload(ctx, "", m, &ids); err != nil {
+				s.app.Logger().Warn("[replicate] pull not started", "server", rec.GetString("name"), "model", m.ID, "error", err)
+			}
+		}
+	}()
+}

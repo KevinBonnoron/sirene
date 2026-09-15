@@ -95,23 +95,29 @@ func NewClient(target Target, logf func(string, ...any)) *Client {
 	return &Client{target: target, logf: logf}
 }
 
-func Health(ctx context.Context, t Target) error {
+type HealthInfo struct {
+	Device string `json:"device"`
+}
+
+func Health(ctx context.Context, t Target) (HealthInfo, error) {
+	var info HealthInfo
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	req, err := t.newRequest(ctx, http.MethodGet, "/health", nil)
 	if err != nil {
-		return err
+		return info, err
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return info, err
 	}
 	defer res.Body.Close()
-	io.Copy(io.Discard, res.Body)
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
+		return info, fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
 	}
-	return t.checkAuth(ctx)
+	_ = json.Unmarshal(body, &info)
+	return info, t.checkAuth(ctx)
 }
 
 // /health is open, so a wrong token only shows on an authenticated route.
@@ -140,6 +146,28 @@ func (t Target) checkAuth(ctx context.Context) error {
 type ModelsList struct {
 	Installed []string        `json:"installed"`
 	Custom    []catalog.Model `json:"custom"`
+}
+
+func (c *Client) Stats(ctx context.Context) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	req, err := c.target.newRequest(ctx, http.MethodGet, "/stats", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.target.do(req, "stats")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, upstreamError("stats", res, c.logf)
+	}
+	body, err := io.ReadAll(io.LimitReader(res.Body, 256<<10))
+	if err != nil || !json.Valid(body) {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "stats failed: invalid response")
+	}
+	return body, nil
 }
 
 func (c *Client) ListModels(ctx context.Context) (*ModelsList, error) {

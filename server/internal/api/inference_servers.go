@@ -14,6 +14,7 @@ import (
 
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
+	"github.com/KevinBonnoron/sirene/server/internal/inference"
 	"github.com/KevinBonnoron/sirene/server/internal/infsrv"
 )
 
@@ -23,6 +24,7 @@ type inferenceServerBody struct {
 	Enabled   *bool    `json:"enabled"`
 	Priority  *float64 `json:"priority"`
 	AuthToken *string  `json:"authToken"`
+	AutoSync  *bool    `json:"autoSync"`
 }
 
 func (b *inferenceServerBody) validate(partial bool) error {
@@ -93,10 +95,14 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err := body.validate(false); err != nil {
 			return err
 		}
-		rec, err := d.Servers.Create(infsrv.WriteInput{Name: *body.Name, URL: *body.URL, Enabled: *body.Enabled, Priority: int(*body.Priority), AuthToken: body.AuthToken})
+		rec, err := d.Servers.Create(infsrv.WriteInput{Name: *body.Name, URL: *body.URL, Enabled: *body.Enabled, Priority: int(*body.Priority), AuthToken: body.AuthToken, AutoSync: body.AutoSync})
 		if err != nil {
 			return err
 		}
+		if checked, err := d.Servers.CheckOne(e.Request.Context(), rec.Id); err == nil {
+			rec = checked
+		}
+		d.Models.ReplicateTo(rec.Id)
 		return e.JSON(http.StatusCreated, rec)
 	})
 
@@ -112,7 +118,10 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err := body.validate(true); err != nil {
 			return err
 		}
-		rec, err := d.Servers.Update(id, infsrv.UpdateInput{Name: body.Name, URL: body.URL, Enabled: body.Enabled, Priority: intPtr(body.Priority), AuthToken: body.AuthToken})
+		rec, err := d.Servers.Update(id, infsrv.UpdateInput{Name: body.Name, URL: body.URL, Enabled: body.Enabled, Priority: intPtr(body.Priority), AuthToken: body.AuthToken, AutoSync: body.AutoSync})
+		if err == nil && body.AutoSync != nil && *body.AutoSync {
+			d.Models.ReplicateTo(rec.Id)
+		}
 		if err != nil {
 			return err
 		}
@@ -134,6 +143,22 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		token, expiresAt := d.Registry.Issue()
 		return e.JSON(http.StatusCreated, map[string]any{"token": token, "expiresAt": expiresAt.UTC().Format(time.RFC3339)})
 	})
+
+	s.GET("/{id}/stats", func(e *core.RequestEvent) error {
+		id, err := pathParam(e, "id")
+		if err != nil {
+			return err
+		}
+		rec, err := d.Servers.Get(id)
+		if err != nil {
+			return err
+		}
+		body, err := inference.NewClient(infsrv.TargetOf(rec), nil).Stats(e.Request.Context())
+		if err != nil {
+			return err
+		}
+		return e.Blob(http.StatusOK, "application/json", body)
+	}).Bind(auth.RequireScope("inference-servers:read"))
 
 	w.POST("/{id}/test", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
@@ -185,6 +210,7 @@ func registerInferenceServersPublic(g *router.RouterGroup[*core.RequestEvent], d
 		if checked, err := d.Servers.CheckOne(ctx, rec.Id); err == nil {
 			rec = checked
 		}
+		d.Models.ReplicateTo(rec.Id)
 		status := http.StatusOK
 		if created {
 			status = http.StatusCreated

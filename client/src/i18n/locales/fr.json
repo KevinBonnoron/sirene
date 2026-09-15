@@ -159,21 +159,67 @@
     "allBackends": "Tous les backends",
     "status_installed": "Installés",
     "status_available": "Disponibles",
-    "installedOn": "Installé sur {{count}}/{{total}} serveurs",
-    "manage": "Gérer par serveur",
-    "perServer": "Par serveur",
-    "installOnAll": "Installer sur les {{count}} serveurs",
-    "installOnAllMissing": "Installer sur les {{count}} serveurs restants",
-    "removeFromAll": "Supprimer de tous les serveurs",
     "noMatch": "Aucun modèle ne correspond à vos filtres.",
     "actionInstall": "Installer le modèle",
     "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
     "actionInstalling": "Installation en cours",
     "actionRemove": "Supprimer le modèle",
-    "actionInstallOnServer": "Installer sur {{name}}",
-    "actionRemoveFromServer": "Supprimer de {{name}}",
-    "removeFromAllConfirmTitle": "Supprimer de tous les serveurs ?",
-    "removeFromAllConfirmDescription": "Cela supprimera « {{name}} » des {{count}} serveurs où il est installé. Cette action est irréversible."
+    "recommended": "Recommandé",
+    "cpuFriendly": "CPU",
+    "gpu": "GPU",
+    "gpuVram": "GPU {{count}} Go",
+    "gpuRecommended": "GPU recommandé",
+    "noGpuServer": "GPU recommandé, aucun serveur GPU en ligne",
+    "nonCommercial": "Non commercial",
+    "commercialOk": "Usage commercial autorisé",
+    "languageCount": "{{count}} langues",
+    "allLanguages": "100+ langues",
+    "legacy": "Ancien",
+    "piper": {
+      "selectVoice": "Ajouter une voix...",
+      "install": "Installer",
+      "perVoice": "{{size}} par voix",
+      "filter": "Filtrer par langue ou par voix..."
+    },
+    "installedCount_one": "{{count}} installé",
+    "installedCount_other": "{{count}} installés",
+    "variantCount_one": "{{count}} variante",
+    "variantCount_other": "{{count}} variantes",
+    "voiceCount_one": "{{count}} voix",
+    "voiceCount_other": "{{count}} voix",
+    "expand": "Afficher les variantes de {{name}}",
+    "cloudSection": "Services cloud",
+    "empty": {
+      "title": "Aucun modèle installé",
+      "description": "Un seul modèle suffit pour commencer à générer. L'assistant choisit le bon selon ce que vous voulez faire et votre matériel."
+    },
+    "add": {
+      "title": "Ajouter un modèle",
+      "question": "Que voulez-vous faire ?",
+      "withGpu": "Vos serveurs d'inférence ont un GPU : les modèles recommandés tournent à pleine vitesse.",
+      "withoutGpu": "Aucun de vos serveurs d'inférence en ligne n'a de GPU, les modèles qui tournent bien sur CPU viennent en premier.",
+      "purposes": {
+        "preset": "Voix prêtes à l'emploi",
+        "cloning": "Cloner une voix",
+        "design": "Concevoir une voix",
+        "transcription": "Transcrire de l'audio",
+        "import": "Importer une voix Piper"
+      },
+      "hints": {
+        "preset": "Lire un texte avec des voix intégrées en plusieurs langues.",
+        "cloning": "Reproduire une voix à partir de quelques secondes d'audio.",
+        "design": "Décrire une voix avec des mots et laisser le modèle l'inventer.",
+        "transcription": "Transformer un enregistrement en texte, utile aussi pour annoter les échantillons.",
+        "import": "Ajouter votre propre voix ONNX avec son fichier de configuration."
+      },
+      "showMore_one": "Voir {{count}} autre option",
+      "showMore_other": "Voir {{count}} autres options"
+    },
+    "missingOn": "Absent de {{names}}",
+    "complete": "Compléter",
+    "removeConfirmTitle": "Supprimer {{name}} ?",
+    "removeConfirmDescription": "Les fichiers du modèle sont supprimés du serveur d'inférence. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
+    "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé."
   },
   "notifications": {
     "title": "Activité",
@@ -206,7 +252,8 @@
     "profile": "Profil",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inférence"
+    "inferenceServers": "Inférence",
+    "dashboard": "Tableau de bord"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -429,7 +476,32 @@
       "manualLabel": "Ajouter manuellement",
       "manualHint": "Pour un serveur déjà en marche : collez son URL et le jeton avec lequel il a été lancé.",
       "deployOnRailway": "Déployer sur Railway"
-    }
+    },
+    "autoSync": "Recevoir les modèles automatiquement",
+    "autoSyncHint": "Quand ce serveur rejoint la flotte ou est activé, les modèles présents sur les autres serveurs y sont aussi installés, si son matériel convient.",
+    "disabled": "Désactivé",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} modèle",
+    "modelCount_other": "{{count}} modèles",
+    "priorityValue": "Priorité {{count}}",
+    "autoSyncOff": "Synchro manuelle"
+  },
+  "dashboard": {
+    "subtitle": "Utilisation en direct de vos serveurs d'inférence, rafraîchie toutes les cinq secondes.",
+    "loading": "Lecture...",
+    "unavailable": "Statistiques indisponibles sur ce serveur (ancienne version du worker ?).",
+    "cpu": "CPU",
+    "memory": "Mémoire",
+    "gpu": "GPU",
+    "vram": "VRAM",
+    "disk": "Disque des modèles",
+    "cores": "{{count}} cœurs",
+    "process": "worker {{size}}",
+    "gpuUtilization": "utilisation",
+    "loadedModels": "Chargés en mémoire",
+    "noneLoaded": "Aucun modèle chargé",
+    "activity": "En cours"
   },
   "cliAuth": {
     "title": "Autoriser le CLI",

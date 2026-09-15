@@ -9,6 +9,7 @@ interface InferenceServerWritePayload {
   enabled: boolean;
   priority: number;
   authToken?: string;
+  autoSync?: boolean;
 }
 
 export const inferenceServerClient = universalClient(

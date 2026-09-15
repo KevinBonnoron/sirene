@@ -20,20 +20,26 @@ const (
 )
 
 type WriteInput struct {
-	Name      string
-	URL       string
-	Enabled   bool
-	Priority  int
-	AuthToken *string
+	Name       string
+	URL        string
+	Enabled    bool
+	Priority   int
+	AuthToken  *string
+	SyncPolicy *string
 }
 
 type UpdateInput struct {
-	Name      *string
-	URL       *string
-	Enabled   *bool
-	Priority  *int
-	AuthToken *string
+	Name       *string
+	URL        *string
+	Enabled    *bool
+	Priority   *int
+	AuthToken  *string
+	SyncPolicy *string
 }
+
+const DefaultSyncPolicy = "all"
+
+var SyncPolicies = []string{DefaultSyncPolicy, "cpu", "gpu", "none"}
 
 type Service struct {
 	app      core.App
@@ -86,6 +92,11 @@ func (s *Service) Create(in WriteInput) (*core.Record, error) {
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
 	}
+	policy := DefaultSyncPolicy
+	if in.SyncPolicy != nil {
+		policy = *in.SyncPolicy
+	}
+	rec.Set("syncPolicy", policy)
 	rec.Set("lastHealth", unknownHealth())
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -115,6 +126,9 @@ func (s *Service) Update(id string, in UpdateInput) (*core.Record, error) {
 	}
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
+	}
+	if in.SyncPolicy != nil {
+		rec.Set("syncPolicy", *in.SyncPolicy)
 	}
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -246,6 +260,7 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 		"status": status,
 		"error":  message,
 		"device": info.Device,
+		"vram":   info.GPUMemory,
 	})
 	return s.app.Save(rec)
 }
@@ -254,9 +269,10 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 func lastKnown(rec *core.Record) inference.HealthInfo {
 	var prev struct {
 		Device string `json:"device"`
+		VRAM   int64  `json:"vram"`
 	}
 	_ = rec.UnmarshalJSONField("lastHealth", &prev)
-	return inference.HealthInfo{Device: prev.Device}
+	return inference.HealthInfo{Device: prev.Device, GPUMemory: prev.VRAM}
 }
 
 func unknownHealth() map[string]any {

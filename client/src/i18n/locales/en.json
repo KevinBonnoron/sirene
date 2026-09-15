@@ -152,28 +152,18 @@
     "configFile": "Config file (.onnx.json)",
     "dropConfig": "Drop .onnx.json config here",
     "speakers": "{{count}} speakers",
-    "installOn": "Install on",
+    "installOn": "Will install on {{servers}}",
     "alreadyInstalled": "Already installed",
     "importPiperSuccess_one": "Piper model \"{{id}}\" import queued - track progress in notifications.",
     "importPiperSuccess_other": "Piper model \"{{id}}\" import queued on {{count}} servers - track progress in notifications.",
     "allBackends": "All backends",
     "status_installed": "Installed",
     "status_available": "Available",
-    "installedOn": "Installed on {{count}}/{{total}} servers",
-    "manage": "Manage on servers",
-    "perServer": "Per server",
-    "installOnAll": "Install on all {{count}} servers",
-    "installOnAllMissing": "Install on the {{count}} remaining servers",
-    "removeFromAll": "Remove from all servers",
     "noMatch": "No models match your filters.",
     "actionInstall": "Install model",
     "actionInstallNoServer": "No online inference server - check settings",
     "actionInstalling": "Installing model",
     "actionRemove": "Remove model",
-    "actionInstallOnServer": "Install on {{name}}",
-    "actionRemoveFromServer": "Remove from {{name}}",
-    "removeFromAllConfirmTitle": "Remove from all servers?",
-    "removeFromAllConfirmDescription": "This will remove \"{{name}}\" from all {{count}} servers it is installed on. This action cannot be undone.",
     "recommended": "Recommended",
     "cpuFriendly": "CPU",
     "gpu": "GPU",
@@ -225,8 +215,12 @@
       "showMore_one": "Show {{count}} more option",
       "showMore_other": "Show {{count}} more options"
     },
-    "installedOnServer": "Installed on {{name}}",
-    "notInstalledOnServer": "Not installed on {{name}}"
+    "missingOn": "Missing on {{names}}",
+    "complete": "Complete",
+    "removeConfirmTitle": "Remove {{name}}?",
+    "removeConfirmDescription": "The model files are deleted from the inference server. Voices using it stop working until it is installed again.",
+    "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again.",
+    "noAcceptingServer": "No online server accepts this model: check its hardware, VRAM and each server's automatic models setting."
   },
   "notifications": {
     "title": "Activity",
@@ -549,6 +543,14 @@
       "manualLabel": "Add manually",
       "manualHint": "For a worker that is already running: paste its URL and the token it was started with.",
       "deployOnRailway": "Deploy on Railway"
+    },
+    "syncPolicy": "Automatic models",
+    "syncPolicyHint": "Which catalog models get installed here without asking. CPU models are the ones that run without a GPU; GPU models need one.",
+    "syncPolicies": {
+      "all": "All compatible models",
+      "cpu": "CPU models only",
+      "gpu": "GPU models only",
+      "none": "None (by hand)"
     }
   },
   "deleteGeneration": {
@@ -671,7 +673,8 @@
     "cliAuth.sessionAlreadyUsed": "CLI session already used",
     "voiceDesigner.nameAudioRequired": "Name and audio are required",
     "voiceDesigner.textFieldsExpected": "description, language, model and transcript must be text fields",
-    "auth.emailTaken": "An account with this email already exists"
+    "auth.emailTaken": "An account with this email already exists",
+    "model.noAcceptingServer": "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy"
   },
   "form": {
     "showPassword": "Show password",

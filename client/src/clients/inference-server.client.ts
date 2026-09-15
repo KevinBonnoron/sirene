@@ -1,4 +1,4 @@
-import type { InferenceServer } from '@sirene/shared';
+import type { InferenceServer, SyncPolicy } from '@sirene/shared';
 import { universalClient, withFetchDelegate, withMethods } from 'universal-client';
 import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
@@ -9,6 +9,7 @@ interface InferenceServerWritePayload {
   enabled: boolean;
   priority: number;
   authToken?: string;
+  syncPolicy?: SyncPolicy;
 }
 
 export const inferenceServerClient = universalClient(

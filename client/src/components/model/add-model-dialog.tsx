@@ -1,4 +1,4 @@
-import type { CatalogModel } from '@sirene/shared';
+import type { CatalogModel, InferenceServer } from '@sirene/shared';
 import { AudioLines, ChevronLeft, Download, FileAudio, Loader2, type LucideIcon, Mic, Search, Sparkles, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,14 +23,11 @@ const PURPOSES: { key: Purpose; icon: LucideIcon }[] = [
 const SHORTLIST = 3;
 const PIPER_PREFIX = /^Piper\s+[A-Z]{2}(-[A-Z]{2})?\s+/;
 
-function fits(c: CatalogModel, gpuAvailable: boolean): boolean {
-  return gpuAvailable || c.hardware !== 'gpu';
-}
-
-function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: Entry; gpuAvailable: boolean; hasOnlineServer: boolean; onPull: (id: string) => void }) {
+function Candidate({ entry, gpuAvailable, targets, onPull }: { entry: Entry; gpuAvailable: boolean; targets: InferenceServer[]; onPull: (catalog: CatalogModel) => void }) {
   const { t } = useTranslation();
   const { catalog, installation } = entry;
   const status = installation?.status;
+  const targetNames = targets.map((s) => s.name).join(', ');
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="min-w-0 flex-1">
@@ -43,13 +40,14 @@ function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: En
         <div className="mt-1.5">
           <Facts entries={[entry]} gpuAvailable={gpuAvailable} />
         </div>
+        {status !== 'installed' && <p className={cn('mt-1.5 text-2xs', targets.length > 0 ? 'text-muted-foreground' : 'text-accent-rust')}>{targets.length > 0 ? t('model.installOn', { servers: targetNames }) : t('model.noAcceptingServer')}</p>}
       </div>
       {status === 'installed' ? (
         <span className="text-2xs font-medium text-accent-sage">{t('model.status_installed')}</span>
       ) : status === 'pulling' ? (
         <Loader2 className="size-4 animate-spin text-muted-foreground" />
       ) : (
-        <Button size="sm" variant="outline" disabled={!hasOnlineServer} onClick={() => onPull(catalog.id)}>
+        <Button size="sm" variant="outline" disabled={targets.length === 0} onClick={() => onPull(catalog)}>
           <Download className="size-3.5" />
           {t('model.piper.install')}
         </Button>
@@ -58,7 +56,7 @@ function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: En
   );
 }
 
-function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]; hasOnlineServer: boolean; onPull: (id: string) => void }) {
+function PiperCandidate({ entries, targetsFor, onPull }: { entries: Entry[]; targetsFor: (catalog: CatalogModel) => InferenceServer[]; onPull: (catalog: CatalogModel) => void }) {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
   const sample = entries[0]?.catalog;
@@ -95,7 +93,7 @@ function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]
             {entry.installation?.status === 'pulling' ? (
               <Loader2 className="mr-2 size-3.5 animate-spin text-muted-foreground" />
             ) : (
-              <Button size="sm" variant="ghost" className="h-7" disabled={!hasOnlineServer} onClick={() => onPull(entry.catalog.id)}>
+              <Button size="sm" variant="ghost" className="h-7" disabled={targetsFor(entry.catalog).length === 0} onClick={() => onPull(entry.catalog)}>
                 <Download className="size-3.5" />
                 {t('model.piper.install')}
               </Button>
@@ -108,9 +106,14 @@ function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]
   );
 }
 
-export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entries: Entry[]; onPull: (id: string) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entries: Entry[]; onPull: (id: string, serverIds?: string[]) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation();
-  const { gpuAvailable, hasOnlineServer } = useServerFleet();
+  const { gpuAvailable, hasOnlineServer, targetsFor } = useServerFleet();
+  const install = (catalog: CatalogModel) =>
+    onPull(
+      catalog.id,
+      targetsFor(catalog).map((s) => s.id),
+    );
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -118,9 +121,10 @@ export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entrie
     if (!purpose || purpose === 'import') {
       return [];
     }
-    const score = (e: Entry) => (e.catalog.recommended && fits(e.catalog, gpuAvailable) ? 0 : e.catalog.recommended ? 1 : fits(e.catalog, gpuAvailable) ? 2 : 3);
+    const installable = (e: Entry) => targetsFor(e.catalog).length > 0;
+    const score = (e: Entry) => (e.catalog.recommended && installable(e) ? 0 : e.catalog.recommended ? 1 : installable(e) ? 2 : 3);
     return entries.filter((e) => e.catalog.types.includes(purpose) && !e.catalog.types.includes('api') && !e.catalog.legacy && e.catalog.backend !== 'piper' && e.installation?.status !== 'installed').sort((a, b) => score(a) - score(b) || a.catalog.size - b.catalog.size);
-  }, [entries, purpose, gpuAvailable]);
+  }, [entries, purpose, targetsFor]);
   const piper = purpose === 'preset' ? entries.filter((e) => e.catalog.backend === 'piper' && e.installation?.status !== 'installed') : [];
   const shown = showAll ? candidates : candidates.slice(0, SHORTLIST);
   const hidden = candidates.length - shown.length;
@@ -174,9 +178,9 @@ export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entrie
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border bg-card">
             {shown.map((entry) => (
-              <Candidate key={entry.catalog.id} entry={entry} gpuAvailable={gpuAvailable} hasOnlineServer={hasOnlineServer} onPull={onPull} />
+              <Candidate key={entry.catalog.id} entry={entry} gpuAvailable={gpuAvailable} targets={targetsFor(entry.catalog)} onPull={install} />
             ))}
-            {piper.length > 0 && <PiperCandidate entries={piper} hasOnlineServer={hasOnlineServer} onPull={onPull} />}
+            {piper.length > 0 && <PiperCandidate entries={piper} targetsFor={targetsFor} onPull={install} />}
             {hidden > 0 && (
               <button type="button" onClick={() => setShowAll(true)} className="w-full px-4 py-2.5 text-left text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground">
                 {t('model.add.showMore', { count: hidden })}

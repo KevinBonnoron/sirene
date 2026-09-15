@@ -20,12 +20,9 @@ class ChatterboxBackend(TTSBackend):
 
         resolved_device = self._resolve_device(device)
 
-        # Detect multilingual vs English-only based on available files
         self._is_multilingual = (model_path / "t3_mtl23ls_v2.safetensors").exists()
 
-        # Chatterbox multilingual's from_local doesn't pass map_location
-        # to torch.load, so .pt files saved on CUDA fail to load on CPU.
-        # Patch torch.load temporarily to force map_location=cpu.
+        # Multilingual from_local omits map_location in torch.load, so CUDA-saved .pt files fail on CPU.
         if resolved_device == "cpu":
             _orig_load = torch.load
             torch.load = lambda *a, **kw: _orig_load(
@@ -51,8 +48,7 @@ class ChatterboxBackend(TTSBackend):
             if resolved_device == "cpu":
                 torch.load = _orig_load
 
-        # Force eager attention on all transformer sub-models to avoid
-        # the SDPA / output_attentions conflict.
+        # Eager attention avoids the SDPA / output_attentions conflict.
         import torch.nn as nn
 
         for attr in vars(self._model).values():
@@ -98,7 +94,6 @@ class ChatterboxBackend(TTSBackend):
                     audio_prompt_path=ref_audio_path,
                 )
 
-            # wav is a torch tensor, convert to numpy
             audio = wav.squeeze().float().cpu().numpy()
             audio = self._normalize_audio(audio)
 

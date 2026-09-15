@@ -7,7 +7,6 @@ import { useModels } from '@/hooks/use-models';
 import { AddVoiceMenu } from './add-voice-menu';
 import { VoiceItem } from './voice-item';
 
-/** Dashed "+" trigger button used across all breakpoints */
 function AddButton({ className }: { className?: string }) {
   const { t } = useTranslation();
 

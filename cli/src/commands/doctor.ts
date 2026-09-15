@@ -18,7 +18,6 @@ type CheckResult = { ok: true; detail: string } | { ok: false; detail: string };
 async function runChecks(config: CliConfig): Promise<{ label: string; result: CheckResult }[]> {
   const checks: { label: string; result: CheckResult }[] = [];
 
-  // Config
   if (!config.url) {
     checks.push({ label: 'Server URL configured', result: { ok: false, detail: 'no URL - run `sirene auth login --url <url>`' } });
     return checks;
@@ -29,22 +28,17 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
     checks.push({ label: 'API key configured', result: { ok: false, detail: 'no key - run `sirene auth login`' } });
     return checks;
   }
-  // Don't echo any part of the secret in diagnostics output: even the
-  // prefix is recorded server-side as a way to identify the key, so
-  // surfacing it in a doctor log makes correlation easier for anyone with
-  // read access to that output.
+  // Never print even the key prefix: the server records it as the key identifier.
   checks.push({ label: 'API key configured', result: { ok: true, detail: 'configured' } });
 
-  // Server reachable (health is public, no auth)
   try {
     await getJson<{ status: string }>(config, '/health', { authRequired: false });
     checks.push({ label: 'Server reachable', result: { ok: true, detail: 'GET /health → 200' } });
   } catch (err) {
     checks.push({ label: 'Server reachable', result: { ok: false, detail: err instanceof ApiError ? err.message : 'unreachable' } });
-    return checks; // Pointless to keep probing if the server is down.
+    return checks;
   }
 
-  // Authenticated
   let me: Me | null = null;
   try {
     me = await getJson<Me>(config, '/me');
@@ -54,7 +48,6 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
     return checks;
   }
 
-  // Inference workers
   try {
     const servers = await getJson<InferenceServer[]>(config, '/inference-servers');
     const online = servers.filter((s) => s.lastHealth?.status === 'online');
@@ -70,7 +63,6 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
     checks.push({ label: 'Inference workers', result: { ok: false, detail: err instanceof ApiError ? err.message : 'check failed' } });
   }
 
-  // Installed models
   try {
     const models = await getJson<Model[]>(config, '/models/installed');
     const installed = models.filter((m) => m.status === 'installed');
@@ -83,7 +75,6 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
     checks.push({ label: 'Installed models', result: { ok: false, detail: err instanceof ApiError ? err.message : 'check failed' } });
   }
 
-  // Third-party API keys (informational; only warn, don't fail)
   try {
     const settings = await getJson<Setting[]>(config, '/app-settings');
     const keyNames = new Set(settings.map((s) => s.key));
@@ -94,7 +85,6 @@ async function runChecks(config: CliConfig): Promise<{ label: string; result: Ch
       checks.push({ label: 'Third-party API keys', result: { ok: true, detail: configured.join(', ') } });
     }
   } catch {
-    // Best-effort: settings access may be restricted; don't fail the whole doctor.
     checks.push({ label: 'Third-party API keys', result: { ok: true, detail: '(unable to read; skipping)' } });
   }
 

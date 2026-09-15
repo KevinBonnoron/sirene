@@ -22,8 +22,7 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/sse"
 )
 
-// ErrCacheMiss is the worker's 412: it no longer holds the reference audio
-// for a cache key and wants the samples resent inline.
+// The worker's 412: it wants the reference samples resent inline.
 var ErrCacheMiss = errors.New("reference audio cache miss")
 
 const (
@@ -97,8 +96,7 @@ func transportReason(err error) string {
 	return "inference server unreachable"
 }
 
-// upstreamError logs the worker's payload server-side and returns a generic
-// message: worker bodies can carry tracebacks and internal paths.
+// Worker bodies can carry tracebacks and internal paths, so only a generic message goes out.
 func upstreamError(op string, res *http.Response, logf func(string, ...any)) error {
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
 	logf("[inference/"+op+"] upstream error", "status", res.StatusCode, "body", string(body))
@@ -205,8 +203,6 @@ func (c *Client) DeleteModel(ctx context.Context, modelID string) error {
 	return nil
 }
 
-// FetchExport hands the raw response back so the caller can stream the zip
-// through. The caller must close the body and call cancel.
 func (c *Client) FetchExport(ctx context.Context, modelID string) (*http.Response, context.CancelFunc, error) {
 	ctx, cancel := context.WithTimeout(ctx, exportTimeout)
 	req, err := c.target.newRequest(ctx, http.MethodGet, "/models/"+url.PathEscape(modelID)+"/export", nil)
@@ -241,8 +237,7 @@ type PullEvent struct {
 	Message  string   `json:"message"`
 }
 
-// PullModel consumes the worker's SSE progress stream. Malformed events are
-// skipped, as the worker interleaves download and dependency-install events.
+// Malformed events are skipped: the worker interleaves download and dependency-install events.
 func (c *Client) PullModel(ctx context.Context, in PullRequest, onEvent func(PullEvent) error) error {
 	ctx, cancel := context.WithTimeout(ctx, pullTimeout)
 	defer cancel()
@@ -329,8 +324,7 @@ func (c *Client) ImportPiper(ctx context.Context, name string, onnx, config File
 	return &out, nil
 }
 
-// Request is the worker's generate payload; nil pointers serialise as null,
-// which the worker expects for absent optionals.
+// Nil pointers serialise as null, which the worker expects for absent optionals.
 type Request struct {
 	Backend            string   `json:"backend"`
 	Text               string   `json:"text"`
@@ -472,8 +466,7 @@ func (c *Client) Transcribe(ctx context.Context, audio io.Reader, filename, cont
 
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
-// mime/multipart hard-codes application/octet-stream for file parts and the
-// worker's /transcribe rejects anything that is not audio/*.
+// mime/multipart hard-codes application/octet-stream and the worker's /transcribe rejects non-audio/* parts.
 func createFilePart(mw *multipart.Writer, field, filename, contentType string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, quoteEscaper.Replace(field), quoteEscaper.Replace(filename)))

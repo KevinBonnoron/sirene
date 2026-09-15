@@ -6,11 +6,8 @@ export interface Job {
   id: string;
   type: JobType;
   status: JobStatus;
-  /** Integer 0-100. */
   progress: number;
-  /** Short human-readable label, e.g. "Downloading kokoro-fr". */
   label: string;
-  /** Domain-specific reference: model id, backend name, etc. */
   target?: string;
   error?: string;
   createdAt: number;

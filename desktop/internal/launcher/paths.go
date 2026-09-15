@@ -6,7 +6,6 @@ import (
 	"runtime"
 )
 
-// Paths is the per-user layout under ~/.sirene (SIRENE_HOME overrides it).
 type Paths struct {
 	Root      string
 	PBData    string
@@ -37,7 +36,6 @@ func Default() (Paths, error) {
 		Inference: filepath.Join(root, "inference"),
 		Log:       filepath.Join(root, "logs"),
 	}
-	// The tree holds the database, uploaded audio and API keys: owner-only.
 	for _, dir := range []string{p.Root, p.PBData, p.Models, p.Packages, p.Cache, p.Log} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return Paths{}, err

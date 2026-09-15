@@ -11,10 +11,8 @@ from .base import GenerateParams, TTSBackend, TTSResult
 
 logger = logging.getLogger(__name__)
 
-# Default port for the vLLM-Omni server when managed as a subprocess.
 _DEFAULT_PORT = 8091
 
-# Preset voices shipped with Voxtral TTS.
 PRESET_VOICES = [
     "ar_male",
     "de_female",
@@ -51,7 +49,6 @@ class VoxtralBackend(TTSBackend):
         self._sample_rate = 24000
         self._server_url: str | None = None
         self._server_process: subprocess.Popen | None = None
-        # Cache of cloned voice IDs keyed by reference_cache_key.
         self._cloned_voices: dict[str, str] = {}
 
     def load_model(self, model_path: Path, device: str) -> None:
@@ -62,7 +59,6 @@ class VoxtralBackend(TTSBackend):
         self._model_path = model_path
         self._device = self._resolve_device(device)
 
-        # Check if a vLLM-Omni server is already running (user-managed).
         external_url = self._detect_external_server()
         if external_url:
             self._server_url = external_url
@@ -73,20 +69,17 @@ class VoxtralBackend(TTSBackend):
             self._model = True  # Sentinel so is_loaded() returns True
             return
 
-        # vLLM requires CUDA - fail early with a clear message.
         if not self._device.startswith("cuda"):
             raise RuntimeError(
                 "Voxtral requires a CUDA GPU (≥16 GB VRAM). "
                 "CPU inference is not supported by vLLM."
             )
 
-        # Start a managed vLLM-Omni server as a subprocess.
         self._start_server(model_path, device)
         self._model = True
         logger.info("[voxtral] Model server started at %s", self._server_url)
 
     def _detect_external_server(self) -> str | None:
-        """Check if a vLLM-Omni server is already reachable."""
         import httpx
 
         url = os.environ.get("VOXTRAL_SERVER_URL")
@@ -102,7 +95,6 @@ class VoxtralBackend(TTSBackend):
         except Exception:
             pass
 
-        # Only raise if the user explicitly configured a URL.
         if os.environ.get("VOXTRAL_SERVER_URL"):
             raise RuntimeError(
                 f"VOXTRAL_SERVER_URL is set to {url} but the server is not reachable. "
@@ -111,7 +103,6 @@ class VoxtralBackend(TTSBackend):
         return None
 
     def _start_server(self, model_path: Path, device: str) -> None:
-        """Start vLLM-Omni as a subprocess serving the Voxtral TTS model."""
         import httpx
 
         port = _get_port()
@@ -129,7 +120,6 @@ class VoxtralBackend(TTSBackend):
         ]
 
         if device.startswith("cuda"):
-            # Let vLLM handle GPU assignment via its own logic.
             pass
         else:
             cmd += ["--device", "cpu"]
@@ -141,8 +131,7 @@ class VoxtralBackend(TTSBackend):
             stderr=subprocess.DEVNULL,
         )
 
-        # Wait for the server to become healthy.
-        deadline = time.monotonic() + 120  # 2 minutes max startup time
+        deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
             if self._server_process.poll() is not None:
                 raise RuntimeError(
@@ -157,7 +146,6 @@ class VoxtralBackend(TTSBackend):
                 pass
             time.sleep(2)
 
-        # Timed out - terminate, wait, then kill if needed.
         self._kill_server()
         raise RuntimeError(
             "vLLM-Omni server did not become healthy within 120 seconds. "
@@ -165,7 +153,6 @@ class VoxtralBackend(TTSBackend):
         )
 
     def _kill_server(self) -> None:
-        """Terminate and clean up the managed server process."""
         if self._server_process is None:
             return
         self._server_process.terminate()
@@ -202,24 +189,16 @@ class VoxtralBackend(TTSBackend):
         return True
 
     def _resolve_voice(self, params: GenerateParams) -> str:
-        """Determine which voice to use for generation."""
-        # If a voice path is specified and matches a preset, use it directly.
         if params.voice_path and params.voice_path in PRESET_VOICES:
             return params.voice_path
 
-        # If we have a cloned voice for this reference audio, use it.
         cache_key = params.reference_cache_key
         if cache_key and cache_key in self._cloned_voices:
             return self._cloned_voices[cache_key]
 
-        # Default preset.
         return "casual_female"
 
     def _clone_voice_if_needed(self, params: GenerateParams) -> str | None:
-        """Upload reference audio for voice cloning if not already cached.
-
-        Returns the voice ID to use, or None if no reference audio is provided.
-        """
         if not params.has_reference_audio:
             return None
 
@@ -227,7 +206,6 @@ class VoxtralBackend(TTSBackend):
         if cache_key and cache_key in self._cloned_voices:
             return self._cloned_voices[cache_key]
 
-        # Cache miss with no audio payload - cannot upload.
         if not params.reference_audio and not params.reference_audio_data:
             return None
 
@@ -243,10 +221,6 @@ class VoxtralBackend(TTSBackend):
     def _upload_reference_voice(
         self, ref_audio_path: str, ref_text: str | None = None
     ) -> str:
-        """Upload reference audio to the vLLM-Omni server for voice cloning.
-
-        Returns the voice ID that can be used in subsequent generation calls.
-        """
         import httpx
 
         logger.info("[voxtral] Uploading reference audio for voice cloning")
@@ -342,7 +316,6 @@ class VoxtralBackend(TTSBackend):
             "response_format": "pcm",
         }
 
-        # Stream PCM chunks from the server.
         with httpx.stream(
             "POST",
             f"{self._server_url}/v1/audio/speech",
@@ -351,9 +324,8 @@ class VoxtralBackend(TTSBackend):
         ) as response:
             response.raise_for_status()
             buffer = b""
-            # PCM 16-bit mono at 24kHz
             bytes_per_sample = 2
-            chunk_samples = int(self._sample_rate * 0.5)  # 0.5s chunks
+            chunk_samples = int(self._sample_rate * 0.5)
             chunk_bytes = chunk_samples * bytes_per_sample
 
             for raw in response.iter_bytes(chunk_size=chunk_bytes):
@@ -362,7 +334,6 @@ class VoxtralBackend(TTSBackend):
                     chunk_data = buffer[:chunk_bytes]
                     buffer = buffer[chunk_bytes:]
 
-                    # Convert 16-bit PCM to float32.
                     samples = (
                         np.frombuffer(chunk_data, dtype=np.int16).astype(np.float32)
                         / 32768.0
@@ -370,9 +341,7 @@ class VoxtralBackend(TTSBackend):
                     samples = self._normalize_audio(samples)
                     yield TTSResult(audio=samples, sample_rate=self._sample_rate)
 
-            # Flush remaining buffer.
             if len(buffer) >= bytes_per_sample:
-                # Ensure even number of bytes for int16.
                 usable = len(buffer) - (len(buffer) % bytes_per_sample)
                 if usable > 0:
                     samples = (

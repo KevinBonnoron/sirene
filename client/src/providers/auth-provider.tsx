@@ -10,7 +10,6 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
-  /** Re-fetch the current user after a profile change. */
   refresh: () => Promise<void>;
 }
 

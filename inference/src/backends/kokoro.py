@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 24000
 MAX_PHONEME_LENGTH = 510  # 512 context minus 2 pad tokens
 
-# Default voices per language prefix
 DEFAULT_VOICES: dict[str, str] = {
     "en": "af_heart",
     "en-us": "af_heart",
@@ -29,10 +28,8 @@ DEFAULT_VOICES: dict[str, str] = {
     "de": "ef_dora",
 }
 
-# Languages natively supported by misaki G2P
 _MISAKI_LANGUAGES = {"en", "zh"}
 
-# espeak-ng language codes for phonemizer fallback
 _ESPEAK_LANG_MAP: dict[str, str] = {
     "ja": "ja",
     "fr": "fr-fr",
@@ -45,7 +42,6 @@ _ESPEAK_LANG_MAP: dict[str, str] = {
 
 
 def _phonemes_to_tokens(phonemes: str, vocab: dict[str, int]) -> list[int]:
-    """Convert a phoneme string to a list of token IDs using the vocab mapping."""
     tokens = []
     for ch in phonemes:
         if ch in vocab:
@@ -54,13 +50,11 @@ def _phonemes_to_tokens(phonemes: str, vocab: dict[str, int]) -> list[int]:
 
 
 def _split_text(text: str) -> list[str]:
-    """Split text into sentence-level chunks for processing."""
     chunks = re.split(r"(?<=[.!?;])\s+", text.strip())
     return [c for c in chunks if c.strip()]
 
 
 class _EspeakG2P:
-    """Fallback G2P using espeak-ng directly via subprocess."""
 
     def __init__(self, language: str):
         self._language = language
@@ -71,7 +65,6 @@ class _EspeakG2P:
             capture_output=True, text=True, timeout=10,
         )
         phonemes = result.stdout.strip()
-        # espeak-ng outputs one line per clause, join them
         phonemes = " ".join(phonemes.splitlines())
         return phonemes, []
 
@@ -93,7 +86,6 @@ class KokoroBackend(TTSBackend):
         logger.info(f"[kokoro] Loading model from {model_path} on {device}")
         self._model_path = model_path
 
-        # Load ONNX model
         onnx_path = model_path / "onnx" / "model.onnx"
         if not onnx_path.exists():
             raise FileNotFoundError(f"ONNX model not found at {onnx_path}")
@@ -109,7 +101,6 @@ class KokoroBackend(TTSBackend):
 
         self._session = ort.InferenceSession(str(onnx_path), providers=providers)
 
-        # Load vocab from config.json
         config_path = model_path / "config.json"
         if config_path.exists():
             with open(config_path) as f:
@@ -119,7 +110,6 @@ class KokoroBackend(TTSBackend):
         else:
             raise FileNotFoundError(f"Config not found at {config_path}")
 
-        # Preload available voice embeddings
         voices_dir = model_path / "voices"
         if voices_dir.is_dir():
             for voice_file in voices_dir.glob("*.bin"):
@@ -149,7 +139,6 @@ class KokoroBackend(TTSBackend):
 
     @staticmethod
     def _ensure_spacy_model(name: str = "en_core_web_sm") -> None:
-        """Ensure a spacy model is installed, downloading it if needed."""
         import spacy.util
         if spacy.util.is_package(name):
             return
@@ -161,7 +150,6 @@ class KokoroBackend(TTSBackend):
         )
 
     def _get_g2p(self, language: str):
-        """Get or create a G2P instance for the given language."""
         lang = language.lower().split("-")[0] if language else "en"
 
         if self._g2p is not None and self._g2p_lang == lang:
@@ -189,42 +177,33 @@ class KokoroBackend(TTSBackend):
         return self._g2p
 
     def _resolve_voice(self, voice_path: str | None, language: str) -> np.ndarray:
-        """Resolve a voice name to its embedding array."""
         if not self._voices:
             raise RuntimeError("No voices loaded")
 
-        # Use explicit voice_path if provided
         if voice_path:
-            # Strip .bin extension if present
             voice_name = voice_path.replace(".bin", "").split("/")[-1]
             if voice_name in self._voices:
                 return self._voices[voice_name]
             logger.warning(f"[kokoro] Voice '{voice_name}' not found, using default")
 
-        # Fall back to language-based default
         lang_key = language.lower()
         default_name = DEFAULT_VOICES.get(lang_key) or DEFAULT_VOICES.get(lang_key.split("-")[0], "af_heart")
 
         if default_name in self._voices:
             return self._voices[default_name]
 
-        # Last resort: use first available voice
         first_name = next(iter(self._voices))
         logger.warning(f"[kokoro] Default voice '{default_name}' not found, using '{first_name}'")
         return self._voices[first_name]
 
     def _run_inference(self, tokens: list[int], voice: np.ndarray, speed: float) -> np.ndarray:
-        """Run ONNX inference on a single chunk of tokens."""
-        # Pad tokens with 0 at start and end
         input_ids = np.array([[0, *tokens, 0]], dtype=np.int64)
 
-        # Select style embedding based on token length
         idx = min(len(tokens), voice.shape[0] - 1)
-        style = voice[idx]  # shape: (1, 256)
+        style = voice[idx]
 
         speed_arr = np.array([speed], dtype=np.float32)
 
-        # Detect input names (model may use "input_ids" or "tokens")
         input_names = [inp.name for inp in self._session.get_inputs()]
 
         inputs = {}
@@ -239,7 +218,7 @@ class KokoroBackend(TTSBackend):
         inputs["speed"] = speed_arr
 
         result = self._session.run(None, inputs)
-        return result[0]  # audio array
+        return result[0]
 
     def _generate(self, params: GenerateParams) -> TTSResult:
         if not self.is_loaded():
@@ -247,11 +226,9 @@ class KokoroBackend(TTSBackend):
 
         logger.info(f"[kokoro] Generating: {params.text[:80]}...")
 
-        # Phonemize text
         g2p = self._get_g2p(params.language)
         voice = self._resolve_voice(params.voice_path, params.language)
 
-        # Split long text into sentence chunks
         text_chunks = _split_text(params.text)
         if not text_chunks:
             text_chunks = [params.text]
@@ -259,33 +236,27 @@ class KokoroBackend(TTSBackend):
         audio_parts: list[np.ndarray] = []
 
         for chunk_text in text_chunks:
-            # Convert text to phonemes
             phonemes, _ = g2p(chunk_text)
             if not phonemes:
                 continue
 
-            # Convert phonemes to tokens
             tokens = _phonemes_to_tokens(phonemes, self._vocab)
             if not tokens:
                 continue
 
-            # Split into sub-chunks if tokens exceed max length
             for i in range(0, len(tokens), MAX_PHONEME_LENGTH):
                 token_chunk = tokens[i : i + MAX_PHONEME_LENGTH]
                 audio = self._run_inference(token_chunk, voice, params.speed)
 
-                # Flatten if needed and ensure float32
                 audio = np.asarray(audio, dtype=np.float32).flatten()
                 audio_parts.append(audio)
 
         if not audio_parts:
-            # Return silence if nothing was generated
             return TTSResult(
                 audio=np.zeros(int(SAMPLE_RATE * 0.5), dtype=np.float32),
                 sample_rate=SAMPLE_RATE,
             )
 
-        # Concatenate all audio chunks
         full_audio = np.concatenate(audio_parts)
 
         logger.info(f"[kokoro] Generated {len(full_audio) / SAMPLE_RATE:.2f}s of audio")

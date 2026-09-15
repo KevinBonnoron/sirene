@@ -18,8 +18,6 @@ function zodFieldErrors(error: ZodError): Record<string, string> {
     }, {});
 }
 
-/** Wrap a zod schema as a tanstack-form `validators.onSubmit` callback. Maps
- *  zod issues onto per-field error records the way the form atoms expect. */
 export function zodValidator<T>(schema: ZodType<T>) {
   return ({ value }: { value: T }) => {
     const result = schema.safeParse(value);

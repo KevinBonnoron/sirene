@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 def _scan_custom_piper_models(models_path: Path) -> list[dict]:
-    """Returns CatalogModel-compatible metadata for user-imported Piper models."""
     if not models_path.exists():
         return []
 
@@ -133,7 +132,7 @@ async def pull_model(req: ModelPullRequest):
                     if event.get("status") == "error":
                         reported = True
                     await queue.put(event)
-            except Exception as exc:  # noqa: BLE001 - full traceback goes to logs; client gets a short reason
+            except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     "Model pull producer failed for model_id=%s", req.model_id
                 )
@@ -255,7 +254,6 @@ async def unload_model(req: ModelUnloadRequest):
 
 
 class _StreamBuffer(io.RawIOBase):
-    """Write-only buffer that lets a ZipFile stream chunks to an HTTP response."""
 
     def __init__(self) -> None:
         self._buf = bytearray()

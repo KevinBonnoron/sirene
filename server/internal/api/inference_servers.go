@@ -68,8 +68,6 @@ func intPtr(f *float64) *int {
 	return &v
 }
 
-// The registry is admin-only; scopes layer on top so an admin can still mint
-// a key that cannot touch it.
 func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	s := p.Group("/inference-servers")
 	s.Bind(auth.RequireAdmin())

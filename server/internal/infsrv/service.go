@@ -35,8 +35,6 @@ type UpdateInput struct {
 	AuthToken *string
 }
 
-// Service owns the inference_servers registry and the periodic health probe
-// whose writes drive the client's realtime status display.
 type Service struct {
 	app      core.App
 	localURL string
@@ -149,9 +147,7 @@ func (s *Service) CheckOne(ctx context.Context, id string) (*core.Record, error)
 	return rec, nil
 }
 
-// Bootstrap seeds a single "Local" server from INFERENCE_URL, or realigns its
-// URL when the environment changed (the desktop launcher picks a new port on
-// every boot). Any user-managed registry is left alone.
+// The desktop launcher picks a new port on every boot, so the Local URL is realigned; user-managed servers are left alone.
 func (s *Service) Bootstrap() error {
 	existing, err := s.app.FindFirstRecordByFilter("inference_servers", "name = {:name}", map[string]any{"name": localName})
 	if err == nil {

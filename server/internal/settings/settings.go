@@ -16,7 +16,6 @@ import (
 
 const cacheTTL = time.Minute
 
-// Keys are only ever provider credential names (openai_api_key, hf_token...).
 var validKey = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 type Masked struct {

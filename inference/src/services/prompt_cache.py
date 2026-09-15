@@ -1,9 +1,3 @@
-"""Two-level cache for voice cloning reference data.
-
-Level 1 (L1): Downloaded + concatenated reference audio files (disk only).
-Level 2 (L2): Backend-specific intermediate representations (memory + disk).
-"""
-
 import hashlib
 import json
 import logging
@@ -32,13 +26,11 @@ class PromptCache:
 
     @staticmethod
     def audio_cache_key(urls: list[str], max_duration: float) -> str:
-        """L1 key from sorted URLs + max_duration."""
         canonical = "\n".join(sorted(urls)) + f"|{max_duration}"
         return hashlib.sha256(canonical.encode()).hexdigest()[:24]
 
     @staticmethod
     def prompt_cache_key(audio_path: str, backend_name: str, ref_text: str = "") -> str:
-        """L2 key from audio file content + backend name + optional ref text."""
         h = hashlib.sha256()
         with open(audio_path, "rb") as f:
             h.update(f.read())
@@ -49,18 +41,14 @@ class PromptCache:
 
 
     def get_audio(self, key: str) -> str | None:
-        """Return cached audio file path, or None on miss."""
         path = self._audio_dir / f"{key}.wav"
         if path.exists():
-            path.touch()  # update mtime for LRU
+            path.touch()
             logger.debug(f"[cache] L1 hit: {key}")
             return str(path)
         return None
 
     def put_audio(self, key: str, source_path: str, included: int | None = None) -> str:
-        """Move a temp file into the cache. Returns the cached path. `included`
-        records how many reference samples the clip holds, so a later hit can
-        trim the transcript to match."""
         dest = self._audio_dir / f"{key}.wav"
         shutil.move(source_path, dest)
         if included is not None:
@@ -69,8 +57,7 @@ class PromptCache:
         return str(dest)
 
     def get_audio_included(self, key: str) -> int | None:
-        """How many samples a cached clip holds, or None for clips stored before
-        that was tracked."""
+        # None for clips cached before the sample count was tracked.
         meta = self._audio_dir / f"{key}.json"
         if not meta.exists():
             return None
@@ -82,7 +69,6 @@ class PromptCache:
 
 
     def get_prompt(self, key: str) -> Any | None:
-        """Return cached prompt from memory or disk, or None on miss."""
         with self._lock:
             if key in self._memory:
                 logger.debug(f"[cache] L2 memory hit: {key}")
@@ -105,7 +91,6 @@ class PromptCache:
         return None
 
     def put_prompt(self, key: str, prompt: Any) -> None:
-        """Cache a prompt to memory and disk."""
         import torch
 
         with self._lock:
@@ -117,7 +102,6 @@ class PromptCache:
 
 
     def clear_all(self) -> dict:
-        """Clear all caches. Returns counts."""
         with self._lock:
             mem_count = len(self._memory)
             self._memory.clear()
@@ -139,7 +123,6 @@ class PromptCache:
         }
 
     def stats(self) -> dict:
-        """Return cache statistics."""
         audio_files = list(self._audio_dir.glob("*.wav"))
         prompt_files = list(self._prompt_dir.glob("*.pt"))
         return {
@@ -155,7 +138,6 @@ class PromptCache:
         }
 
     def evict_lru(self) -> int:
-        """Evict oldest files if total disk usage exceeds max. Returns count evicted."""
         all_files = list(self._audio_dir.glob("*.wav")) + list(
             self._prompt_dir.glob("*.pt")
         )
@@ -182,12 +164,10 @@ class PromptCache:
         return evicted
 
 
-# Module-level singleton
 _instance: PromptCache | None = None
 
 
 def get_cache() -> PromptCache:
-    """Get or create the singleton cache instance."""
     global _instance
     if _instance is None:
         from ..config import settings

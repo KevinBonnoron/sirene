@@ -50,8 +50,6 @@ export interface UseAudioPlaybackResult {
   stop: () => void;
 }
 
-// Audio elements are allocated lazily on first toggle so a session with dozens of takes/bank
-// entries doesn't create + preload one media element per row at mount time.
 export function useAudioPlayback(url: string | null | undefined): UseAudioPlaybackResult {
   const audioRef = useRef<AudioWithHandlers | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);

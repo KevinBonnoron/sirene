@@ -9,8 +9,7 @@ import (
 
 const HeaderSize = 44
 
-// WriteHeader emits the same 44-byte 16-bit mono PCM header as
-// shared/src/wav.ts so both sides produce identical files.
+// Must stay byte-identical to shared/src/wav.ts.
 func WriteHeader(dst []byte, dataLen int, sampleRate int) {
 	copy(dst[0:4], "RIFF")
 	binary.LittleEndian.PutUint32(dst[4:8], uint32(36+dataLen))
@@ -34,7 +33,6 @@ func BuildWAV(pcm []byte, sampleRate int) []byte {
 	return out
 }
 
-// Accumulator collects raw PCM and finalises it into a WAV with one copy.
 type Accumulator struct {
 	buf        bytes.Buffer
 	sampleRate int
@@ -73,8 +71,6 @@ type Info struct {
 
 var ErrNotWAV = errors.New("not a RIFF/WAVE file")
 
-// ParseWAV walks the RIFF chunks for fmt and data; it only needs headers so
-// a truncated data chunk still yields the declared duration.
 func ParseWAV(r io.ReadSeeker) (Info, error) {
 	var riff [12]byte
 	if _, err := io.ReadFull(r, riff[:]); err != nil {

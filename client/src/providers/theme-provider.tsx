@@ -33,9 +33,7 @@ function readStored<T extends string>(key: string, allowed: readonly T[], fallba
 function writeStored(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
-  } catch {
-    // Private mode or blocked storage: keep the choice for this session only.
-  }
+  } catch {}
 }
 
 function systemTheme(): 'dark' | 'light' {

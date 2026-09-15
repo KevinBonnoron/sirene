@@ -291,8 +291,7 @@ function DraftToolbar({ content, speedMultiplier, isBusy, activeMarks, onInsertE
   const estimated = estimateSpeechDuration(wordCount, speedMultiplier);
   const estimatedLabel = wordCount === 0 ? '' : `${wordCount} ${t(wordCount === 1 ? 'studio.wordCountSingular' : 'studio.wordCountPlural')} · ~${formatTime(estimated)}`;
 
-  // Keep the editor's selection alive while clicking - the click handler runs after, with the
-  // selection still active, so setMark / insertContent target the right range.
+  // Prevents the editor from blurring on mousedown so the click still targets its selection.
   const preventEditorBlur = (e: React.MouseEvent) => e.preventDefault();
 
   return (

@@ -51,9 +51,6 @@ export function useModels() {
 
   useEffect(() => acquireModelEvents(queryClient), [queryClient]);
 
-  // Merge running pull jobs over the installed set so the UI shows live progress.
-  // Job targets are encoded as `modelId::serverId`; aggregate per modelId so a model that
-  // is pulling on multiple servers shows a single averaged progress.
   const installed = installedQuery.data ?? EMPTY_INSTALLED;
   const installationsByName = new Map<string, Model>(installed.map((i) => [i.id, i]));
   const runningByModel = new Map<string, number[]>();
@@ -112,19 +109,14 @@ export function usePullModel() {
     previousStatusById.current = next;
   }, [jobs]);
 
-  const pullModel = useCallback(
-    async (modelId: string, serverIds?: string[]) => {
-      try {
-        await modelClient.pull(modelId, serverIds);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to start download';
-        toast.error(message);
-      }
-    },
-    // modelClient is a stable module-level singleton, but listing it documents the
-    // intent and satisfies the React hooks lint rule.
-    [],
-  );
+  const pullModel = useCallback(async (modelId: string, serverIds?: string[]) => {
+    try {
+      await modelClient.pull(modelId, serverIds);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start download';
+      toast.error(message);
+    }
+  }, []);
 
   return { pullModel };
 }

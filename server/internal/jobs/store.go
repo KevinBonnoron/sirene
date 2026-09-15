@@ -25,7 +25,7 @@ const (
 	BackendInstall Type = "backend_install"
 )
 
-// Job mirrors shared/src/types/job.type.ts field for field.
+// Mirrors shared/src/types/job.type.ts field for field.
 type Job struct {
 	ID          string `json:"id"`
 	Type        Type   `json:"type"`
@@ -55,8 +55,6 @@ const (
 	subscriberBacklog = 256
 )
 
-// Store keeps every job in memory. Progress updates are coalesced so a fast
-// download does not flood subscribers; terminal transitions bypass the window.
 type Store struct {
 	mu           sync.Mutex
 	jobs         map[string]Job
@@ -231,8 +229,7 @@ func (s *Store) Remove(id string) {
 	s.emitLocked(Update{Removed: true, ID: id})
 }
 
-// Subscribe registers the subscriber and returns the snapshot from the same
-// critical section, so no update can slip between the two.
+// Registration and snapshot share the critical section so no update slips between them.
 func (s *Store) Subscribe() (*Subscriber, []Job) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -255,8 +252,6 @@ func (s *Store) Unsubscribe(sub *Subscriber) {
 	}
 }
 
-// A subscriber that cannot keep up is dropped rather than blocking the
-// mutation path; its channel closes so the SSE handler ends the stream.
 func (s *Store) emitLocked(u Update) {
 	for sub := range s.subs {
 		select {

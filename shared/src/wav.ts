@@ -1,13 +1,5 @@
-// Minimal RIFF/WAVE header for 16-bit mono PCM. Both the API (server-side
-// streaming) and the browser client (PCM accumulation) wrap the same raw
-// inference output, so the header writer lives in shared to keep the two
-// sides byte-for-byte identical.
-
 const HEADER_SIZE = 44;
 
-/** Drain a `ReadableStream<Uint8Array>` into a chunk list + total byte count.
- *  Used by both sides to accumulate raw PCM from the inference worker before
- *  prepending a WAV header. */
 export async function readPcmStream(stream: ReadableStream<Uint8Array>): Promise<{ chunks: Uint8Array[]; totalBytes: number }> {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
@@ -23,7 +15,6 @@ export async function readPcmStream(stream: ReadableStream<Uint8Array>): Promise
   return { chunks, totalBytes };
 }
 
-/** Build a 16-bit mono PCM WAV from a list of raw PCM chunks. */
 export function buildWav(chunks: Uint8Array[], totalBytes: number, sampleRate: number): ArrayBuffer {
   const buffer = new ArrayBuffer(HEADER_SIZE + totalBytes);
   const view = new DataView(buffer);

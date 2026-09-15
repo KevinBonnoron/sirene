@@ -18,8 +18,6 @@ import (
 
 const multipartMemory = 32 << 20
 
-// The public ping stream carries no data: clients re-fetch the protected
-// inventory when it fires.
 func registerModelsPublic(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	g.GET("/models/events", func(e *core.RequestEvent) error {
 		w := sse.Begin(e)
@@ -188,8 +186,6 @@ func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	}).Bind(read)
 }
 
-// readUpload returns nil when the field is absent so callers can produce the
-// domain-specific "fields required" error.
 func readUpload(e *core.RequestEvent, field string) (*models.Upload, error) {
 	files := e.Request.MultipartForm.File[field]
 	if len(files) == 0 {

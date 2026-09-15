@@ -23,8 +23,7 @@ function parseSpeed(value: string | undefined): number | undefined {
   if (!Number.isFinite(n)) {
     throw new Error(`--speed must be a number, got "${value}"`);
   }
-  // Mirror the server-side bound: anything outside [0.1, 5] is rejected here
-  // so the CLI fails fast with a clear message instead of bouncing off a 400.
+  // Mirrors the server-side bound.
   if (n < 0.1 || n > 5) {
     throw new Error(`--speed must be between 0.1 and 5, got "${value}"`);
   }
@@ -32,13 +31,6 @@ function parseSpeed(value: string | undefined): number | undefined {
   return n;
 }
 
-/** Enforce Unix-style ordering: every flag must appear *before* the positional
- *  arguments. Citty's parser is lenient and accepts both orders, but mixing
- *  them ("text" before --flags) is ambiguous to read and easy to fat-finger,
- *  so we reject it explicitly.
- *
- *  `booleanFlags` lists the long names of flags that take no value, so we know
- *  not to consume the next token as their value while scanning. */
 function enforceFlagsBeforePositional(rawArgs: string[], booleanFlags: Set<string>): void {
   let positionalSeen = false;
   for (let i = 0; i < rawArgs.length; i++) {
@@ -217,9 +209,6 @@ const main = defineCommand({
   subCommands: { auth, doctor, generate, model, voice, config },
 });
 
-/** Walk the command tree following positional args so we can show the most
- *  relevant usage on error. `sirene voice <bad>` should display the voice
- *  usage, not the top-level one. */
 type CmdLike = { subCommands?: Record<string, CmdLike> };
 function findCommand(root: CmdLike, rawArgs: string[]): CmdLike {
   let cmd: CmdLike = root;
@@ -239,16 +228,10 @@ function findCommand(root: CmdLike, rawArgs: string[]): CmdLike {
   return cmd;
 }
 
-// We drive citty via `runCommand` rather than `runMain` so we own the error
-// channel. `runMain` calls `consola.error(message + stack)` then `process.exit(1)`
-// which produces a noisy two-paragraph trace on every API failure - useless for
-// CLI users who just want to see "Invalid API key" once.
+// runCommand instead of runMain so citty does not dump a consola stack trace on every error.
 const cliRawArgs = process.argv.slice(2);
 
-// Citty 0.1.x only auto-handles `--help` / `-h` on commands that have
-// subCommands; leaf commands fall through and execute their `run` handler
-// instead of printing usage. We intercept here so `sirene auth login --help`
-// behaves like every other --help in the CLI.
+// Citty 0.1.x only auto-handles --help on commands with subCommands; leaf commands would run instead.
 if (cliRawArgs.some((a) => a === '--help' || a === '-h')) {
   const cmd = findCommand(main as CmdLike, cliRawArgs);
   await showUsage(cmd as Parameters<typeof showUsage>[0]).catch(() => undefined);
@@ -264,11 +247,6 @@ runCommand(main, { rawArgs: cliRawArgs })
     }
 
     const message = err instanceof Error ? err.message : String(err);
-    // Citty raises argument / dispatch errors ("Unknown command `x`",
-    // "No command specified.", "Missing required positional argument: TEXT",
-    // "Missing required argument: --voice") before any `run` handler can
-    // intervene. Print the cause AND the deepest matched command's usage so
-    // the user can recover without typing `--help` separately.
     const rawArgs = process.argv.slice(2);
     const isUnknown = /^unknown command/i.test(message);
     const isMissingCommand = /^no command specified/i.test(message);

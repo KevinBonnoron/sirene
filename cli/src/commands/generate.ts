@@ -23,9 +23,6 @@ export async function generateCommand(options: Options): Promise<void> {
 
   let audio: Uint8Array;
   if (options.stream) {
-    // Streaming endpoint returns raw PCM int16 mono. Wrap with a WAV header so
-    // the file plays in standard players. Header carries the sample rate
-    // returned by the server.
     if (!result.sampleRate) {
       throw new Error('Server did not return sample rate for streaming response');
     }
@@ -35,14 +32,6 @@ export async function generateCommand(options: Options): Promise<void> {
     audio = result.bytes;
   }
 
-  // Three output modes:
-  //  - explicit `--output path`  → that file
-  //  - explicit `--output -`     → stdout (binary), regardless of TTY
-  //  - no flag in a pipe         → stdout
-  //  - no flag in a TTY          → auto-named file in CWD, since blasting raw
-  //                                bytes at the terminal is never what the user
-  //                                wants and a "you forgot --output" error is
-  //                                unfriendly.
   if (options.output === '-') {
     process.stdout.write(audio);
     return;

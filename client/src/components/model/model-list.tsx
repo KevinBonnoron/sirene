@@ -1,12 +1,9 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { AudioLines, ChevronRight, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Trash2, Zap } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { AudioLines, ChevronRight, Cpu, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { modelClient } from '@/clients/model.client';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { languageName } from '@/lib/languages';
 import { cn } from '@/lib/utils';
@@ -28,7 +25,7 @@ export interface Family {
 type CatalogModelType = CatalogModel['types'][number];
 
 const chip = 'inline-flex items-center gap-0.5 rounded px-1 py-px text-2xs font-medium';
-const grid = 'grid grid-cols-[minmax(0,1fr)_2.25rem] items-center gap-x-4 px-4 sm:grid-cols-[minmax(0,1fr)_auto_5.5rem_2.25rem]';
+const grid = 'grid grid-cols-[minmax(0,1fr)_3.75rem] items-center gap-x-4 px-4 sm:grid-cols-[minmax(0,1fr)_auto_5.5rem_3.75rem]';
 
 const TYPE_CHIPS: { type: CatalogModelType; icon: typeof Mic; className: string; label: string }[] = [
   { type: 'preset', icon: AudioLines, className: 'bg-accent-sky/15 text-accent-sky', label: 'voice.preset' },
@@ -130,32 +127,32 @@ export function Facts({ entries, gpuAvailable, columns }: { entries: Entry[]; gp
   );
 }
 
-export function ServerCoverage({ installation }: { installation?: Model }) {
+export function ServerCoverage({ catalog, installation, onPull }: { catalog: CatalogModel; installation?: Model; onPull: (id: string, serverIds?: string[]) => void }) {
   const { t } = useTranslation();
-  const { enabledServers } = useServerFleet();
+  const { targetsFor } = useServerFleet();
   if (installation?.status !== 'installed') {
     return null;
   }
-  if (enabledServers.length < 2) {
+  const on = new Set(installation.serverIds);
+  const missing = targetsFor(catalog).filter((s) => !on.has(s.id));
+  if (missing.length === 0) {
     return <span className="text-2xs font-medium text-accent-sage">{t('model.status_installed')}</span>;
   }
-  const on = new Set(installation.serverIds);
   return (
-    <span className="flex flex-wrap items-center gap-1">
-      {enabledServers.map((server) => {
-        const installed = on.has(server.id);
-        const offline = server.lastHealth.status === 'offline';
-        return (
-          <span
-            key={server.id}
-            className={cn('inline-flex items-center gap-1 rounded px-1 py-px text-2xs font-medium', installed ? 'bg-accent-sage/15 text-accent-sage' : 'bg-muted text-dim')}
-            title={installed ? t('model.installedOnServer', { name: server.name }) : t('model.notInstalledOnServer', { name: server.name })}
-          >
-            <span className={cn('size-1.5 rounded-full', offline ? 'bg-destructive' : installed ? 'bg-accent-sage' : 'bg-muted-foreground/40')} aria-hidden />
-            {server.name}
-          </span>
-        );
-      })}
+    <span className="inline-flex items-center gap-1.5 text-2xs">
+      <span className="text-accent-rust">{t('model.missingOn', { names: missing.map((s) => s.name).join(', ') })}</span>
+      <button
+        type="button"
+        className="font-medium text-primary hover:underline"
+        onClick={() =>
+          onPull(
+            catalog.id,
+            missing.map((s) => s.id),
+          )
+        }
+      >
+        {t('model.complete')}
+      </button>
     </span>
   );
 }
@@ -199,17 +196,13 @@ function VariantRow({ entry, prefix, onPull }: { entry: Entry; prefix: string; o
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className={cn('text-sm', status === 'installed' && 'font-medium')}>{variantName(catalog, prefix)}</span>
           {catalog.recommended && <Star className="size-3 text-primary" aria-label={t('model.recommended')} />}
-          <ServerCoverage installation={installation} />
+          <ServerCoverage catalog={catalog} installation={installation} onPull={onPull} />
           <span className="font-mono text-2xs text-dim sm:hidden">{formatFileSize(catalog.size)}</span>
           {status === 'error' && installation?.error && <p className="basis-full truncate text-xs text-destructive">{installation.error}</p>}
         </div>
       }
-      aside={
-        <div className="flex items-center gap-1">
-          <TypeChips types={catalog.types} gated={catalog.gated} />
-        </div>
-      }
       size={formatFileSize(catalog.size)}
+      progress={status === 'pulling' ? installation?.progress : undefined}
       action={<ModelActions catalog={catalog} installation={installation} onPull={onPull} />}
     />
   );
@@ -234,7 +227,7 @@ export function FamilyRow({ family, onPull, defaultOpen }: { family: Family; onP
               <h3 className="font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
               {recommended && <Star className="size-3.5 text-primary" aria-label={t('model.recommended')} />}
               <TypeChips types={types} gated={single?.catalog.gated} />
-              {single && <ServerCoverage installation={single.installation} />}
+              {single && <ServerCoverage catalog={single.catalog} installation={single.installation} onPull={onPull} />}
               {!single && installedCount > 0 && <span className="text-2xs font-medium text-accent-sage">{t('model.installedCount', { count: installedCount })}</span>}
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{family.description}</p>
@@ -255,123 +248,6 @@ export function FamilyRow({ family, onPull, defaultOpen }: { family: Family; onP
         }
       />
       {!single && open && family.entries.map((entry) => <VariantRow key={entry.catalog.id} entry={entry} prefix={prefix} onPull={onPull} />)}
-    </div>
-  );
-}
-
-const PIPER_PREFIX = /^Piper\s+[A-Z]{2}(-[A-Z]{2})?\s+/;
-
-export function PiperRow({ family, onPull }: { family: Family; onPull: (id: string, serverIds?: string[]) => void }) {
-  const { t, i18n } = useTranslation();
-  const { hasOnlineServer, gpuAvailable } = useServerFleet();
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState('');
-  const installed = family.entries.filter((e) => e.installation && e.installation.status !== 'error');
-  const available = family.entries.filter((e) => !e.installation || e.installation.status === 'error');
-
-  const byLanguage = useMemo(() => {
-    const groups = new Map<string, Entry[]>();
-    for (const e of available) {
-      const label = languageName(e.catalog.languages?.[0] ?? e.catalog.language ?? '', i18n.language);
-      groups.set(label, [...(groups.get(label) ?? []), e]);
-    }
-    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, i18n.language));
-  }, [available, i18n.language]);
-
-  async function remove(id: string) {
-    try {
-      await modelClient.remove(id);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('model.removeFailed'));
-    }
-  }
-
-  return (
-    <div className="divide-y divide-border-subtle">
-      <Row
-        main={
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-serif text-base tracking-tight">{family.name}</h3>
-              <TypeChips types={['preset']} />
-              {installed.length > 0 && <span className="text-2xs font-medium text-accent-sage">{t('model.installedCount', { count: installed.length })}</span>}
-            </div>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{family.description}</p>
-          </div>
-        }
-        aside={<Facts entries={family.entries} gpuAvailable={gpuAvailable} columns />}
-        size={t('model.voiceCount', { count: family.entries.length })}
-        action={
-          <Button size="icon" variant="ghost" className="size-7" aria-expanded={open} aria-label={t('model.expand', { name: family.name })} onClick={() => setOpen((v) => !v)}>
-            <ChevronRight className={cn('size-4 transition-transform', open && 'rotate-90')} />
-          </Button>
-        }
-      />
-      {open && (
-        <Row
-          indent
-          main={
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={selected} onValueChange={setSelected}>
-                <SelectTrigger className="h-8 w-64 text-xs" aria-label={t('model.piper.selectVoice')}>
-                  <SelectValue placeholder={t('model.piper.selectVoice')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {byLanguage.map(([language, voices]) => (
-                    <SelectGroup key={language}>
-                      <SelectLabel>{language}</SelectLabel>
-                      {voices.map(({ catalog }) => (
-                        <SelectItem key={catalog.id} value={catalog.id}>
-                          {language} · {catalog.name.replace(PIPER_PREFIX, '')}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!selected || !hasOnlineServer}
-                onClick={() => {
-                  if (selected) {
-                    onPull(selected);
-                    setSelected('');
-                  }
-                }}
-              >
-                <Download className="size-3.5" />
-                {t('model.piper.install')}
-              </Button>
-            </div>
-          }
-          action={null}
-        />
-      )}
-      {open &&
-        installed.map(({ catalog, installation }) => (
-          <Row
-            key={catalog.id}
-            indent
-            main={
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span className="text-sm font-medium">
-                  {languageName(catalog.languages?.[0] ?? '', i18n.language)} · {catalog.name.replace(PIPER_PREFIX, '')}
-                </span>
-                {installation?.status === 'pulling' ? <span className="font-mono text-2xs text-dim">{installation.progress}%</span> : <span className="text-2xs font-medium text-accent-sage">{t('model.status_installed')}</span>}
-              </div>
-            }
-            size={formatFileSize(catalog.size)}
-            progress={status === 'pulling' ? (installation?.progress ?? 0) : undefined}
-            action={
-              installation?.status === 'installed' && (
-                <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(catalog.id)} aria-label={t('model.actionRemove')}>
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )
-            }
-          />
-        ))}
     </div>
   );
 }

@@ -36,6 +36,7 @@ export type ErrorCode =
   | 'model.invalidName'
   | 'model.invalidServerSelection'
   | 'model.nameConflict'
+  | 'model.noAcceptingServer'
   | 'model.noOnlineServer'
   | 'model.notFound'
   | 'model.notInCatalog'

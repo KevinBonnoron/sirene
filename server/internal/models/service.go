@@ -170,6 +170,28 @@ func jobTarget(modelID, serverID string) string {
 	return modelID + "::" + serverID
 }
 
+// A blanket pull lands on every online server whose policy takes the model; an explicit selection is honoured as is.
+func requirements(modelID string) (hardware string, minVram int) {
+	for _, m := range catalog.Models {
+		if m.ID == modelID {
+			return m.Hardware, m.MinVram
+		}
+	}
+	return "", 0
+}
+
+func acceptingServers(online []*core.Record, modelID string) []*core.Record {
+	hardware, minVram := requirements(modelID)
+	var out []*core.Record
+	for _, rec := range online {
+		device, vram := serverHealth(rec)
+		if Accepts(rec.GetString("syncPolicy"), hardware, minVram, device, vram) {
+			out = append(out, rec)
+		}
+	}
+	return out
+}
+
 func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs *[]string, verb string) ([]*core.Record, error) {
 	all, err := s.servers.ListEnabled()
 	if err != nil {
@@ -185,20 +207,35 @@ func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs 
 		return nil, apierr.Unavailable(apierr.CodeModelNoOnlineServer, fmt.Sprintf("No online inference server available to %s this model.", verb))
 	}
 	requested := online
-	if serverIDs != nil {
+	if serverIDs == nil {
+		if verb == "pull" {
+			if requested = acceptingServers(online, modelID); len(requested) == 0 {
+				return nil, apierr.Unavailable(apierr.CodeModelNoAcceptingServer, "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy.")
+			}
+		}
+	} else {
 		unique := slices.Compact(slices.Sorted(slices.Values(*serverIDs)))
 		requested = nil
-		var missing []string
+		hardware, minVram := requirements(modelID)
+		var missing, unfit []string
 		for _, id := range unique {
 			idx := slices.IndexFunc(online, func(r *core.Record) bool { return r.Id == id })
 			if idx < 0 {
 				missing = append(missing, id)
 				continue
 			}
+			// A hand-picked server skips the sync policy, never the hardware check.
+			if device, vram := serverHealth(online[idx]); !Accepts("all", hardware, minVram, device, vram) {
+				unfit = append(unfit, online[idx].GetString("name"))
+				continue
+			}
 			requested = append(requested, online[idx])
 		}
 		if len(missing) > 0 {
 			return nil, apierr.BadRequest(apierr.CodeModelInvalidServerSelection, "Servers not online or not found: "+strings.Join(missing, ", "))
+		}
+		if len(unfit) > 0 {
+			return nil, apierr.BadRequest(apierr.CodeModelInvalidServerSelection, "Servers that can't run this model (hardware or VRAM): "+strings.Join(unfit, ", "))
 		}
 	}
 	byServer, err := s.cache.InstalledByServer(ctx)
@@ -493,4 +530,82 @@ func (s *Service) ExportCustom(ctx context.Context, modelID string) (*http.Respo
 		return nil, nil, apierr.Upstream(apierr.CodeModelExportFailed, "Export failed")
 	}
 	return res, cancel, nil
+}
+
+// Accepts reports whether a server's sync policy, device and VRAM take a model; minVram is in GiB and only enforced when both sides are known.
+func Accepts(policy, hardware string, minVram int, device string, vram int64) bool {
+	if hardware == "" {
+		hardware = "cpu"
+	}
+	if hardware == "gpu" && device == "cpu" {
+		return false
+	}
+	if minVram > 0 && vram > 0 && int64(minVram)<<30 > vram {
+		return false
+	}
+	switch policy {
+	case "cpu", "gpu":
+		return hardware == policy
+	case "none":
+		return false
+	}
+	return true
+}
+
+func serverHealth(rec *core.Record) (device string, vram int64) {
+	var health struct {
+		Device string `json:"device"`
+		VRAM   int64  `json:"vram"`
+	}
+	_ = rec.UnmarshalJSONField("lastHealth", &health)
+	return health.Device, health.VRAM
+}
+
+// ReplicateTo pulls onto one server every catalog model that other servers
+// already have, as far as its sync policy and hardware allow. Best effort:
+// failures surface as job errors, never to the caller.
+func (s *Service) ReplicateTo(serverID string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		rec, err := s.servers.Get(serverID)
+		if err != nil || !rec.GetBool("enabled") || routing.StatusOf(rec) != "online" {
+			return
+		}
+		policy := rec.GetString("syncPolicy")
+		device, vram := serverHealth(rec)
+		if policy == "none" {
+			return
+		}
+		s.cache.Invalidate(serverID)
+		byServer, err := s.cache.InstalledByServer(ctx)
+		if err != nil {
+			s.app.Logger().Warn("[replicate] listing installed models failed", "server", rec.GetString("name"), "error", err)
+			return
+		}
+		wanted := map[string]struct{}{}
+		for id, installed := range byServer {
+			if id == serverID {
+				continue
+			}
+			for modelID := range installed {
+				wanted[modelID] = struct{}{}
+			}
+		}
+		for _, m := range catalog.Models {
+			if _, ok := wanted[m.ID]; !ok || m.HasType("api") {
+				continue
+			}
+			if _, has := byServer[serverID][m.ID]; has {
+				continue
+			}
+			if !Accepts(policy, m.Hardware, m.MinVram, device, vram) {
+				continue
+			}
+			ids := []string{serverID}
+			if _, _, err := s.StartDownload(ctx, "", m, &ids); err != nil {
+				s.app.Logger().Warn("[replicate] pull not started", "server", rec.GetString("name"), "model", m.ID, "error", err)
+			}
+		}
+	}()
 }

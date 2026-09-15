@@ -1,4 +1,4 @@
-import type { InferenceServer } from '@sirene/shared';
+import type { InferenceServer, SyncPolicy } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
 import { Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { explainApiError } from '@/lib/api-error';
 import { getStoredToken } from '@/lib/auth-interceptor';
@@ -55,6 +56,8 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
   }
   return t('inferenceServers.lastChecked', { when });
 }
+
+const SYNC_POLICIES: SyncPolicy[] = ['all', 'cpu', 'gpu', 'none'];
 
 export function InferenceServersSection() {
   const { t } = useTranslation();
@@ -183,6 +186,7 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const tokenId = `${reactId}-token`;
   const priorityId = `${reactId}-priority`;
   const enabledId = `${reactId}-enabled`;
+  const syncPolicyId = `${reactId}-syncpolicy`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
   // PB never returns authToken, so it can't be pre-filled: untouched keeps it, an empty submit clears it.
@@ -190,17 +194,19 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const [authTokenDirty, setAuthTokenDirty] = useState(false);
   const [priority, setPriority] = useState(String(server?.priority ?? 0));
   const [enabled, setEnabled] = useState(server?.enabled ?? true);
+  const [syncPolicy, setSyncPolicy] = useState<SyncPolicy>(server?.syncPolicy ?? 'all');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
     if (saving || !name.trim() || !url.trim()) {
       return;
     }
-    const payload: { name: string; url: string; priority: number; enabled: boolean; authToken?: string } = {
+    const payload: { name: string; url: string; priority: number; enabled: boolean; syncPolicy: SyncPolicy; authToken?: string } = {
       name: name.trim(),
       url: url.trim().replace(/\/$/, ''),
       priority: Number.parseInt(priority, 10) || 0,
       enabled,
+      syncPolicy,
     };
     if (authTokenDirty) {
       payload.authToken = authToken.trim();
@@ -261,6 +267,22 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
           <div className="flex h-9 items-center">
             <Switch id={enabledId} checked={enabled} onCheckedChange={setEnabled} />
           </div>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={syncPolicyId}>{t('inferenceServers.syncPolicy')}</Label>
+          <Select value={syncPolicy} onValueChange={(v) => setSyncPolicy(v as SyncPolicy)}>
+            <SelectTrigger id={syncPolicyId} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SYNC_POLICIES.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {t(`inferenceServers.syncPolicies.${p}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-2xs text-muted-foreground">{t('inferenceServers.syncPolicyHint')}</p>
         </div>
       </div>
       <div className="flex justify-end gap-2">

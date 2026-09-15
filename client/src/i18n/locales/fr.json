@@ -152,28 +152,18 @@
     "configFile": "Fichier de config (.onnx.json)",
     "dropConfig": "Déposez le fichier .onnx.json ici",
     "speakers": "{{count}} locuteurs",
-    "installOn": "Installer sur",
+    "installOn": "S'installera sur {{servers}}",
     "alreadyInstalled": "Déjà installé",
     "importPiperSuccess_one": "Import du modèle Piper « {{id}} » mis en file d'attente - suivez la progression dans les notifications.",
     "importPiperSuccess_other": "Import du modèle Piper « {{id}} » mis en file d'attente sur {{count}} serveurs - suivez la progression dans les notifications.",
     "allBackends": "Tous les backends",
     "status_installed": "Installés",
     "status_available": "Disponibles",
-    "installedOn": "Installé sur {{count}}/{{total}} serveurs",
-    "manage": "Gérer par serveur",
-    "perServer": "Par serveur",
-    "installOnAll": "Installer sur les {{count}} serveurs",
-    "installOnAllMissing": "Installer sur les {{count}} serveurs restants",
-    "removeFromAll": "Supprimer de tous les serveurs",
     "noMatch": "Aucun modèle ne correspond à vos filtres.",
     "actionInstall": "Installer le modèle",
     "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
     "actionInstalling": "Installation en cours",
     "actionRemove": "Supprimer le modèle",
-    "actionInstallOnServer": "Installer sur {{name}}",
-    "actionRemoveFromServer": "Supprimer de {{name}}",
-    "removeFromAllConfirmTitle": "Supprimer de tous les serveurs ?",
-    "removeFromAllConfirmDescription": "Cela supprimera « {{name}} » des {{count}} serveurs où il est installé. Cette action est irréversible.",
     "recommended": "Recommandé",
     "cpuFriendly": "CPU",
     "gpu": "GPU",
@@ -225,8 +215,12 @@
       "showMore_one": "Voir {{count}} autre option",
       "showMore_other": "Voir {{count}} autres options"
     },
-    "installedOnServer": "Installé sur {{name}}",
-    "notInstalledOnServer": "Absent de {{name}}"
+    "missingOn": "Absent de {{names}}",
+    "complete": "Compléter",
+    "removeConfirmTitle": "Supprimer {{name}} ?",
+    "removeConfirmDescription": "Les fichiers du modèle sont supprimés du serveur d'inférence. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
+    "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
+    "noAcceptingServer": "Aucun serveur en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et le réglage des modèles automatiques de chaque serveur."
   },
   "notifications": {
     "title": "Activité",
@@ -482,6 +476,14 @@
       "manualLabel": "Ajouter manuellement",
       "manualHint": "Pour un serveur déjà en marche : collez son URL et le jeton avec lequel il a été lancé.",
       "deployOnRailway": "Déployer sur Railway"
+    },
+    "syncPolicy": "Modèles automatiques",
+    "syncPolicyHint": "Quels modèles du catalogue s'installent ici sans demander. Les modèles CPU tournent sans carte graphique, les modèles GPU en exigent une.",
+    "syncPolicies": {
+      "all": "Tous les modèles compatibles",
+      "cpu": "Modèles CPU uniquement",
+      "gpu": "Modèles GPU uniquement",
+      "none": "Aucun (à la main)"
     }
   },
   "cliAuth": {
@@ -671,7 +673,8 @@
     "cliAuth.sessionAlreadyUsed": "Session CLI déjà utilisée",
     "voiceDesigner.nameAudioRequired": "Le nom et l'audio sont requis",
     "voiceDesigner.textFieldsExpected": "description, language, model et transcript doivent être des champs texte",
-    "auth.emailTaken": "Un compte existe déjà avec cet email"
+    "auth.emailTaken": "Un compte existe déjà avec cet email",
+    "model.noAcceptingServer": "Aucun serveur d'inférence en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et la politique de chaque serveur"
   },
   "form": {
     "showPassword": "Afficher le mot de passe",

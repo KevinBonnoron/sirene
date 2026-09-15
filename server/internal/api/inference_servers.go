@@ -23,6 +23,7 @@ type inferenceServerBody struct {
 	Enabled   *bool    `json:"enabled"`
 	Priority  *float64 `json:"priority"`
 	AuthToken *string  `json:"authToken"`
+	AutoSync  *bool    `json:"autoSync"`
 }
 
 func (b *inferenceServerBody) validate(partial bool) error {
@@ -93,10 +94,14 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err := body.validate(false); err != nil {
 			return err
 		}
-		rec, err := d.Servers.Create(infsrv.WriteInput{Name: *body.Name, URL: *body.URL, Enabled: *body.Enabled, Priority: int(*body.Priority), AuthToken: body.AuthToken})
+		rec, err := d.Servers.Create(infsrv.WriteInput{Name: *body.Name, URL: *body.URL, Enabled: *body.Enabled, Priority: int(*body.Priority), AuthToken: body.AuthToken, AutoSync: body.AutoSync})
 		if err != nil {
 			return err
 		}
+		if checked, err := d.Servers.CheckOne(e.Request.Context(), rec.Id); err == nil {
+			rec = checked
+		}
+		d.Models.ReplicateTo(rec.Id)
 		return e.JSON(http.StatusCreated, rec)
 	})
 
@@ -112,7 +117,10 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err := body.validate(true); err != nil {
 			return err
 		}
-		rec, err := d.Servers.Update(id, infsrv.UpdateInput{Name: body.Name, URL: body.URL, Enabled: body.Enabled, Priority: intPtr(body.Priority), AuthToken: body.AuthToken})
+		rec, err := d.Servers.Update(id, infsrv.UpdateInput{Name: body.Name, URL: body.URL, Enabled: body.Enabled, Priority: intPtr(body.Priority), AuthToken: body.AuthToken, AutoSync: body.AutoSync})
+		if err == nil && body.AutoSync != nil && *body.AutoSync {
+			d.Models.ReplicateTo(rec.Id)
+		}
 		if err != nil {
 			return err
 		}
@@ -185,6 +193,7 @@ func registerInferenceServersPublic(g *router.RouterGroup[*core.RequestEvent], d
 		if checked, err := d.Servers.CheckOne(ctx, rec.Id); err == nil {
 			rec = checked
 		}
+		d.Models.ReplicateTo(rec.Id)
 		status := http.StatusOK
 		if created {
 			status = http.StatusCreated

@@ -27,7 +27,7 @@ function fits(c: CatalogModel, gpuAvailable: boolean): boolean {
   return gpuAvailable || c.hardware !== 'gpu';
 }
 
-function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: Entry; gpuAvailable: boolean; hasOnlineServer: boolean; onPull: (id: string) => void }) {
+function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: Entry; gpuAvailable: boolean; hasOnlineServer: boolean; onPull: (catalog: CatalogModel) => void }) {
   const { t } = useTranslation();
   const { catalog, installation } = entry;
   const status = installation?.status;
@@ -49,7 +49,7 @@ function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: En
       ) : status === 'pulling' ? (
         <Loader2 className="size-4 animate-spin text-muted-foreground" />
       ) : (
-        <Button size="sm" variant="outline" disabled={!hasOnlineServer} onClick={() => onPull(catalog.id)}>
+        <Button size="sm" variant="outline" disabled={!hasOnlineServer} onClick={() => onPull(catalog)}>
           <Download className="size-3.5" />
           {t('model.piper.install')}
         </Button>
@@ -58,7 +58,7 @@ function Candidate({ entry, gpuAvailable, hasOnlineServer, onPull }: { entry: En
   );
 }
 
-function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]; hasOnlineServer: boolean; onPull: (id: string) => void }) {
+function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]; hasOnlineServer: boolean; onPull: (catalog: CatalogModel) => void }) {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
   const sample = entries[0]?.catalog;
@@ -95,7 +95,7 @@ function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]
             {entry.installation?.status === 'pulling' ? (
               <Loader2 className="mr-2 size-3.5 animate-spin text-muted-foreground" />
             ) : (
-              <Button size="sm" variant="ghost" className="h-7" disabled={!hasOnlineServer} onClick={() => onPull(entry.catalog.id)}>
+              <Button size="sm" variant="ghost" className="h-7" disabled={!hasOnlineServer} onClick={() => onPull(entry.catalog)}>
                 <Download className="size-3.5" />
                 {t('model.piper.install')}
               </Button>
@@ -108,9 +108,10 @@ function PiperCandidate({ entries, hasOnlineServer, onPull }: { entries: Entry[]
   );
 }
 
-export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entries: Entry[]; onPull: (id: string) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entries: Entry[]; onPull: (id: string, serverIds?: string[]) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation();
-  const { gpuAvailable, hasOnlineServer } = useServerFleet();
+  const { gpuAvailable, hasOnlineServer, targetsFor } = useServerFleet();
+  const install = (catalog: CatalogModel) => onPull(catalog.id, targetsFor(catalog));
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -165,9 +166,9 @@ export function AddModelDialog({ entries, onPull, open, onOpenChange }: { entrie
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border bg-card">
             {shown.map((entry) => (
-              <Candidate key={entry.catalog.id} entry={entry} gpuAvailable={gpuAvailable} hasOnlineServer={hasOnlineServer} onPull={onPull} />
+              <Candidate key={entry.catalog.id} entry={entry} gpuAvailable={gpuAvailable} hasOnlineServer={hasOnlineServer} onPull={install} />
             ))}
-            {piper.length > 0 && <PiperCandidate entries={piper} hasOnlineServer={hasOnlineServer} onPull={onPull} />}
+            {piper.length > 0 && <PiperCandidate entries={piper} hasOnlineServer={hasOnlineServer} onPull={install} />}
             {hidden > 0 && (
               <button type="button" onClick={() => setShowAll(true)} className="w-full px-4 py-2.5 text-left text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground">
                 {t('model.add.showMore', { count: hidden })}

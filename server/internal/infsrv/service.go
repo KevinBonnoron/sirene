@@ -25,6 +25,7 @@ type WriteInput struct {
 	Enabled   bool
 	Priority  int
 	AuthToken *string
+	AutoSync  *bool
 }
 
 type UpdateInput struct {
@@ -33,6 +34,7 @@ type UpdateInput struct {
 	Enabled   *bool
 	Priority  *int
 	AuthToken *string
+	AutoSync  *bool
 }
 
 type Service struct {
@@ -86,6 +88,7 @@ func (s *Service) Create(in WriteInput) (*core.Record, error) {
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
 	}
+	rec.Set("autoSync", in.AutoSync == nil || *in.AutoSync)
 	rec.Set("lastHealth", unknownHealth())
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -115,6 +118,9 @@ func (s *Service) Update(id string, in UpdateInput) (*core.Record, error) {
 	}
 	if in.AuthToken != nil {
 		rec.Set("authToken", *in.AuthToken)
+	}
+	if in.AutoSync != nil {
+		rec.Set("autoSync", *in.AutoSync)
 	}
 	if err := s.app.Save(rec); err != nil {
 		return nil, err

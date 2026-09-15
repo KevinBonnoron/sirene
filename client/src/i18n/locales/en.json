@@ -159,21 +159,11 @@
     "allBackends": "All backends",
     "status_installed": "Installed",
     "status_available": "Available",
-    "installedOn": "Installed on {{count}}/{{total}} servers",
-    "manage": "Manage on servers",
-    "perServer": "Per server",
-    "installOnAll": "Install on all {{count}} servers",
-    "installOnAllMissing": "Install on the {{count}} remaining servers",
-    "removeFromAll": "Remove from all servers",
     "noMatch": "No models match your filters.",
     "actionInstall": "Install model",
     "actionInstallNoServer": "No online inference server - check settings",
     "actionInstalling": "Installing model",
     "actionRemove": "Remove model",
-    "actionInstallOnServer": "Install on {{name}}",
-    "actionRemoveFromServer": "Remove from {{name}}",
-    "removeFromAllConfirmTitle": "Remove from all servers?",
-    "removeFromAllConfirmDescription": "This will remove \"{{name}}\" from all {{count}} servers it is installed on. This action cannot be undone.",
     "recommended": "Recommended",
     "cpuFriendly": "CPU",
     "gpu": "GPU",
@@ -225,8 +215,11 @@
       "showMore_one": "Show {{count}} more option",
       "showMore_other": "Show {{count}} more options"
     },
-    "installedOnServer": "Installed on {{name}}",
-    "notInstalledOnServer": "Not installed on {{name}}"
+    "missingOn": "Missing on {{names}}",
+    "complete": "Complete",
+    "removeConfirmTitle": "Remove {{name}}?",
+    "removeConfirmDescription": "The model files are deleted from the inference server. Voices using it stop working until it is installed again.",
+    "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again."
   },
   "notifications": {
     "title": "Activity",
@@ -549,7 +542,9 @@
       "manualLabel": "Add manually",
       "manualHint": "For a worker that is already running: paste its URL and the token it was started with.",
       "deployOnRailway": "Deploy on Railway"
-    }
+    },
+    "autoSync": "Receive models automatically",
+    "autoSyncHint": "When this server joins or is enabled, models present on the other servers are installed here too, if its hardware fits."
   },
   "deleteGeneration": {
     "title": "Delete generation?",

@@ -183,6 +183,7 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const tokenId = `${reactId}-token`;
   const priorityId = `${reactId}-priority`;
   const enabledId = `${reactId}-enabled`;
+  const autoSyncId = `${reactId}-autosync`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
   // PB never returns authToken, so it can't be pre-filled: untouched keeps it, an empty submit clears it.
@@ -190,17 +191,19 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const [authTokenDirty, setAuthTokenDirty] = useState(false);
   const [priority, setPriority] = useState(String(server?.priority ?? 0));
   const [enabled, setEnabled] = useState(server?.enabled ?? true);
+  const [autoSync, setAutoSync] = useState(server?.autoSync ?? true);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
     if (saving || !name.trim() || !url.trim()) {
       return;
     }
-    const payload: { name: string; url: string; priority: number; enabled: boolean; authToken?: string } = {
+    const payload: { name: string; url: string; priority: number; enabled: boolean; autoSync: boolean; authToken?: string } = {
       name: name.trim(),
       url: url.trim().replace(/\/$/, ''),
       priority: Number.parseInt(priority, 10) || 0,
       enabled,
+      autoSync,
     };
     if (authTokenDirty) {
       payload.authToken = authToken.trim();
@@ -260,6 +263,13 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
           <Label htmlFor={enabledId}>{t('inferenceServers.enabled')}</Label>
           <div className="flex h-9 items-center">
             <Switch id={enabledId} checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={autoSyncId}>{t('inferenceServers.autoSync')}</Label>
+          <div className="flex items-center gap-3">
+            <Switch id={autoSyncId} checked={autoSync} onCheckedChange={setAutoSync} />
+            <p className="text-2xs text-muted-foreground">{t('inferenceServers.autoSyncHint')}</p>
           </div>
         </div>
       </div>

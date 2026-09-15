@@ -15,6 +15,8 @@ export interface InferenceServer extends PocketBaseRecord {
   url: string;
   enabled: boolean;
   priority: number;
+  /** Receive models already present on other servers when this one joins or comes back. */
+  autoSync: boolean;
   lastHealth: InferenceServerHealth;
   /** PB-hidden field: only admin reads return it. */
   authToken?: string;

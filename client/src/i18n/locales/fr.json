@@ -402,9 +402,33 @@
     "authTokenEditHint": "Laissez vide pour conserver le token actuel. Saisissez une nouvelle valeur pour le faire tourner ; soumettez vide pour le supprimer.",
     "addDialog": {
       "title": "Ajouter un serveur d'inférence",
-      "description": "Pointez Sirene vers un serveur d'inférence. Si vous n'en avez pas encore, lancez la commande ci-dessous sur une machine Linux — elle affiche l'URL et le token d'auth à la fin.",
-      "installLabel": "Installation rapide",
-      "installHint": "Tourne sur Ubuntu/Debian. Détecte le GPU NVIDIA automatiquement. Affiche l'URL et le token d'auth à la fin."
+      "description": "Choisissez où le serveur va tourner. Copiez ce qui s'affiche dessous : le serveur s'enregistre ici tout seul au démarrage, rien à recopier.",
+      "platform": "Où tourne-t-il ?",
+      "platforms": {
+        "linux": "Linux",
+        "docker": "Docker",
+        "compose": "Docker Compose",
+        "railway": "Railway",
+        "runpod": "RunPod"
+      },
+      "device": "Matériel",
+      "devices": {
+        "cpu": "CPU",
+        "cuda": "GPU NVIDIA"
+      },
+      "hints": {
+        "linux": "À lancer sur Ubuntu ou Debian en root ou avec sudo. Le script installe Docker et le toolkit NVIDIA si besoin, démarre le serveur et affiche le résultat de l'enregistrement.",
+        "docker": "Remplacez <this-machine> par l'adresse que Sirene peut joindre. Docker Desktop sur macOS ou Windows fonctionne aussi, en CPU seulement.",
+        "compose": "Enregistrez sous docker-compose.yml, remplacez <this-machine> par l'adresse que Sirene peut joindre, puis lancez docker compose up -d.",
+        "railway": "Cliquez sur Déployer sur Railway et collez ces deux valeurs quand Railway les demande. Image, volume, port et jeton d'auth sont préconfigurés dans le template.",
+        "runpod": "Créez un pod GPU avec {{image}}, exposez le port HTTP 8000, renseignez ces variables et attachez un volume réseau sur /app/data. RunPod fournit l'URL publique."
+      },
+      "tokenHint": "Le jeton d'enregistrement est valable une heure et ne permet que d'ajouter un serveur. Le serveur garde pour lui le jeton d'auth généré.",
+      "tokenLoading": "Préparation d'un jeton d'enregistrement...",
+      "tokenFailed": "Impossible de créer un jeton d'enregistrement",
+      "manualLabel": "Ajouter manuellement",
+      "manualHint": "Pour un serveur déjà en marche : collez son URL et le jeton avec lequel il a été lancé.",
+      "deployOnRailway": "Déployer sur Railway"
     }
   },
   "cliAuth": {
@@ -574,6 +598,9 @@
     "generation.notFound": "Génération introuvable",
     "session.notFound": "Session introuvable",
     "inferenceServer.notFound": "Serveur d'inférence introuvable",
+    "inferenceServer.invalidRegistrationToken": "Jeton d'enregistrement invalide ou expiré",
+    "inferenceServer.invalidUrl": "L'URL du serveur d'inférence doit être une URL http(s) absolue",
+    "inferenceServer.nameTaken": "Trop de serveurs d'inférence portent ce nom",
     "settings.invalidKey": "Clé de paramètre invalide",
     "openai.keyNotConfigured": "Clé API OpenAI non configurée. Allez dans Paramètres pour l'ajouter.",
     "elevenlabs.keyNotConfigured": "Clé API ElevenLabs non configurée. Allez dans Paramètres pour l'ajouter.",

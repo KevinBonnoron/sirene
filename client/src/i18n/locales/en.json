@@ -469,9 +469,33 @@
     "authTokenEditHint": "Leave blank to keep the current token. Type a new value to rotate it; submit empty to clear.",
     "addDialog": {
       "title": "Add an inference server",
-      "description": "Point Sirene at an inference server. If you don't have one yet, run the install command below on a Linux machine - it prints a URL and auth token at the end.",
-      "installLabel": "Quick install",
-      "installHint": "Runs on Ubuntu/Debian. Detects NVIDIA GPU automatically. Prints the URL and auth token at the end."
+      "description": "Pick where the server will run. Copy what appears below: the server registers itself here when it starts, nothing to paste back.",
+      "platform": "Where does it run?",
+      "platforms": {
+        "linux": "Linux",
+        "docker": "Docker",
+        "compose": "Docker Compose",
+        "railway": "Railway",
+        "runpod": "RunPod"
+      },
+      "device": "Hardware",
+      "devices": {
+        "cpu": "CPU",
+        "cuda": "NVIDIA GPU"
+      },
+      "hints": {
+        "linux": "Run on Ubuntu or Debian as root or with sudo. The script installs Docker and the NVIDIA toolkit if needed, starts the server and reports the registration.",
+        "docker": "Replace <this-machine> with the address Sirene can reach. Docker Desktop on macOS or Windows works too, CPU only.",
+        "compose": "Save as docker-compose.yml, replace <this-machine> with the address Sirene can reach, then run docker compose up -d.",
+        "railway": "Click Deploy on Railway and paste these two values when Railway asks for them. Image, volume, port and auth token are preconfigured in the template.",
+        "runpod": "Create a GPU pod with {{image}}, expose HTTP port 8000, set these variables and attach a network volume at /app/data. RunPod provides the public URL."
+      },
+      "tokenHint": "The registration token is valid for one hour and only allows adding a server. The worker keeps the generated auth token for itself.",
+      "tokenLoading": "Preparing a registration token...",
+      "tokenFailed": "Could not create a registration token",
+      "manualLabel": "Add manually",
+      "manualHint": "For a worker that is already running: paste its URL and the token it was started with.",
+      "deployOnRailway": "Deploy on Railway"
     }
   },
   "deleteGeneration": {
@@ -574,6 +598,9 @@
     "generation.notFound": "Generation not found",
     "session.notFound": "Session not found",
     "inferenceServer.notFound": "Inference server not found",
+    "inferenceServer.invalidRegistrationToken": "Invalid or expired registration token",
+    "inferenceServer.invalidUrl": "The inference server URL must be an absolute http(s) URL",
+    "inferenceServer.nameTaken": "Too many inference servers share this name",
     "settings.invalidKey": "Invalid setting key",
     "openai.keyNotConfigured": "OpenAI API key not configured. Go to Settings to add it.",
     "elevenlabs.keyNotConfigured": "ElevenLabs API key not configured. Go to Settings to add it.",

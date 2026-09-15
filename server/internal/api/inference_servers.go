@@ -1,9 +1,13 @@
 package api
 
 import (
+	"context"
 	"math"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/router"
@@ -31,10 +35,11 @@ func (b *inferenceServerBody) validate(partial bool) error {
 		return apierr.Validation("name: required")
 	}
 	if b.URL != nil {
-		*b.URL = strings.TrimSpace(*b.URL)
-		if err := checkString("url", *b.URL, 1, 2048); err != nil {
+		normalized, err := normalizeServerURL(*b.URL)
+		if err != nil {
 			return err
 		}
+		*b.URL = normalized
 	} else if !partial {
 		return apierr.Validation("url: required")
 	}
@@ -127,6 +132,11 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		return e.NoContent(http.StatusNoContent)
 	})
 
+	w.POST("/registration-tokens", func(e *core.RequestEvent) error {
+		token, expiresAt := d.Registry.Issue()
+		return e.JSON(http.StatusCreated, map[string]any{"token": token, "expiresAt": expiresAt.UTC().Format(time.RFC3339)})
+	})
+
 	w.POST("/{id}/test", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
 		if err != nil {
@@ -138,4 +148,82 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		}
 		return e.JSON(http.StatusOK, rec)
 	})
+}
+
+type registerServerBody struct {
+	Name      string  `json:"name"`
+	URL       string  `json:"url"`
+	AuthToken *string `json:"authToken"`
+}
+
+func registerInferenceServersPublic(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
+	g.POST("/inference-servers/register", func(e *core.RequestEvent) error {
+		token, ok := auth.Bearer(e)
+		if !ok || !strings.HasPrefix(token, infsrv.RegistrationTokenPrefix) || !d.Registry.Valid(token) {
+			return apierr.Unauthorized(apierr.CodeInferenceServerInvalidRegistrationToken, "Invalid or expired registration token")
+		}
+		var body registerServerBody
+		if err := bindJSON(e, &body); err != nil {
+			return err
+		}
+		body.Name = strings.TrimSpace(body.Name)
+		if err := checkString("name", body.Name, 1, 100); err != nil {
+			return err
+		}
+		normalized, err := normalizeServerURL(body.URL)
+		if err != nil {
+			return err
+		}
+		body.URL = normalized
+		if body.AuthToken != nil && len(*body.AuthToken) > 200 {
+			return apierr.Validation("authToken: too long")
+		}
+		rec, created, err := d.Servers.Upsert(infsrv.WriteInput{Name: body.Name, URL: body.URL, AuthToken: body.AuthToken})
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if checked, err := d.Servers.CheckOne(ctx, rec.Id); err == nil {
+			rec = checked
+		}
+		status := http.StatusOK
+		if created {
+			status = http.StatusCreated
+		}
+		return e.JSON(status, map[string]any{
+			"id":         rec.Id,
+			"name":       rec.GetString("name"),
+			"url":        rec.GetString("url"),
+			"created":    created,
+			"lastHealth": rec.Get("lastHealth"),
+		})
+	})
+}
+
+// Hosting dashboards hand out bare domains.
+func normalizeServerURL(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if err := checkString("url", raw, 1, 2048); err != nil {
+		return "", err
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", apierr.BadRequest(apierr.CodeInferenceServerInvalidURL, "url must be an absolute http(s) URL")
+	}
+	if isForbiddenHost(u.Hostname()) {
+		return "", apierr.BadRequest(apierr.CodeInferenceServerInvalidURL, "url must not point at a link-local or cloud metadata address")
+	}
+	return strings.TrimSuffix(u.String(), "/"), nil
+}
+
+func isForbiddenHost(host string) bool {
+	if strings.EqualFold(host, "metadata.google.internal") || strings.EqualFold(host, "metadata") {
+		return true
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && (ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast())
 }

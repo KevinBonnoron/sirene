@@ -39,10 +39,13 @@ type Target struct {
 	AuthToken string
 }
 
-var httpClient = &http.Client{Transport: &http.Transport{
-	MaxIdleConnsPerHost: 8,
-	IdleConnTimeout:     90 * time.Second,
-}}
+var httpClient = &http.Client{
+	Transport: &http.Transport{
+		MaxIdleConnsPerHost: 8,
+		IdleConnTimeout:     90 * time.Second,
+	},
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
 
 func (t Target) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(t.URL, "/")+path, body)
@@ -109,6 +112,29 @@ func Health(ctx context.Context, t Target) error {
 	io.Copy(io.Discard, res.Body)
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("health check failed (HTTP %d)", res.StatusCode)
+	}
+	return t.checkAuth(ctx)
+}
+
+// /health is open, so a wrong token only shows on an authenticated route.
+func (t Target) checkAuth(ctx context.Context) error {
+	req, err := t.newRequest(ctx, http.MethodGet, "/models", nil)
+	if err != nil {
+		return err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	io.Copy(io.Discard, res.Body)
+	switch {
+	case res.StatusCode == http.StatusUnauthorized && t.AuthToken == "":
+		return errors.New("auth token required: this server was started with INFERENCE_AUTH_TOKEN")
+	case res.StatusCode == http.StatusUnauthorized:
+		return errors.New("auth token rejected: check it matches INFERENCE_AUTH_TOKEN on the server")
+	case res.StatusCode < 200 || res.StatusCode >= 300:
+		return fmt.Errorf("auth check failed (HTTP %d)", res.StatusCode)
 	}
 	return nil
 }

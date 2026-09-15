@@ -26,6 +26,9 @@ export type ErrorCode =
   | 'generation.notFound'
   // Inference server
   | 'inferenceServer.notFound'
+  | 'inferenceServer.invalidRegistrationToken'
+  | 'inferenceServer.invalidUrl'
+  | 'inferenceServer.nameTaken'
   // Model
   | 'model.alreadyInstalled'
   | 'model.configInvalidJson'

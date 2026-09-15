@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import io
 import json
 import logging
@@ -6,11 +7,13 @@ import shutil
 import zipfile
 from pathlib import Path
 
+import httpx
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
-from ..backends.deps import install_backend_deps, is_installed
+from ..backends.deps import install_backend_deps, is_installed, summarize_pip_error
 from ..config import settings
 from ..schemas import ModelPullRequest, ModelUnloadRequest
 from ..services.downloader import download_model_files
@@ -96,6 +99,23 @@ async def list_models():
     return {"installed": installed, "custom": custom}
 
 
+def describe_pull_error(exc: BaseException) -> str:
+    if isinstance(exc, OSError) and exc.errno == errno.ENOSPC:
+        return "No space left on the inference server's disk."
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code in (401, 403):
+            return "Hugging Face refused the download: gated model, check the HF token."
+        if code == 404:
+            return "A model file was not found on Hugging Face."
+        return f"Hugging Face returned HTTP {code} while downloading."
+    if isinstance(exc, httpx.TransportError):
+        return "The inference server could not reach Hugging Face."
+    if isinstance(exc, RuntimeError) and str(exc):
+        return "Dependency install failed: " + summarize_pip_error(str(exc))
+    return "Model pull failed. See inference server logs for details."
+
+
 @router.post("/pull")
 async def pull_model(req: ModelPullRequest):
     model_path = Path(settings.models_path) / req.model_id
@@ -105,22 +125,21 @@ async def pull_model(req: ModelPullRequest):
         failed = asyncio.Event()
 
         async def produce(gen):
+            reported = False
             try:
                 async for event in gen:
                     if failed.is_set():
                         return
+                    if event.get("status") == "error":
+                        reported = True
                     await queue.put(event)
-            except Exception:  # noqa: BLE001 - full traceback goes to logs; client gets a generic message
+            except Exception as exc:  # noqa: BLE001 - full traceback goes to logs; client gets a short reason
                 logger.exception(
                     "Model pull producer failed for model_id=%s", req.model_id
                 )
                 failed.set()
-                await queue.put(
-                    {
-                        "status": "error",
-                        "message": "Model pull failed. See inference server logs for details.",
-                    }
-                )
+                if not reported:
+                    await queue.put({"status": "error", "message": describe_pull_error(exc)})
 
         tasks = [
             asyncio.create_task(

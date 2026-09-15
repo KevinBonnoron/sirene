@@ -1,33 +1,29 @@
-import type { Model } from '@sirene/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CatalogModel, Model } from '@sirene/shared';
+import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { modelClient } from '@/clients/model.client';
 import { config } from '@/lib/config';
 import { useJobs } from './use-jobs';
 
-// Singleton SSE connection shared across all useModels() consumers. The endpoint
-// only emits opaque change pings (auth-free); listeners refetch the protected
-// /installed endpoint, which is where the authorization boundary actually lives.
+const EMPTY_CATALOG: CatalogModel[] = [];
+const EMPTY_INSTALLED: Model[] = [];
+
+const INSTALLED_KEY = ['models', 'installed'] as const;
+const CATALOG_KEY = ['models', 'catalog'] as const;
+
 let sharedEs: EventSource | null = null;
 let refCount = 0;
-const changeListeners = new Set<() => void>();
 
-function acquireModelEvents(listener: () => void) {
-  changeListeners.add(listener);
+function acquireModelEvents(queryClient: QueryClient) {
   refCount++;
-
   if (!sharedEs) {
     sharedEs = new EventSource(`${config.server.url}/models/events`);
     sharedEs.addEventListener('change', () => {
-      for (const cb of changeListeners) {
-        cb();
-      }
+      queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
     });
   }
-
   return () => {
-    changeListeners.delete(listener);
     refCount--;
     if (refCount === 0 && sharedEs) {
       sharedEs.close();
@@ -41,30 +37,26 @@ export function useModels() {
   const { jobs } = useJobs();
 
   const catalogQuery = useQuery({
-    queryKey: ['models', 'catalog'],
+    queryKey: CATALOG_KEY,
     queryFn: () => modelClient.catalog(),
-    initialData: [],
+    placeholderData: EMPTY_CATALOG,
+    staleTime: 5 * 60 * 1000,
   });
 
   const installedQuery = useQuery({
-    queryKey: ['models', 'installed'],
+    queryKey: INSTALLED_KEY,
     queryFn: () => modelClient.installed(),
-    initialData: [],
+    placeholderData: EMPTY_INSTALLED,
+    staleTime: 10 * 1000,
   });
 
-  // Subscribe to filesystem change events via shared SSE. The event is just a "go
-  // refetch" trigger — the actual data still goes through the auth-protected
-  // /installed endpoint via React Query.
-  useEffect(() => {
-    return acquireModelEvents(() => {
-      queryClient.invalidateQueries({ queryKey: ['models', 'installed'] });
-    });
-  }, [queryClient]);
+  useEffect(() => acquireModelEvents(queryClient), [queryClient]);
 
   // Merge running pull jobs over the installed set so the UI shows live progress.
   // Job targets are encoded as `modelId::serverId`; aggregate per modelId so a model that
   // is pulling on multiple servers shows a single averaged progress.
-  const installationsByName = new Map<string, Model>(installedQuery.data.map((i) => [i.id, i]));
+  const installed = installedQuery.data ?? EMPTY_INSTALLED;
+  const installationsByName = new Map<string, Model>(installed.map((i) => [i.id, i]));
   const runningByModel = new Map<string, number[]>();
   const failedByModel = new Map<string, string>();
   for (const job of jobs) {
@@ -96,43 +88,30 @@ export function useModels() {
   }
 
   return {
-    catalog: catalogQuery.data,
-    installations: installedQuery.data,
+    catalog: catalogQuery.data ?? EMPTY_CATALOG,
+    installations: installed,
     installationsByName,
     isLoading: catalogQuery.isLoading,
   };
 }
 
 export function usePullModel() {
-  const queryClient = useQueryClient();
   const { jobs } = useJobs();
 
-  // Refresh the installed list when a pull job actually transitions running → terminal.
-  // We compare against the previous status instead of "have I seen this id before" so
-  // jobs that are already terminal on first render (page refresh, HMR) don't replay
-  // their toasts and don't trigger redundant invalidations.
   const previousStatusById = useRef(new Map<string, string>());
   useEffect(() => {
-    let didChange = false;
     const next = new Map<string, string>();
     for (const job of jobs) {
       if (job.type !== 'model_pull') {
         continue;
       }
       next.set(job.id, job.status);
-      const previousStatus = previousStatusById.current.get(job.id);
-      if (previousStatus === 'running' && job.status !== 'running') {
-        didChange = true;
-        if (job.status === 'failed' && job.error) {
-          toast.error(job.error);
-        }
+      if (previousStatusById.current.get(job.id) === 'running' && job.status === 'failed' && job.error) {
+        toast.error(job.error);
       }
     }
     previousStatusById.current = next;
-    if (didChange) {
-      queryClient.invalidateQueries({ queryKey: ['models', 'installed'] });
-    }
-  }, [jobs, queryClient]);
+  }, [jobs]);
 
   const pullModel = useCallback(
     async (modelId: string, serverIds?: string[]) => {

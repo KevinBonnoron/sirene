@@ -240,6 +240,9 @@ async def generate_stream(req: GenerateRequest):
             raise HTTPException(status_code=500, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Failed to load backend: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     if backend.needs_reference_audio(params):
         raise HTTPException(status_code=412, detail="Reference audio cache miss")

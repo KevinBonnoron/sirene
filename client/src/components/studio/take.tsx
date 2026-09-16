@@ -136,7 +136,10 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   }, []);
 
   const handleRegenerateClick = useCallback(() => {
-    onRegenerate?.(localTuning);
+    // Same seed would reproduce the same take; a new draw is what "regenerate" means.
+    const next = { ...localTuning, variationSeed: Math.round(Math.random() * 100) / 100 };
+    setLocalTuning(next);
+    onRegenerate?.(next);
   }, [onRegenerate, localTuning]);
 
   const totalDuration = take.duration ?? 0;

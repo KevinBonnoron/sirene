@@ -1,8 +1,10 @@
-import { Box, Check, ChevronDown, Cloud, Copy, Cpu, ExternalLink, Layers, Loader2, type LucideIcon, Terminal, TrainFront, Zap } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { useLiveQuery } from '@tanstack/react-db';
+import { Box, Check, Cloud, Copy, Cpu, ExternalLink, Layers, Loader2, type LucideIcon, Pencil, Terminal, TrainFront, Zap } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { inferenceServerClient } from '@/clients/inference-server.client';
+import { inferenceServerCollection } from '@/collections';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,12 +24,12 @@ const INSTALL_URL = `https://raw.githubusercontent.com/KevinBonnoron/sirene/${IN
 const IMAGE = 'ghcr.io/kevinbonnoron/sirene-inference';
 const RAILWAY_TEMPLATE_URL = 'https://railway.com/deploy/sirene-inference?utm_medium=integration&utm_source=button&utm_campaign=sirene';
 
-const PLATFORMS = ['linux', 'docker', 'compose', 'railway', 'runpod'] as const;
+const PLATFORMS = ['linux', 'docker', 'compose', 'railway', 'runpod', 'manual'] as const;
 type Platform = (typeof PLATFORMS)[number];
 const DEVICES = ['cpu', 'cuda'] as const;
 type Device = (typeof DEVICES)[number];
 
-const PLATFORM_ICONS: Record<Platform, LucideIcon> = { linux: Terminal, docker: Box, compose: Layers, railway: TrainFront, runpod: Cloud };
+const PLATFORM_ICONS: Record<Platform, LucideIcon> = { linux: Terminal, docker: Box, compose: Layers, railway: TrainFront, runpod: Cloud, manual: Pencil };
 const DEVICE_ICONS: Record<Device, LucideIcon> = { cpu: Cpu, cuda: Zap };
 const FIXED_DEVICE: Partial<Record<Platform, Device>> = { railway: 'cpu', runpod: 'cuda' };
 
@@ -42,7 +44,7 @@ interface Snippet {
   multiline: boolean;
 }
 
-function buildSnippet(platform: Platform, device: Device, sireneUrl: string, registrationToken: string, workerToken: string): Snippet {
+function buildSnippet(platform: Exclude<Platform, 'manual'>, device: Device, sireneUrl: string, registrationToken: string, workerToken: string): Snippet {
   const image = `${IMAGE}:${device === 'cuda' ? 'cuda' : 'latest'}`;
   switch (platform) {
     case 'linux':
@@ -151,22 +153,35 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
   const [workerToken, setWorkerToken] = useState(randomToken);
   const [platform, setPlatform] = useState<Platform>('linux');
   const [device, setDevice] = useState<Device>('cpu');
-  const [manualOpen, setManualOpen] = useState(false);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [priority, setPriority] = useState('0');
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { data: servers, isReady } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }));
+  // Only a server registered with a token issued by this dialog closes it; another admin's may arrive meanwhile.
+  const issued = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!open || !isReady || !servers || platform === 'manual') {
+      return;
+    }
+    const arrived = servers.find((s) => !!s.registration && issued.current.has(s.registration));
+    if (arrived) {
+      toast.success(t('inferenceServers.addDialog.registered', { name: arrived.name }));
+      onOpenChange(false);
+    }
+  }, [open, isReady, servers, platform, onOpenChange, t]);
 
   useEffect(() => {
     if (!open) {
       setWorkerToken(randomToken());
+      issued.current.clear();
       setRegistrationToken(null);
       setTokenError(false);
       setPlatform('linux');
       setDevice('cpu');
-      setManualOpen(false);
       setName('');
       setUrl('');
       setAuthToken('');
@@ -184,6 +199,7 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
             return;
           }
           setRegistrationToken(res.token);
+          issued.current.add(res.registration);
           setTokenError(false);
           const ttl = new Date(res.expiresAt).getTime() - Date.now() - 60_000;
           timer = setTimeout(issue, Math.max(ttl, 5_000));
@@ -203,7 +219,7 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
   }, [open]);
 
   const effectiveDevice = FIXED_DEVICE[platform] ?? device;
-  const snippet = registrationToken ? buildSnippet(platform, effectiveDevice, window.location.origin, registrationToken, workerToken) : null;
+  const snippet = registrationToken && platform !== 'manual' ? buildSnippet(platform, effectiveDevice, window.location.origin, registrationToken, workerToken) : null;
 
   async function handleSubmit() {
     if (saving || !name.trim() || !url.trim()) {
@@ -236,10 +252,12 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
 
         <div className="space-y-5">
           <ChoiceRow label={t('inferenceServers.addDialog.platform')} options={PLATFORMS} value={platform} icons={PLATFORM_ICONS} onChange={setPlatform} t={(k) => t(`inferenceServers.addDialog.platforms.${k}`)} />
-          {!FIXED_DEVICE[platform] && <ChoiceRow label={t('inferenceServers.addDialog.device')} options={DEVICES} value={device} icons={DEVICE_ICONS} onChange={setDevice} t={(k) => t(`inferenceServers.addDialog.devices.${k}`)} />}
+          {platform !== 'manual' && !FIXED_DEVICE[platform] && <ChoiceRow label={t('inferenceServers.addDialog.device')} options={DEVICES} value={device} icons={DEVICE_ICONS} onChange={setDevice} t={(k) => t(`inferenceServers.addDialog.devices.${k}`)} />}
         </div>
 
-        {tokenError ? (
+        {platform === 'manual' ? (
+          <p className="text-xs text-muted-foreground">{t('inferenceServers.addDialog.manualHint')}</p>
+        ) : tokenError ? (
           <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {t('inferenceServers.addDialog.tokenFailed')}
           </p>
@@ -261,17 +279,20 @@ export function AddServerDialog({ open, onOpenChange }: Props) {
             <SnippetBlock snippet={snippet} hint={t(`inferenceServers.addDialog.hints.${platform}`, { image: `${IMAGE}:${effectiveDevice === 'cuda' ? 'cuda' : 'latest'}` })} />
           </>
         )}
-        <p className="text-xs text-muted-foreground">{t('inferenceServers.addDialog.tokenHint')}</p>
+        {platform !== 'manual' && <p className="text-xs text-muted-foreground">{t('inferenceServers.addDialog.tokenHint')}</p>}
+        {platform !== 'manual' && (
+          <DialogFooter className="items-center sm:justify-between">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" />
+              {t('inferenceServers.addDialog.waiting')}
+            </p>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        )}
 
-        <div>
-          <button type="button" className="flex w-full items-center gap-1.5 text-left text-sm font-medium" aria-expanded={manualOpen} onClick={() => setManualOpen((v) => !v)}>
-            <ChevronDown className={cn('size-4 transition-transform', !manualOpen && '-rotate-90')} />
-            {t('inferenceServers.addDialog.manualLabel')}
-          </button>
-          <p className="mt-1 pl-5.5 text-2xs text-muted-foreground">{t('inferenceServers.addDialog.manualHint')}</p>
-        </div>
-
-        {manualOpen && (
+        {platform === 'manual' && (
           <form
             onSubmit={(e) => {
               e.preventDefault();

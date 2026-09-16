@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pocketbase/pocketbase/apis"
@@ -149,7 +151,7 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 
 	w.POST("/registration-tokens", func(e *core.RequestEvent) error {
 		token, expiresAt := d.Registry.Issue()
-		return e.JSON(http.StatusCreated, map[string]any{"token": token, "expiresAt": expiresAt.UTC().Format(time.RFC3339)})
+		return e.JSON(http.StatusCreated, map[string]any{"token": token, "registration": infsrv.Identity(token), "expiresAt": expiresAt.UTC().Format(time.RFC3339)})
 	})
 
 	s.GET("/{id}/stats", func(e *core.RequestEvent) error {
@@ -204,6 +206,61 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		return e.Blob(http.StatusOK, "application/json", body)
 	}).Bind(auth.RequireScope("inference-servers:read"))
 
+	// One stream for the list page: every enabled worker's events, each tagged with its server id.
+	s.GET("/events", func(e *core.RequestEvent) error {
+		servers, err := d.Servers.ListEnabled()
+		if err != nil {
+			return err
+		}
+		w := sse.Begin(e)
+		ctx := e.Request.Context()
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		for _, rec := range servers {
+			wg.Add(1)
+			go func(rec *core.Record) {
+				defer wg.Done()
+				emit := func(name, data string) error {
+					payload, err := json.Marshal(struct {
+						Server string          `json:"server"`
+						Data   json.RawMessage `json:"data"`
+					}{rec.Id, json.RawMessage(data)})
+					if err != nil {
+						return err
+					}
+					mu.Lock()
+					defer mu.Unlock()
+					return w.Event(name, string(payload))
+				}
+				// A worker that drops out is retried with backoff for as long as the aggregate stream lives.
+				backoff := time.Second
+				for ctx.Err() == nil {
+					err := inference.NewClient(infsrv.TargetOf(rec), nil).Events(ctx, emit)
+					if errors.Is(err, inference.ErrStatsUnsupported) {
+						_ = emit("unsupported", "{}")
+						return
+					}
+					if ctx.Err() != nil {
+						return
+					}
+					if err == nil {
+						backoff = time.Second
+					} else {
+						_ = emit("error", "{}")
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(backoff):
+					}
+					backoff = min(backoff*2, 30*time.Second)
+				}
+			}(rec)
+		}
+		wg.Wait()
+		return nil
+	}).Bind(auth.RequireScope("inference-servers:read"), apis.SkipSuccessActivityLog())
+
 	s.GET("/{id}/events", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
 		if err != nil {
@@ -220,61 +277,6 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		}
 		return nil
 	}).Bind(auth.RequireScope("inference-servers:read"), apis.SkipSuccessActivityLog())
-
-	s.GET("/{id}/generations", func(e *core.RequestEvent) error {
-		id, err := pathParam(e, "id")
-		if err != nil {
-			return err
-		}
-		if _, err := d.Servers.Get(id); err != nil {
-			return err
-		}
-		limit := 50
-		if v, err := strconv.Atoi(e.Request.URL.Query().Get("limit")); err == nil && v > 0 && v <= 200 {
-			limit = v
-		}
-		records, err := e.App.FindRecordsByFilter("generations", "server = {:id}", "-created", limit, 0, map[string]any{"id": id})
-		if err != nil {
-			return err
-		}
-		names := map[string]string{}
-		lookup := func(collection, recID string) string {
-			if recID == "" {
-				return ""
-			}
-			key := collection + ":" + recID
-			if v, ok := names[key]; ok {
-				return v
-			}
-			label := ""
-			if r, err := e.App.FindRecordById(collection, recID); err == nil {
-				label = r.GetString("name")
-				if label == "" {
-					label = r.GetString("email")
-				}
-			}
-			names[key] = label
-			return label
-		}
-		out := make([]map[string]any, 0, len(records))
-		for _, g := range records {
-			text := g.GetString("text")
-			if len(text) > 240 {
-				text = text[:240] + "…"
-			}
-			out = append(out, map[string]any{
-				"id":       g.Id,
-				"created":  g.GetDateTime("created").Time().UTC().Format(time.RFC3339),
-				"text":     text,
-				"duration": g.GetFloat("duration"),
-				"model":    g.GetString("model"),
-				"state":    g.GetString("state"),
-				"user":     map[string]string{"id": g.GetString("user"), "name": lookup("users", g.GetString("user"))},
-				"voice":    map[string]string{"id": g.GetString("voice"), "name": lookup("voices", g.GetString("voice"))},
-			})
-		}
-		return e.JSON(http.StatusOK, out)
-	}).Bind(auth.RequireScope("inference-servers:read"))
 
 	w.POST("/{id}/test", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
@@ -317,7 +319,7 @@ func registerInferenceServersPublic(g *router.RouterGroup[*core.RequestEvent], d
 		if body.AuthToken != nil && len(*body.AuthToken) > 200 {
 			return apierr.Validation("authToken: too long")
 		}
-		rec, created, err := d.Servers.Upsert(infsrv.WriteInput{Name: body.Name, URL: body.URL, AuthToken: body.AuthToken})
+		rec, created, err := d.Servers.Upsert(infsrv.WriteInput{Name: body.Name, URL: body.URL, AuthToken: body.AuthToken, Registration: infsrv.Identity(token)})
 		if err != nil {
 			return err
 		}

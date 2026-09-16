@@ -1,16 +1,17 @@
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { generationCollection } from '@/collections';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useGenerationCollection } from '@/hooks/use-generation-collection';
 
 export function DeleteGenerationButton({ generationId }: { generationId: string }) {
   const { t } = useTranslation();
+  const generations = useGenerationCollection();
   const [open, setOpen] = useState(false);
 
   async function handleDelete() {
-    generationCollection.delete(generationId);
+    generations.delete(generationId);
     setOpen(false);
   }
 

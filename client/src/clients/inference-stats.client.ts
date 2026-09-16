@@ -43,21 +43,9 @@ export interface WorkerLogLine {
   message: string;
 }
 
-export interface ServerGeneration {
-  id: string;
-  created: string;
-  text: string;
-  duration: number;
-  model: string;
-  state: string;
-  user: { id: string; name: string };
-  voice: { id: string; name: string };
-}
-
 export const inferenceDetailClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
     logs: (serverId: string, limit = 200, level = '') => delegate.get<{ lines: WorkerLogLine[]; capacity: number }>(`/inference-servers/${encodeURIComponent(serverId)}/logs?limit=${limit}&level=${encodeURIComponent(level)}`),
-    generations: (serverId: string, limit = 50) => delegate.get<ServerGeneration[]>(`/inference-servers/${encodeURIComponent(serverId)}/generations?limit=${limit}`),
   })),
 );

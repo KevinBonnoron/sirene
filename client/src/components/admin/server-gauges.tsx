@@ -1,20 +1,12 @@
 import type { InferenceServer } from '@sirene/shared';
-import { useLiveQuery } from '@tanstack/react-db';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { ChevronRight, Cpu, HardDrive, Loader2, MemoryStick, Zap } from 'lucide-react';
+import { Cpu, HardDrive, Loader2, MemoryStick, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { HttpError } from 'universal-client';
-import { inferenceStatsClient } from '@/clients/inference-stats.client';
-import { inferenceServerCollection } from '@/collections';
-import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useJobs } from '@/hooks/use-jobs';
-import { useIsMobile } from '@/hooks/use-mobile';
+import type { ServerEventsFeed } from '@/hooks/use-server-events';
 import { cn } from '@/lib/utils';
 import { formatFileSize } from '@/utils/format';
-
-const REFRESH_MS = 5000;
 
 function percentage(used: number, total: number): number {
   return total > 0 ? (used / total) * 100 : 0;
@@ -37,35 +29,37 @@ function Gauge({ icon: Icon, label, value, detail }: { icon: typeof Cpu; label: 
   );
 }
 
-export function ServerGauges({ server }: { server: InferenceServer }) {
+export function GaugesSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-3.5 w-8" />
+          </div>
+          <Skeleton className="h-1.5 w-full" />
+          <Skeleton className="h-2.5 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ServerGauges({ server, feed }: { server: InferenceServer; feed: ServerEventsFeed }) {
   const { t } = useTranslation();
   const { jobs } = useJobs();
-  const online = server.lastHealth.status !== 'offline';
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['inference-stats', server.id],
-    queryFn: () => inferenceStatsClient.get(server.id),
-    enabled: online,
-    refetchInterval: REFRESH_MS,
-    retry: false,
-  });
+  const { snapshot: data, status } = feed;
   const running = jobs.filter((j) => j.status === 'running' && j.target?.endsWith(`::${server.id}`));
 
-  if (!online) {
-    return <p className="text-sm text-muted-foreground">{t('inferenceServers.statusOffline')}</p>;
-  }
-  if (isLoading) {
-    return (
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin" />
-        {t('dashboard.loading')}
-      </p>
-    );
-  }
-  if (error instanceof HttpError && (error.body as { code?: string } | null)?.code === 'inferenceServer.statsUnsupported') {
+  if (status === 'unsupported') {
     return <p className="text-sm text-muted-foreground">{t('dashboard.unavailable')}</p>;
   }
-  if (error || !data) {
+  if (status === 'error' && !data) {
     return <p className="text-sm text-accent-rust">{t('dashboard.error')}</p>;
+  }
+  if (!data) {
+    return <GaugesSkeleton />;
   }
   return (
     <div className="space-y-4">
@@ -108,60 +102,25 @@ export function ServerGauges({ server }: { server: InferenceServer }) {
 
 export function ServerHeading({ server, device }: { server: InferenceServer; device?: string }) {
   const { t } = useTranslation();
-  const online = server.lastHealth.status !== 'offline';
+  const online = server.lastHealth.status === 'online';
   const dev = device ?? server.lastHealth.device;
+  const gpu = !!dev && dev !== 'cpu';
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <span className={cn('size-2 rounded-full', online ? 'bg-accent-sage' : 'bg-destructive')} aria-hidden />
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn('size-2 shrink-0 rounded-full', online ? 'bg-accent-sage' : server.lastHealth.status === 'offline' ? 'bg-destructive' : 'bg-muted-foreground/40')} aria-hidden />
         <h3 className="font-serif text-base tracking-tight">{server.name}</h3>
-        {dev && <span className={cn('rounded px-1 py-px text-2xs font-medium', dev === 'cpu' ? 'bg-accent-sage/15 text-accent-sage' : 'bg-primary/15 text-primary')}>{dev === 'cpu' ? t('inferenceServers.deviceCpu') : t('inferenceServers.deviceGpu', { device: dev })}</span>}
-      </div>
-      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{server.url}</p>
-    </div>
-  );
-}
-
-function ServerCard({ server }: { server: InferenceServer }) {
-  const { t } = useTranslation();
-  return (
-    <Link to="/admin/dashboard/$serverId" params={{ serverId: server.id }} className="group block rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/60" aria-label={t('dashboard.openDetails', { name: server.name })}>
-      <div className="flex items-start justify-between gap-2">
-        <ServerHeading server={server} />
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-      </div>
-      <div className="mt-4">
-        <ServerGauges server={server} />
-      </div>
-    </Link>
-  );
-}
-
-export function DashboardPage() {
-  const { t } = useTranslation();
-  const isMobile = useIsMobile();
-  const { data: serversData } = useLiveQuery((q) =>
-    q
-      .from({ s: inferenceServerCollection })
-      .where(({ s }) => s.enabled)
-      .orderBy(({ s }) => s.priority, 'desc'),
-  );
-  const servers = serversData ?? [];
-
-  return (
-    <div className="flex h-full flex-col">
-      <SectionTopbar label={t('nav.dashboard')} subtitle={t('dashboard.subtitle')} />
-      <main className={cn('custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6', isMobile && 'pb-24')}>
-        {servers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {servers.map((server) => (
-              <ServerCard key={server.id} server={server} />
-            ))}
-          </div>
+        {!server.enabled && <span className="rounded bg-muted px-1 py-px text-2xs font-medium text-muted-foreground">{t('inferenceServers.disabled')}</span>}
+        {dev && (
+          <span className={cn('inline-flex items-center gap-1 rounded px-1 py-px text-2xs font-medium', gpu ? 'bg-primary/15 text-primary' : 'bg-accent-sage/15 text-accent-sage')}>
+            {gpu ? <Zap className="size-2.5" /> : <Cpu className="size-2.5" />}
+            {gpu ? t('inferenceServers.deviceGpu', { device: dev }) : t('inferenceServers.deviceCpu')}
+          </span>
         )}
-      </main>
+      </div>
+      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={server.url}>
+        {server.url}
+      </p>
     </div>
   );
 }

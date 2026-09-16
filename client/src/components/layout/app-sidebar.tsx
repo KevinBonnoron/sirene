@@ -1,13 +1,14 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, Gauge, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
+import { AudioLines, Box, Clock, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { generationCollection, sessionCollection } from '@/collections';
+import { sessionCollection } from '@/collections';
 import { DeleteSessionAlert } from '@/components/studio/delete-session-alert';
 import { SessionsDialog } from '@/components/studio/sessions-dialog';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useOwnGenerations } from '@/hooks/use-own-generations';
 import { useAuth } from '@/providers/auth-provider';
 import { UserMenu } from './user-menu';
 
@@ -21,7 +22,7 @@ export function AppSidebar() {
   const activeSessionId = (router.location.search as { session?: string } | undefined)?.session ?? null;
 
   const { data: sessions } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
-  const { data: generations } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
+  const { data: generations } = useOwnGenerations();
   const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -37,10 +38,7 @@ export function AppSidebar() {
     { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];
-  const adminItems = [
-    { label: t('nav.dashboard'), href: '/admin/dashboard', icon: Gauge },
-    { label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server },
-  ];
+  const adminItems = [{ label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server }];
 
   return (
     <Sidebar collapsible="icon">

@@ -24,9 +24,8 @@ import { Route as AppHistoryRouteImport } from './routes/_app/history'
 import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
-import { Route as AppAdminInferenceServersRouteImport } from './routes/_app/admin/inference-servers'
-import { Route as AppAdminDashboardIndexRouteImport } from './routes/_app/admin/dashboard.index'
-import { Route as AppAdminDashboardServerIdRouteImport } from './routes/_app/admin/dashboard.$serverId'
+import { Route as AppAdminInferenceServersIndexRouteImport } from './routes/_app/admin/inference-servers.index'
+import { Route as AppAdminInferenceServersServerIdRouteImport } from './routes/_app/admin/inference-servers.$serverId'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -101,21 +100,16 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppAdminRoute,
 } as any)
-const AppAdminInferenceServersRoute =
-  AppAdminInferenceServersRouteImport.update({
-    id: '/inference-servers',
-    path: '/inference-servers',
+const AppAdminInferenceServersIndexRoute =
+  AppAdminInferenceServersIndexRouteImport.update({
+    id: '/inference-servers/',
+    path: '/inference-servers/',
     getParentRoute: () => AppAdminRoute,
   } as any)
-const AppAdminDashboardIndexRoute = AppAdminDashboardIndexRouteImport.update({
-  id: '/dashboard/',
-  path: '/dashboard/',
-  getParentRoute: () => AppAdminRoute,
-} as any)
-const AppAdminDashboardServerIdRoute =
-  AppAdminDashboardServerIdRouteImport.update({
-    id: '/dashboard/$serverId',
-    path: '/dashboard/$serverId',
+const AppAdminInferenceServersServerIdRoute =
+  AppAdminInferenceServersServerIdRouteImport.update({
+    id: '/inference-servers/$serverId',
+    path: '/inference-servers/$serverId',
     getParentRoute: () => AppAdminRoute,
   } as any)
 
@@ -132,10 +126,9 @@ export interface FileRoutesByFullPath {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
-  '/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/admin/': typeof AppAdminIndexRoute
-  '/admin/dashboard/$serverId': typeof AppAdminDashboardServerIdRoute
-  '/admin/dashboard': typeof AppAdminDashboardIndexRoute
+  '/admin/inference-servers/$serverId': typeof AppAdminInferenceServersServerIdRoute
+  '/admin/inference-servers': typeof AppAdminInferenceServersIndexRoute
 }
 export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
@@ -149,10 +142,9 @@ export interface FileRoutesByTo {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
-  '/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/admin': typeof AppAdminIndexRoute
-  '/admin/dashboard/$serverId': typeof AppAdminDashboardServerIdRoute
-  '/admin/dashboard': typeof AppAdminDashboardIndexRoute
+  '/admin/inference-servers/$serverId': typeof AppAdminInferenceServersServerIdRoute
+  '/admin/inference-servers': typeof AppAdminInferenceServersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,10 +162,9 @@ export interface FileRoutesById {
   '/_auth/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/admin/inference-servers': typeof AppAdminInferenceServersRoute
   '/_app/admin/': typeof AppAdminIndexRoute
-  '/_app/admin/dashboard/$serverId': typeof AppAdminDashboardServerIdRoute
-  '/_app/admin/dashboard/': typeof AppAdminDashboardIndexRoute
+  '/_app/admin/inference-servers/$serverId': typeof AppAdminInferenceServersServerIdRoute
+  '/_app/admin/inference-servers/': typeof AppAdminInferenceServersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,10 +181,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
-    | '/admin/inference-servers'
     | '/admin/'
-    | '/admin/dashboard/$serverId'
-    | '/admin/dashboard'
+    | '/admin/inference-servers/$serverId'
+    | '/admin/inference-servers'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/setup'
@@ -207,10 +197,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
-    | '/admin/inference-servers'
     | '/admin'
-    | '/admin/dashboard/$serverId'
-    | '/admin/dashboard'
+    | '/admin/inference-servers/$serverId'
+    | '/admin/inference-servers'
   id:
     | '__root__'
     | '/_app'
@@ -227,10 +216,9 @@ export interface FileRouteTypes {
     | '/_auth/register'
     | '/share/$sessionId'
     | '/_app/'
-    | '/_app/admin/inference-servers'
     | '/_app/admin/'
-    | '/_app/admin/dashboard/$serverId'
-    | '/_app/admin/dashboard/'
+    | '/_app/admin/inference-servers/$serverId'
+    | '/_app/admin/inference-servers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -347,42 +335,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
-    '/_app/admin/inference-servers': {
-      id: '/_app/admin/inference-servers'
+    '/_app/admin/inference-servers/': {
+      id: '/_app/admin/inference-servers/'
       path: '/inference-servers'
       fullPath: '/admin/inference-servers'
-      preLoaderRoute: typeof AppAdminInferenceServersRouteImport
+      preLoaderRoute: typeof AppAdminInferenceServersIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
-    '/_app/admin/dashboard/': {
-      id: '/_app/admin/dashboard/'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AppAdminDashboardIndexRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/_app/admin/dashboard/$serverId': {
-      id: '/_app/admin/dashboard/$serverId'
-      path: '/dashboard/$serverId'
-      fullPath: '/admin/dashboard/$serverId'
-      preLoaderRoute: typeof AppAdminDashboardServerIdRouteImport
+    '/_app/admin/inference-servers/$serverId': {
+      id: '/_app/admin/inference-servers/$serverId'
+      path: '/inference-servers/$serverId'
+      fullPath: '/admin/inference-servers/$serverId'
+      preLoaderRoute: typeof AppAdminInferenceServersServerIdRouteImport
       parentRoute: typeof AppAdminRoute
     }
   }
 }
 
 interface AppAdminRouteChildren {
-  AppAdminInferenceServersRoute: typeof AppAdminInferenceServersRoute
   AppAdminIndexRoute: typeof AppAdminIndexRoute
-  AppAdminDashboardServerIdRoute: typeof AppAdminDashboardServerIdRoute
-  AppAdminDashboardIndexRoute: typeof AppAdminDashboardIndexRoute
+  AppAdminInferenceServersServerIdRoute: typeof AppAdminInferenceServersServerIdRoute
+  AppAdminInferenceServersIndexRoute: typeof AppAdminInferenceServersIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
-  AppAdminInferenceServersRoute: AppAdminInferenceServersRoute,
   AppAdminIndexRoute: AppAdminIndexRoute,
-  AppAdminDashboardServerIdRoute: AppAdminDashboardServerIdRoute,
-  AppAdminDashboardIndexRoute: AppAdminDashboardIndexRoute,
+  AppAdminInferenceServersServerIdRoute: AppAdminInferenceServersServerIdRoute,
+  AppAdminInferenceServersIndexRoute: AppAdminInferenceServersIndexRoute,
 }
 
 const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(

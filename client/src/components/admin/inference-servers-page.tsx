@@ -1,6 +1,7 @@
 import type { InferenceServer, SyncPolicy } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
-import { Cpu, Loader2, Pencil, Plus, RefreshCw, Server, Trash2, X, Zap } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -9,29 +10,31 @@ import { inferenceServerCollection } from '@/collections';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useModels } from '@/hooks/use-models';
+import { EMPTY_FEED, type ServerEventsFeed, useFleetEvents } from '@/hooks/use-server-events';
 import { explainApiError } from '@/lib/api-error';
 import { getStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { AddServerDialog } from './add-server-dialog';
-
-const STATUS_DOT: Record<'online' | 'offline' | 'unknown', string> = {
-  online: 'bg-accent-sage',
-  offline: 'bg-destructive',
-  unknown: 'bg-muted-foreground/40',
-};
+import { GaugesSkeleton, ServerGauges, ServerHeading } from './server-gauges';
 
 const STATUS_TEXT: Record<'online' | 'offline' | 'unknown', string> = {
   online: 'text-accent-sage',
   offline: 'text-destructive',
   unknown: 'text-muted-foreground',
 };
+
+const SYNC_POLICIES: SyncPolicy[] = ['all', 'cpu', 'gpu', 'none'];
+const POLICY_CHIP: Record<SyncPolicy, string> = { all: '', cpu: 'bg-accent-sage/15 text-accent-sage', gpu: 'bg-primary/15 text-primary', none: 'bg-muted text-muted-foreground' };
 
 function statusOf(server: InferenceServer): 'online' | 'offline' | 'unknown' {
   return server.lastHealth.status || 'unknown';
@@ -59,17 +62,16 @@ function formatRelative(iso: string, t: (k: string, opts?: Record<string, unknow
   return t('inferenceServers.lastChecked', { when });
 }
 
-const SYNC_POLICIES: SyncPolicy[] = ['all', 'cpu', 'gpu', 'none'];
-
 export function InferenceServersPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { data: serversData } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
+  const { data: serversData, isReady } = useLiveQuery((q) => q.from({ s: inferenceServerCollection }).orderBy(({ s }) => s.priority, 'desc'));
   const servers = serversData ?? [];
-  const { installations } = useModels();
+  const feeds = useFleetEvents(servers.filter((s) => s.enabled && statusOf(s) === 'online').map((s) => s.id));
+  const { catalog, installations } = useModels();
   const [adding, setAdding] = useState(false);
 
-  const modelCount = (id: string) => installations.filter((i) => i.status === 'installed' && i.serverIds.includes(id)).length;
+  const modelsOn = (id: string) => installations.filter((i) => i.status === 'installed' && i.serverIds.includes(id)).map((i) => catalog.find((c) => c.id === i.id)?.name ?? i.id);
 
   return (
     <div className="flex h-full flex-col">
@@ -84,43 +86,43 @@ export function InferenceServersPage() {
         }
       />
       <main className={cn('custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6', isMobile && 'pb-24')}>
-        {servers.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-              <Server className="size-6 text-muted-foreground" />
-            </div>
-            <p className="max-w-sm text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="size-4" />
-              {t('inferenceServers.addServer')}
-            </Button>
-          </div>
-        ) : (
-          <div className="divide-y divide-border rounded-lg border border-border bg-card">
-            {servers.map((server) => (
-              <ServerRow key={server.id} server={server} modelCount={modelCount(server.id)} />
-            ))}
-          </div>
-        )}
+        {isReady && servers.length === 0 && <p className="text-sm text-muted-foreground">{t('inferenceServers.empty')}</p>}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {!isReady && [0, 1].map((i) => <ServerCardSkeleton key={i} />)}
+          {servers.map((server) => (
+            <ServerCard key={server.id} server={server} models={modelsOn(server.id)} feed={feeds[server.id] ?? EMPTY_FEED} />
+          ))}
+          <button type="button" onClick={() => setAdding(true)} className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground">
+            <Plus className="size-5" />
+            {t('inferenceServers.addServer')}
+          </button>
+        </div>
       </main>
       <AddServerDialog open={adding} onOpenChange={setAdding} />
     </div>
   );
 }
 
-function ServerRow({ server, modelCount }: { server: InferenceServer; modelCount: number }) {
+function ServerCardSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4" aria-busy>
+      <div className="space-y-1.5">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-3 w-44" />
+      </div>
+      <Skeleton className="h-3 w-40" />
+      <GaugesSkeleton />
+      <Skeleton className="h-2.5 w-28" />
+    </div>
+  );
+}
+
+function ServerCard({ server, models, feed }: { server: InferenceServer; models: string[]; feed: ServerEventsFeed }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  if (editing) {
-    return (
-      <div className="p-4">
-        <ServerForm server={server} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
-      </div>
-    );
-  }
 
   async function handleTest() {
     setTesting(true);
@@ -143,6 +145,17 @@ function ServerRow({ server, modelCount }: { server: InferenceServer; modelCount
     }
   }
 
+  async function handleToggle(next: boolean) {
+    setToggling(true);
+    try {
+      await inferenceServerClient.update(server.id, { enabled: next });
+    } catch (e) {
+      toast.error(explainApiError(e, t('inferenceServers.saveFailed')));
+    } finally {
+      setToggling(false);
+    }
+  }
+
   async function handleConfirmRemove() {
     setConfirmingDelete(false);
     try {
@@ -154,50 +167,65 @@ function ServerRow({ server, modelCount }: { server: InferenceServer; modelCount
 
   const status = statusOf(server);
   const statusKey = `inferenceServers.status${status.charAt(0).toUpperCase()}${status.slice(1)}`;
-  const device = server.lastHealth.device;
-  const gpu = !!device && device !== 'cpu';
 
   return (
     <>
-      <div className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]', !server.enabled && 'opacity-60')}>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn('size-2 shrink-0 rounded-full', STATUS_DOT[status])} aria-hidden />
-            <h3 className="font-serif text-base tracking-tight">{server.name}</h3>
-            {!server.enabled && <span className="rounded bg-muted px-1 py-px text-2xs font-medium text-muted-foreground">{t('inferenceServers.disabled')}</span>}
-            {device && (
-              <span className={cn('inline-flex items-center gap-1 rounded px-1 py-px text-2xs font-medium', gpu ? 'bg-primary/15 text-primary' : 'bg-accent-sage/15 text-accent-sage')}>
-                {gpu ? <Zap className="size-2.5" /> : <Cpu className="size-2.5" />}
-                {gpu ? t('inferenceServers.deviceGpu', { device }) : t('inferenceServers.deviceCpu')}
-              </span>
-            )}
+      <div className={cn('relative flex flex-col gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/60')}>
+        <Link to="/admin/inference-servers/$serverId" params={{ serverId: server.id }} className="absolute inset-0 rounded-lg" aria-label={t('dashboard.openDetails', { name: server.name })} />
+        <div className="flex items-start justify-between gap-2">
+          <div className={cn(!server.enabled && 'opacity-60')}>
+            <ServerHeading server={server} />
           </div>
-          <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={server.url}>
-            {server.url}
-          </p>
-          <p className="mt-0.5 text-xs">
-            <span className={cn('font-medium', STATUS_TEXT[status])}>{t(statusKey)}</span>
-            <span className="ml-2 text-muted-foreground">{formatRelative(server.lastHealth.at, t)}</span>
-            {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">{server.lastHealth.error}</span>}
-          </p>
+          <div className="relative z-10 flex shrink-0 items-center gap-0.5">
+            <Switch checked={server.enabled} onCheckedChange={handleToggle} disabled={toggling} className="mr-1.5 scale-90" aria-label={t(server.enabled ? 'inferenceServers.disable' : 'inferenceServers.enable')} />
+            <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-7 text-muted-foreground" aria-label={t('inferenceServers.test')}>
+              {testing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="size-7 text-muted-foreground" aria-label={t('common.edit')}>
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setConfirmingDelete(true)} className="size-7 text-muted-foreground hover:text-destructive" aria-label={t('common.delete')}>
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
         </div>
-        <div className="hidden text-right text-xs text-muted-foreground sm:block">
-          <p>{t('inferenceServers.modelCount', { count: modelCount })}</p>
-          <p className="mt-0.5">{t('inferenceServers.priorityValue', { count: server.priority })}</p>
-          {server.syncPolicy !== 'all' && <p className="mt-0.5 text-dim">{t(`inferenceServers.syncPolicies.${server.syncPolicy}`)}</p>}
-        </div>
-        <div className="col-start-2 row-start-1 flex items-center gap-0.5 sm:col-start-auto sm:row-start-auto">
-          <Button variant="ghost" size="icon" onClick={handleTest} disabled={testing} className="size-7 text-muted-foreground" aria-label={t('inferenceServers.test')}>
-            {testing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="size-7 text-muted-foreground" aria-label={t('common.edit')}>
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setConfirmingDelete(true)} className="size-7 text-muted-foreground hover:text-destructive" aria-label={t('common.delete')}>
-            <Trash2 className="size-3.5" />
-          </Button>
+        <p className={cn('text-xs', !server.enabled && 'opacity-60')}>
+          <span className={cn('font-medium', STATUS_TEXT[status])}>{t(statusKey)}</span>
+          <span className="ml-2 text-muted-foreground">{formatRelative(server.lastHealth.at, t)}</span>
+          {server.lastHealth.error && status === 'offline' && <span className="ml-2 text-destructive">{server.lastHealth.error}</span>}
+        </p>
+        {status === 'online' && server.enabled && <ServerGauges server={server} feed={feed} />}
+        <div className={cn('relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted-foreground', !server.enabled && 'opacity-60')}>
+          {models.length === 0 ? (
+            <span>{t('inferenceServers.modelCount', { count: 0 })}</span>
+          ) : (
+            <Popover>
+              <PopoverTrigger className="rounded underline decoration-dotted underline-offset-2 hover:text-foreground">{t('inferenceServers.modelCount', { count: models.length })}</PopoverTrigger>
+              <PopoverContent align="start" className="w-auto max-w-72 p-2">
+                <ul className="custom-scrollbar max-h-56 space-y-0.5 overflow-y-auto text-xs">
+                  {models.map((m) => (
+                    <li key={m} className="truncate px-1">
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          )}
+          <span>{t('inferenceServers.priorityValue', { count: server.priority })}</span>
+          {server.syncPolicy !== 'all' && <span className={cn('rounded px-1 py-px font-medium', POLICY_CHIP[server.syncPolicy])}>{t(`inferenceServers.syncPolicies.${server.syncPolicy}`)}</span>}
         </div>
       </div>
+
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('inferenceServers.editServer')}</DialogTitle>
+            <DialogDescription className="truncate font-mono text-xs">{server.url}</DialogDescription>
+          </DialogHeader>
+          <ServerForm server={server} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>
         <AlertDialogContent>
@@ -224,15 +252,12 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
   const urlId = `${reactId}-url`;
   const tokenId = `${reactId}-token`;
   const priorityId = `${reactId}-priority`;
-  const enabledId = `${reactId}-enabled`;
   const syncPolicyId = `${reactId}-syncpolicy`;
   const [name, setName] = useState(server?.name ?? '');
   const [url, setUrl] = useState(server?.url ?? 'http://localhost:8000');
-  // PB never returns authToken, so it can't be pre-filled: untouched keeps it, an empty submit clears it.
+  // PB never returns authToken, so it can't be pre-filled: an empty field keeps the current one.
   const [authToken, setAuthToken] = useState('');
-  const [authTokenDirty, setAuthTokenDirty] = useState(false);
   const [priority, setPriority] = useState(String(server?.priority ?? 0));
-  const [enabled, setEnabled] = useState(server?.enabled ?? true);
   const [syncPolicy, setSyncPolicy] = useState<SyncPolicy>(server?.syncPolicy ?? 'all');
   const [saving, setSaving] = useState(false);
 
@@ -244,10 +269,10 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
       name: name.trim(),
       url: url.trim().replace(/\/$/, ''),
       priority: Number.parseInt(priority, 10) || 0,
-      enabled,
+      enabled: server?.enabled ?? true,
       syncPolicy,
     };
-    if (authTokenDirty) {
+    if (authToken.trim()) {
       payload.authToken = authToken.trim();
     }
     setSaving(true);
@@ -271,9 +296,9 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
         e.preventDefault();
         handleSubmit();
       }}
-      className="space-y-3 rounded-lg border border-border bg-card p-3"
+      className="space-y-5"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor={nameId}>{t('inferenceServers.name')}</Label>
           <Input id={nameId} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('inferenceServers.namePlaceholder')} />
@@ -282,32 +307,13 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
           <Label htmlFor={urlId}>{t('inferenceServers.url')}</Label>
           <Input id={urlId} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('inferenceServers.urlPlaceholder')} className="font-mono text-xs" />
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label htmlFor={tokenId}>{t('inferenceServers.authToken')}</Label>
-          <Input
-            id={tokenId}
-            value={authToken}
-            onChange={(e) => {
-              setAuthToken(e.target.value);
-              setAuthTokenDirty(true);
-            }}
-            placeholder={server ? t('inferenceServers.authTokenEditPlaceholder') : t('inferenceServers.authTokenPlaceholder')}
-            className="font-mono text-xs"
-          />
+          <Input id={tokenId} value={authToken} onChange={(e) => setAuthToken(e.target.value)} placeholder={server ? t('inferenceServers.authTokenEditPlaceholder') : t('inferenceServers.authTokenPlaceholder')} className="font-mono text-xs" />
           <p className="text-2xs text-muted-foreground">{server ? t('inferenceServers.authTokenEditHint') : t('inferenceServers.authTokenHint')}</p>
         </div>
+
         <div className="space-y-1.5">
-          <Label htmlFor={priorityId}>{t('inferenceServers.priority')}</Label>
-          <Input id={priorityId} type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
-          <p className="text-2xs text-dim">{t('inferenceServers.priorityHint')}</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={enabledId}>{t('inferenceServers.enabled')}</Label>
-          <div className="flex h-9 items-center">
-            <Switch id={enabledId} checked={enabled} onCheckedChange={setEnabled} />
-          </div>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={syncPolicyId}>{t('inferenceServers.syncPolicy')}</Label>
           <Select value={syncPolicy} onValueChange={(v) => setSyncPolicy(v as SyncPolicy)}>
             <SelectTrigger id={syncPolicyId} className="w-full">
@@ -322,6 +328,11 @@ function ServerForm({ server, onCancel, onSaved }: { server?: InferenceServer; o
             </SelectContent>
           </Select>
           <p className="text-2xs text-muted-foreground">{t('inferenceServers.syncPolicyHint')}</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={priorityId}>{t('inferenceServers.priority')}</Label>
+          <Input id={priorityId} type="number" value={priority} onChange={(e) => setPriority(e.target.value)} className="font-mono" />
+          <p className="text-2xs text-muted-foreground">{t('inferenceServers.priorityHint')}</p>
         </div>
       </div>
       <div className="flex justify-end gap-2">

@@ -1,5 +1,5 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { AudioLines, ChevronRight, Cpu, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
+import { AudioLines, ChevronRight, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -153,9 +153,11 @@ export function ServerCoverage({ catalog, installation, onPull }: { catalog: Cat
   return (
     <span className="inline-flex items-center gap-1.5 text-2xs">
       <span className="text-accent-rust">{t('model.missingOn', { names: missing.map((s) => s.name).join(', ') })}</span>
-      <button
+      <Button
         type="button"
-        className="font-medium text-primary hover:underline"
+        variant="outline"
+        size="sm"
+        className="h-6 gap-1 px-2 text-2xs"
         onClick={() =>
           onPull(
             catalog.id,
@@ -163,8 +165,9 @@ export function ServerCoverage({ catalog, installation, onPull }: { catalog: Cat
           )
         }
       >
+        <Download className="size-3" />
         {t('model.complete')}
-      </button>
+      </Button>
     </span>
   );
 }

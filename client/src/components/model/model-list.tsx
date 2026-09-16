@@ -34,6 +34,18 @@ const TYPE_CHIPS: { type: CatalogModelType; icon: typeof Mic; className: string;
   { type: 'transcription', icon: FileAudio, className: 'bg-accent-green/15 text-accent-green', label: 'model.stt' },
 ];
 
+function RecommendedStar({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Star className={cn('text-primary', className)} aria-label={t('model.recommended')} />
+      </TooltipTrigger>
+      <TooltipContent>{t('model.recommended')}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function TypeChips({ types, gated }: { types: CatalogModelType[]; gated?: boolean }) {
   const { t } = useTranslation();
   return (
@@ -186,7 +198,6 @@ function Row({ main, aside, size, action, className, indent, progress }: { main:
 }
 
 function VariantRow({ entry, prefix, onPull }: { entry: Entry; prefix: string; onPull: (id: string, serverIds?: string[]) => void }) {
-  const { t } = useTranslation();
   const { catalog, installation } = entry;
   const status = installation?.status ?? 'available';
   return (
@@ -195,7 +206,7 @@ function VariantRow({ entry, prefix, onPull }: { entry: Entry; prefix: string; o
       main={
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className={cn('text-sm', status === 'installed' && 'font-medium')}>{variantName(catalog, prefix)}</span>
-          {catalog.recommended && <Star className="size-3 text-primary" aria-label={t('model.recommended')} />}
+          {catalog.recommended && <RecommendedStar className="size-3" />}
           <ServerCoverage catalog={catalog} installation={installation} onPull={onPull} />
           <span className="font-mono text-2xs text-dim sm:hidden">{formatFileSize(catalog.size)}</span>
           {status === 'error' && installation?.error && <p className="basis-full truncate text-xs text-destructive">{installation.error}</p>}
@@ -225,7 +236,7 @@ export function FamilyRow({ family, onPull, defaultOpen }: { family: Family; onP
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
-              {recommended && <Star className="size-3.5 text-primary" aria-label={t('model.recommended')} />}
+              {recommended && <RecommendedStar className="size-3.5" />}
               <TypeChips types={types} gated={single?.catalog.gated} />
               {single && <ServerCoverage catalog={single.catalog} installation={single.installation} onPull={onPull} />}
               {!single && installedCount > 0 && <span className="text-2xs font-medium text-accent-sage">{t('model.installedCount', { count: installedCount })}</span>}

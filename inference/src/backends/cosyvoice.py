@@ -198,6 +198,7 @@ class CosyVoiceBackend(TTSBackend):
         return TTSResult(audio=audio, sample_rate=self._sample_rate)
 
     def generate_stream(self, params: GenerateParams):
+        self._apply_seed(params)
         if not self.is_loaded():
             raise RuntimeError("CosyVoice model not loaded")
 

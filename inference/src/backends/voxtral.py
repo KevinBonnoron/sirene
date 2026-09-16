@@ -266,6 +266,7 @@ class VoxtralBackend(TTSBackend):
             "voice": voice,
             "response_format": "wav",
             "speed": params.speed,
+            "seed": params.seed,
         }
 
         response = httpx.post(
@@ -290,6 +291,7 @@ class VoxtralBackend(TTSBackend):
         return TTSResult(audio=audio, sample_rate=sr)
 
     def generate_stream(self, params: GenerateParams):
+        self._apply_seed(params)
         import httpx
 
         if not self.is_loaded():
@@ -314,6 +316,7 @@ class VoxtralBackend(TTSBackend):
             "voice": voice,
             "stream": True,
             "response_format": "pcm",
+            "seed": params.seed,
         }
 
         with httpx.stream(

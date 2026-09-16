@@ -226,10 +226,14 @@ func (s *Service) resolve(ctx context.Context, in Input, userID string) (*resolv
 		speed = v
 	}
 	var noiseScale *float64
-	if model.Backend == "piper" {
-		if seed, ok := number(in.Tuning, "variationSeed"); ok {
-			ns := 0.4 + math.Max(0, math.Min(1, seed))*0.55
+	var seed *int64
+	if v, ok := number(in.Tuning, "variationSeed"); ok {
+		if model.Backend == "piper" {
+			ns := 0.4 + math.Max(0, math.Min(1, v))*0.55
 			noiseScale = &ns
+		} else {
+			s := int64(math.Round(math.Max(0, math.Min(1, v)) * 1_000_000))
+			seed = &s
 		}
 	}
 
@@ -251,7 +255,7 @@ func (s *Service) resolve(ctx context.Context, in Input, userID string) (*resolv
 	}
 
 	r.kind = kindInference
-	r.req = inference.Request{Backend: model.Backend, Text: in.Text, ModelPath: model.ID, Speed: speed, NoiseScale: noiseScale, Language: language}
+	r.req = inference.Request{Backend: model.Backend, Text: in.Text, ModelPath: model.ID, Speed: speed, NoiseScale: noiseScale, Seed: seed, Language: language}
 	if !model.HasType("preset") {
 		presetVoice = ""
 	}

@@ -368,6 +368,43 @@ func (c *Client) PullModel(ctx context.Context, in PullRequest, onEvent func(Pul
 	})
 }
 
+// ImportArchive uploads an export zip under the same model id, so a copied voice keeps its identity across workers.
+func (c *Client) ImportArchive(ctx context.Context, modelID string, archive io.Reader) error {
+	ctx, cancel := context.WithTimeout(ctx, pullTimeout)
+	defer cancel()
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		err := func() error {
+			w, err := createFilePart(mw, "archive", modelID+".zip", "application/zip")
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(w, archive); err != nil {
+				return err
+			}
+			return mw.Close()
+		}()
+		pw.CloseWithError(err)
+	}()
+	req, err := c.target.newRequest(ctx, http.MethodPost, "/models/"+url.PathEscape(modelID)+"/import", pr)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	res, err := c.target.do(req, "importArchive")
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
+		c.logf("[inference/importArchive] upstream error", "status", res.StatusCode, "body", string(body))
+		return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("Copy failed (HTTP %d)", res.StatusCode))
+	}
+	return nil
+}
+
 type FilePart struct {
 	Name        string
 	ContentType string

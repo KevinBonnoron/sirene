@@ -275,7 +275,11 @@ func (s *Service) StartDownload(ctx context.Context, userID string, m catalog.Mo
 		s.wg.Add(1)
 		go func(rec *core.Record) {
 			defer s.wg.Done()
-			s.runDownload(id, m, rec, hfToken)
+			if m.Repo == "" {
+				s.runCopy(id, m, rec)
+			} else {
+				s.runDownload(id, m, rec, hfToken)
+			}
 		}(rec)
 		jobIDs = append(jobIDs, id)
 	}
@@ -326,6 +330,36 @@ func (s *Service) runDownload(jobID string, m catalog.Model, rec *core.Record, h
 		s.jobs.Complete(jobID)
 	}
 	s.cache.Invalidate(rec.Id)
+	s.Changes.Notify()
+}
+
+// A custom voice has no upstream repo: it is exported from a worker that has it and imported on the target as is.
+func (s *Service) runCopy(jobID string, m catalog.Model, target *core.Record) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	err := func() error {
+		source, err := s.router.Pick(ctx, m.ID)
+		if err != nil {
+			return err
+		}
+		res, cancelExport, err := s.client(source).FetchExport(ctx, m.ID)
+		if err != nil {
+			return err
+		}
+		defer cancelExport()
+		defer res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			return fmt.Errorf("export from %s failed (HTTP %d)", source.GetString("name"), res.StatusCode)
+		}
+		s.jobs.Progress(jobID, 50, m.Name+" · "+source.GetString("name")+" → "+target.GetString("name"))
+		return s.client(target).ImportArchive(ctx, m.ID, res.Body)
+	}()
+	if err != nil {
+		s.jobs.Fail(jobID, err.Error())
+	} else {
+		s.jobs.Complete(jobID)
+	}
+	s.cache.Invalidate(target.Id)
 	s.Changes.Notify()
 }
 
@@ -605,7 +639,12 @@ func (s *Service) ReplicateTo(serverID string) {
 				wanted[modelID] = struct{}{}
 			}
 		}
-		for _, m := range catalog.Models {
+		custom, err := s.ScanCustom(ctx)
+		if err != nil {
+			s.app.Logger().Warn("[replicate] listing custom models failed", "server", rec.GetString("name"), "error", err)
+			return
+		}
+		for _, m := range append(slices.Clone(catalog.Models), custom...) {
 			if _, ok := wanted[m.ID]; !ok || m.HasType("api") {
 				continue
 			}

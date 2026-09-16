@@ -21,6 +21,8 @@ export interface InferenceServer extends PocketBaseRecord {
   priority: number;
   /** Which catalog models land here automatically: every fitting one, CPU-capable only, GPU-only only, or none. */
   syncPolicy: SyncPolicy;
+  /** Non-secret handle of the registration token that created or last re-registered this server. */
+  registration?: string;
   lastHealth: InferenceServerHealth;
   /** PB-hidden field: only admin reads return it. */
   authToken?: string;

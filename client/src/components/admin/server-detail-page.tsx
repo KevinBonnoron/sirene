@@ -1,26 +1,28 @@
+import type { Generation } from '@sirene/shared';
 import { eq, useLiveQuery } from '@tanstack/react-db';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { type AxisOptions, Chart } from 'react-charts';
 import { useTranslation } from 'react-i18next';
 import { HttpError } from 'universal-client';
-import { inferenceDetailClient, inferenceStatsClient, type ServerStats, type StatsSample, type WorkerLogLine } from '@/clients/inference-stats.client';
+import { inferenceDetailClient, inferenceStatsClient, type StatsSample, type WorkerLogLine } from '@/clients/inference-stats.client';
 import { inferenceServerCollection } from '@/collections';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useJobs } from '@/hooks/use-jobs';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { openAuthenticatedStream } from '@/lib/auth-stream';
-import { config } from '@/lib/config';
+import { useServerEvents } from '@/hooks/use-server-events';
+import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/providers/theme-provider';
 import { formatFileSize, formatTime } from '@/utils/format';
-import { ServerHeading } from './dashboard-page';
+import { ServerHeading } from './server-gauges';
 
-const MAX_LOG_LINES = 1000;
+type ServerGeneration = Generation & { expand?: { user?: { name: string }; voice?: { name: string } } };
+
 const logKey = (l: WorkerLogLine) => `${l.time}|${l.level}|${l.logger}|${l.message}`;
 
 const LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR'] as const;
@@ -115,33 +117,22 @@ export function ServerDetailPage({ serverId }: { serverId: string }) {
     enabled: online,
     retry: false,
   });
-  const [live, setLive] = useState<{ snapshot?: ServerStats; samples: StatsSample[]; lines: WorkerLogLine[] }>({ samples: [], lines: [] });
-
-  useEffect(() => {
-    setLive({ samples: [], lines: [] });
-    if (!online) {
-      return;
-    }
-    const stream = openAuthenticatedStream(`${config.server.url}/inference-servers/${encodeURIComponent(serverId)}/events`, ({ event, data }) => {
-      if (event === 'sample') {
-        const sample = JSON.parse(data) as StatsSample;
-        setLive((l) => ({ ...l, samples: [...l.samples, sample] }));
-      } else if (event === 'log') {
-        const line = JSON.parse(data) as WorkerLogLine;
-        setLive((l) => ({ ...l, lines: [...l.lines, line].slice(-MAX_LOG_LINES) }));
-      } else if (event === 'stats') {
-        setLive((l) => ({ ...l, snapshot: JSON.parse(data) as ServerStats }));
-      }
-    });
-    return () => stream.close();
-  }, [serverId, online]);
+  const live = useServerEvents(serverId, online);
 
   const snapshot = live.snapshot ?? stats.data;
-  const generations = useQuery({
-    queryKey: ['inference-generations', serverId],
-    queryFn: () => inferenceDetailClient.generations(serverId, 50),
-    refetchInterval: 15_000,
+  const queryClient = useQueryClient();
+  const generationsKey = ['server-generations', serverId];
+  const generationsFilter = pb.filter('server = {:id}', { id: serverId });
+  const { data: generations } = useQuery({
+    queryKey: generationsKey,
+    queryFn: async () => (await pb.collection('generations').getList<ServerGeneration>(1, 50, { filter: generationsFilter, sort: '-created', expand: 'user,voice' })).items,
   });
+  useEffect(() => {
+    const unsubscribe = pb.collection('generations').subscribe('*', () => queryClient.invalidateQueries({ queryKey: ['server-generations', serverId] }), { filter: generationsFilter });
+    return () => {
+      unsubscribe.then((fn) => fn());
+    };
+  }, [serverId, generationsFilter, queryClient]);
 
   const history = useMemo(() => {
     const base = stats.data?.history ?? [];
@@ -161,7 +152,7 @@ export function ServerDetailPage({ serverId }: { serverId: string }) {
     const backlog = logs.data?.lines ?? [];
     // Millisecond timestamps collide, so the backlog and the live tail are merged on the whole entry.
     const seen = new Set(backlog.map(logKey));
-    return [...backlog, ...live.lines.filter((l) => !seen.has(logKey(l)))].slice(-MAX_LOG_LINES).filter((l) => levels.includes(l.level === 'CRITICAL' ? 'ERROR' : l.level));
+    return [...backlog, ...live.lines.filter((l) => !seen.has(logKey(l)))].filter((l) => levels.includes(l.level === 'CRITICAL' ? 'ERROR' : l.level));
   }, [logs.data, live.lines, levels]);
   const dateFmt = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'medium' });
   const timeFmt = new Intl.DateTimeFormat(i18n.language, { timeStyle: 'medium' });
@@ -170,13 +161,13 @@ export function ServerDetailPage({ serverId }: { serverId: string }) {
   return (
     <div className="flex h-full flex-col">
       <SectionTopbar
-        label={server?.name ?? t('nav.dashboard')}
+        label={server?.name ?? t('nav.inferenceServers')}
         subtitle={server?.url}
         actions={
           <Button asChild variant="ghost" size="sm">
-            <Link to="/admin/dashboard">
+            <Link to="/admin/inference-servers">
               <ChevronLeft className="size-4" />
-              {t('nav.dashboard')}
+              {t('nav.inferenceServers')}
             </Link>
           </Button>
         }
@@ -233,17 +224,17 @@ export function ServerDetailPage({ serverId }: { serverId: string }) {
             <section className="space-y-2">
               <h2 className="px-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{t('dashboard.generations')}</h2>
               <div className="divide-y divide-border rounded-lg border border-border bg-card">
-                {generations.data?.length === 0 && <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t('dashboard.noGenerations')}</p>}
-                {generations.data?.map((g) => (
+                {generations?.length === 0 && <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t('dashboard.noGenerations')}</p>}
+                {generations?.map((g) => (
                   <div key={g.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-4 py-2.5 text-sm sm:grid-cols-[10rem_minmax(0,1fr)_auto]">
                     <div className="text-xs text-muted-foreground">
                       <p>{dateFmt.format(new Date(g.created))}</p>
-                      <p className="truncate font-medium text-foreground">{g.user.name || t('dashboard.unknownUser')}</p>
+                      <p className="truncate font-medium text-foreground">{g.expand?.user?.name || t('dashboard.unknownUser')}</p>
                     </div>
                     <div className="col-span-2 min-w-0 sm:col-span-1">
                       <p className="truncate">{g.text}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {g.voice.name || '—'} · {g.model}
+                        {g.expand?.voice?.name || t('voice.unknownVoice')} · {g.model}
                       </p>
                     </div>
                     <span className="row-start-1 font-mono text-xs text-dim sm:row-start-auto">{g.duration ? formatTime(g.duration) : '—'}</span>

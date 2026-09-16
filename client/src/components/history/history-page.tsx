@@ -1,12 +1,13 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { generationCollection, voiceCollection } from '@/collections';
+import { voiceCollection } from '@/collections';
 import { DeleteAllGenerationsButton } from '@/components/history/delete-all-generations-button';
 import { GenerationCard } from '@/components/history/generation-card';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useOwnGenerations } from '@/hooks/use-own-generations';
 import { cn } from '@/lib/utils';
 
 const chipClass = 'rounded-full border px-3 py-1 text-xs font-medium transition-colors';
@@ -16,7 +17,7 @@ const chipInactive = 'border-border bg-background text-muted-foreground hover:bg
 export function HistoryPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { data: generations, isLoading } = useLiveQuery((q) => q.from({ g: generationCollection }).orderBy(({ g }) => g.created, 'desc'));
+  const { data: generations, isLoading } = useOwnGenerations();
 
   const [voiceFilter, setVoiceFilter] = useState<string | null>(null);
 

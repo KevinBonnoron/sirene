@@ -6,12 +6,13 @@ import { AudioLines, Loader2, Plus, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { generationCollection, sessionCollection, voiceCollection } from '@/collections';
+import { sessionCollection, voiceCollection } from '@/collections';
 import { Button } from '@/components/ui/button';
 import { useGenerate } from '@/hooks/use-generate';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useIsDesktop, useIsMobile } from '@/hooks/use-mobile';
 import { useModels } from '@/hooks/use-models';
+import { useOwnGenerations } from '@/hooks/use-own-generations';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -53,7 +54,7 @@ export function StudioPage() {
   const { user } = useAuth();
 
   const { data: voices, isLoading: voicesLoading } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
-  const { data: generations, isLoading: generationsLoading } = useLiveQuery((q) => q.from({ gens: generationCollection }).orderBy(({ gens }) => gens.created, 'desc'));
+  const { data: generations, isLoading: generationsLoading } = useOwnGenerations();
   const { data: sessions, isLoading: sessionsLoading } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
   const { generate } = useGenerate();
   const { catalog } = useModels();

@@ -1,5 +1,7 @@
 import { getStoredToken } from './auth-interceptor';
 
+const STABLE_MS = 30_000;
+
 type SSEHandler = (event: { event: string; data: string }) => void;
 
 interface StreamHandle {
@@ -7,22 +9,50 @@ interface StreamHandle {
 }
 
 // EventSource can't send an Authorization header, and a query-param token would leak into access logs.
-export function openAuthenticatedStream(url: string, handler: SSEHandler): StreamHandle {
-  const controller = new AbortController();
+export function openAuthenticatedStream(url: string, handler: SSEHandler, onEnd?: (error?: unknown) => void, retries = 0): StreamHandle {
+  let controller = new AbortController();
   let closed = false;
+  let attempt = 0;
+  let connectedAt = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const close = () => {
     if (closed) {
       return;
     }
     closed = true;
+    clearTimeout(timer);
     controller.abort();
   };
 
-  void run().catch((err) => {
-    if (!closed && err.name !== 'AbortError') {
-      console.warn('[auth-stream] disconnected', err);
+  // A dropped stream is reopened with backoff; onEnd only fires once the retry budget is spent.
+  const start = () => {
+    controller = new AbortController();
+    void run()
+      .then(() => settle())
+      .catch((err) => {
+        if (!closed && err.name !== 'AbortError') {
+          console.warn('[auth-stream] disconnected', err);
+          settle(err);
+        }
+      });
+  };
+  const settle = (err?: unknown) => {
+    if (closed) {
+      return;
     }
-  });
+    // Only a connection that held for a while earns a fresh budget, so a stream that dies right after 200 still gives up.
+    if (connectedAt && Date.now() - connectedAt > STABLE_MS) {
+      attempt = 0;
+    }
+    connectedAt = 0;
+    if (attempt < retries) {
+      timer = setTimeout(start, Math.min(1000 * 2 ** attempt, 30_000));
+      attempt += 1;
+      return;
+    }
+    onEnd?.(err);
+  };
+  start();
 
   return { close };
 
@@ -36,6 +66,7 @@ export function openAuthenticatedStream(url: string, handler: SSEHandler): Strea
     if (!response.ok || !response.body) {
       throw new Error(`stream HTTP ${response.status}`);
     }
+    connectedAt = Date.now();
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
     let buffer = '';

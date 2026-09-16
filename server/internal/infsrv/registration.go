@@ -2,8 +2,10 @@ package infsrv
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -46,6 +48,12 @@ func (r *Registrations) Issue() (token string, expiresAt time.Time) {
 	return token, expiresAt
 }
 
+// Identity is a non-secret handle for a token, stored on the server it registers so the issuing dialog can recognise it.
+func Identity(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:6])
+}
+
 func (r *Registrations) Valid(token string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -78,17 +86,17 @@ func (s *Service) Upsert(in WriteInput) (rec *core.Record, created bool, err err
 				name = existing.GetString("name")
 			}
 		}
-		rec, err = s.Update(existing.Id, UpdateInput{Name: &name, AuthToken: in.AuthToken})
+		rec, err = s.Update(existing.Id, UpdateInput{Name: &name, AuthToken: in.AuthToken, Registration: &in.Registration})
 		return rec, false, err
 	}
 	name, err := s.freeName(in.Name)
 	if err != nil {
 		return nil, false, err
 	}
-	rec, err = s.Create(WriteInput{Name: name, URL: url, Enabled: true, Priority: in.Priority, AuthToken: in.AuthToken})
+	rec, err = s.Create(WriteInput{Name: name, URL: url, Enabled: true, Priority: in.Priority, AuthToken: in.AuthToken, Registration: in.Registration})
 	if err != nil {
 		if winner, findErr := s.app.FindFirstRecordByFilter("inference_servers", "url = {:url}", map[string]any{"url": url}); findErr == nil {
-			rec, err = s.Update(winner.Id, UpdateInput{AuthToken: in.AuthToken})
+			rec, err = s.Update(winner.Id, UpdateInput{AuthToken: in.AuthToken, Registration: &in.Registration})
 			return rec, false, err
 		}
 		return nil, false, err

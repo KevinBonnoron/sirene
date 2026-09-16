@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ServerDetailPage } from '@/components/admin/server-detail-page';
 
-export const Route = createFileRoute('/_app/admin/dashboard/$serverId')({
+export const Route = createFileRoute('/_app/admin/inference-servers/$serverId')({
   component: RouteComponent,
 });
 

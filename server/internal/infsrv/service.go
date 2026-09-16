@@ -20,21 +20,23 @@ const (
 )
 
 type WriteInput struct {
-	Name       string
-	URL        string
-	Enabled    bool
-	Priority   int
-	AuthToken  *string
-	SyncPolicy *string
+	Name         string
+	URL          string
+	Enabled      bool
+	Priority     int
+	AuthToken    *string
+	SyncPolicy   *string
+	Registration string
 }
 
 type UpdateInput struct {
-	Name       *string
-	URL        *string
-	Enabled    *bool
-	Priority   *int
-	AuthToken  *string
-	SyncPolicy *string
+	Name         *string
+	URL          *string
+	Enabled      *bool
+	Priority     *int
+	AuthToken    *string
+	SyncPolicy   *string
+	Registration *string
 }
 
 const DefaultSyncPolicy = "all"
@@ -97,6 +99,7 @@ func (s *Service) Create(in WriteInput) (*core.Record, error) {
 		policy = *in.SyncPolicy
 	}
 	rec.Set("syncPolicy", policy)
+	rec.Set("registration", in.Registration)
 	rec.Set("lastHealth", unknownHealth())
 	if err := s.app.Save(rec); err != nil {
 		return nil, err
@@ -129,6 +132,9 @@ func (s *Service) Update(id string, in UpdateInput) (*core.Record, error) {
 	}
 	if in.SyncPolicy != nil {
 		rec.Set("syncPolicy", *in.SyncPolicy)
+	}
+	if in.Registration != nil {
+		rec.Set("registration", *in.Registration)
 	}
 	if err := s.app.Save(rec); err != nil {
 		return nil, err

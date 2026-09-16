@@ -12,7 +12,8 @@
     "edit": "Edit",
     "download": "Download",
     "retry": "Retry",
-    "failedToSave": "Failed to save voice"
+    "failedToSave": "Failed to save voice",
+    "close": "Close"
   },
   "generate": {
     "title": "Generate",
@@ -161,7 +162,6 @@
     "status_available": "Available",
     "noMatch": "No models match your filters.",
     "actionInstall": "Install model",
-    "actionInstallNoServer": "No online inference server - check settings",
     "actionInstalling": "Installing model",
     "actionRemove": "Remove model",
     "recommended": "Recommended",
@@ -220,7 +220,8 @@
     "removeConfirmTitle": "Remove {{name}}?",
     "removeConfirmDescription": "The model files are deleted from the inference server. Voices using it stop working until it is installed again.",
     "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again.",
-    "noAcceptingServer": "No online server accepts this model: check its hardware, VRAM and each server's automatic models setting."
+    "noAcceptingServer": "No online server accepts this model: check its hardware, VRAM and each server's automatic models setting.",
+    "actionInstallNoServer": "No online inference server - check settings"
   },
   "notifications": {
     "title": "Activity",
@@ -253,8 +254,7 @@
     "profile": "Profile",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inference",
-    "dashboard": "Dashboard"
+    "inferenceServers": "Inference"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -512,9 +512,9 @@
     "testFailedStatus": "Test failed ({{status}})",
     "authToken": "Auth token",
     "authTokenPlaceholder": "Paste the token printed by the install script",
-    "authTokenEditPlaceholder": "Leave blank to keep the current token",
+    "authTokenEditPlaceholder": "Unchanged",
     "authTokenHint": "Optional. Required if you started the inference server with INFERENCE_AUTH_TOKEN set.",
-    "authTokenEditHint": "Leave blank to keep the current token. Type a new value to rotate it; submit empty to clear.",
+    "authTokenEditHint": "Leave as is to keep the current token, or paste a new one to replace it.",
     "addDialog": {
       "title": "Add an inference server",
       "description": "Pick where the server will run. Copy what appears below: the server registers itself here when it starts, nothing to paste back.",
@@ -524,7 +524,8 @@
         "docker": "Docker",
         "compose": "Docker Compose",
         "railway": "Railway",
-        "runpod": "RunPod"
+        "runpod": "RunPod",
+        "manual": "Manual"
       },
       "device": "Hardware",
       "devices": {
@@ -541,10 +542,18 @@
       "tokenHint": "The registration token is valid for one hour and only allows adding a server. The worker keeps the generated auth token for itself.",
       "tokenLoading": "Preparing a registration token...",
       "tokenFailed": "Could not create a registration token",
-      "manualLabel": "Add manually",
       "manualHint": "For a worker that is already running: paste its URL and the token it was started with.",
-      "deployOnRailway": "Deploy on Railway"
+      "deployOnRailway": "Deploy on Railway",
+      "waiting": "Waiting for the server: it shows up here on its own once it has started.",
+      "registered": "Server “{{name}}” registered"
     },
+    "disabled": "Disabled",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} model",
+    "modelCount_other": "{{count}} models",
+    "priorityValue": "Priority {{count}}",
+    "editServer": "Edit server",
     "syncPolicy": "Automatic models",
     "syncPolicyHint": "Which catalog models get installed here without asking. CPU models are the ones that run without a GPU; GPU models need one.",
     "syncPolicies": {
@@ -553,16 +562,10 @@
       "gpu": "GPU models only",
       "none": "None (by hand)"
     },
-    "disabled": "Disabled",
-    "deviceCpu": "CPU",
-    "deviceGpu": "GPU ({{device}})",
-    "modelCount_one": "{{count}} model",
-    "modelCount_other": "{{count}} models",
-    "priorityValue": "Priority {{count}}"
+    "enable": "Enable this server",
+    "disable": "Disable this server"
   },
   "dashboard": {
-    "subtitle": "What each inference worker is using right now, refreshed every five seconds.",
-    "loading": "Reading...",
     "unavailable": "This worker predates the stats route. Update its image to see usage here.",
     "cpu": "Worker CPU",
     "memory": "Worker memory",

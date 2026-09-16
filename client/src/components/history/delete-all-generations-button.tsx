@@ -1,8 +1,8 @@
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { generationCollection } from '@/collections';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useGenerationCollection } from '@/hooks/use-generation-collection';
 
 interface Props {
   generationIds: string[];
@@ -12,10 +12,11 @@ interface Props {
 
 export function DeleteAllGenerationsButton({ generationIds, voiceName, onDeleted }: Props) {
   const { t } = useTranslation();
+  const generations = useGenerationCollection();
 
   function handleDelete() {
     for (const id of generationIds) {
-      generationCollection.delete(id);
+      generations.delete(id);
     }
     onDeleted?.();
   }

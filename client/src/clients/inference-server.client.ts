@@ -18,6 +18,6 @@ export const inferenceServerClient = universalClient(
     create: (payload: InferenceServerWritePayload) => delegate.post<InferenceServer>('/inference-servers', payload),
     update: (id: string, payload: Partial<InferenceServerWritePayload>) => delegate.patch<InferenceServer>(`/inference-servers/${encodeURIComponent(id)}`, payload),
     remove: (id: string) => delegate.delete<void>(`/inference-servers/${encodeURIComponent(id)}`),
-    createRegistrationToken: () => delegate.post<{ token: string; expiresAt: string }>('/inference-servers/registration-tokens', {}),
+    createRegistrationToken: () => delegate.post<{ token: string; registration: string; expiresAt: string }>('/inference-servers/registration-tokens', {}),
   })),
 );

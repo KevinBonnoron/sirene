@@ -12,7 +12,8 @@
     "edit": "Modifier",
     "download": "Télécharger",
     "retry": "Réessayer",
-    "failedToSave": "Échec de l'enregistrement de la voix"
+    "failedToSave": "Échec de l'enregistrement de la voix",
+    "close": "Fermer"
   },
   "generate": {
     "title": "Générer",
@@ -161,7 +162,6 @@
     "status_available": "Disponibles",
     "noMatch": "Aucun modèle ne correspond à vos filtres.",
     "actionInstall": "Installer le modèle",
-    "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
     "actionInstalling": "Installation en cours",
     "actionRemove": "Supprimer le modèle",
     "recommended": "Recommandé",
@@ -220,7 +220,8 @@
     "removeConfirmTitle": "Supprimer {{name}} ?",
     "removeConfirmDescription": "Les fichiers du modèle sont supprimés du serveur d'inférence. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
     "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
-    "noAcceptingServer": "Aucun serveur en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et le réglage des modèles automatiques de chaque serveur."
+    "noAcceptingServer": "Aucun serveur en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et le réglage des modèles automatiques de chaque serveur.",
+    "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres"
   },
   "notifications": {
     "title": "Activité",
@@ -253,8 +254,7 @@
     "profile": "Profil",
     "admin": "Administration",
     "navigation": "Navigation",
-    "inferenceServers": "Inférence",
-    "dashboard": "Tableau de bord"
+    "inferenceServers": "Inférence"
   },
   "studio": {
     "breadcrumbStudio": "Studio",
@@ -445,9 +445,9 @@
     "testFailedStatus": "Échec du test ({{status}})",
     "authToken": "Token d'auth",
     "authTokenPlaceholder": "Collez le token affiché par le script d'installation",
-    "authTokenEditPlaceholder": "Laissez vide pour conserver le token actuel",
+    "authTokenEditPlaceholder": "Inchangé",
     "authTokenHint": "Optionnel. Requis si vous avez démarré le serveur d'inférence avec INFERENCE_AUTH_TOKEN.",
-    "authTokenEditHint": "Laissez vide pour conserver le token actuel. Saisissez une nouvelle valeur pour le faire tourner ; soumettez vide pour le supprimer.",
+    "authTokenEditHint": "Laissez tel quel pour conserver le token actuel, ou collez-en un nouveau pour le remplacer.",
     "addDialog": {
       "title": "Ajouter un serveur d'inférence",
       "description": "Choisissez où le serveur va tourner. Copiez ce qui s'affiche dessous : le serveur s'enregistre ici tout seul au démarrage, rien à recopier.",
@@ -457,7 +457,8 @@
         "docker": "Docker",
         "compose": "Docker Compose",
         "railway": "Railway",
-        "runpod": "RunPod"
+        "runpod": "RunPod",
+        "manual": "Manuel"
       },
       "device": "Matériel",
       "devices": {
@@ -474,10 +475,18 @@
       "tokenHint": "Le jeton d'enregistrement est valable une heure et ne permet que d'ajouter un serveur. Le serveur garde pour lui le jeton d'auth généré.",
       "tokenLoading": "Préparation d'un jeton d'enregistrement...",
       "tokenFailed": "Impossible de créer un jeton d'enregistrement",
-      "manualLabel": "Ajouter manuellement",
       "manualHint": "Pour un serveur déjà en marche : collez son URL et le jeton avec lequel il a été lancé.",
-      "deployOnRailway": "Déployer sur Railway"
+      "deployOnRailway": "Déployer sur Railway",
+      "waiting": "En attente du serveur : il apparaîtra ici tout seul une fois démarré.",
+      "registered": "Serveur « {{name}} » enregistré"
     },
+    "disabled": "Désactivé",
+    "deviceCpu": "CPU",
+    "deviceGpu": "GPU ({{device}})",
+    "modelCount_one": "{{count}} modèle",
+    "modelCount_other": "{{count}} modèles",
+    "priorityValue": "Priorité {{count}}",
+    "editServer": "Modifier le serveur",
     "syncPolicy": "Modèles automatiques",
     "syncPolicyHint": "Quels modèles du catalogue s'installent ici sans demander. Les modèles CPU tournent sans carte graphique, les modèles GPU en exigent une.",
     "syncPolicies": {
@@ -486,16 +495,10 @@
       "gpu": "Modèles GPU uniquement",
       "none": "Aucun (à la main)"
     },
-    "disabled": "Désactivé",
-    "deviceCpu": "CPU",
-    "deviceGpu": "GPU ({{device}})",
-    "modelCount_one": "{{count}} modèle",
-    "modelCount_other": "{{count}} modèles",
-    "priorityValue": "Priorité {{count}}"
+    "enable": "Activer ce serveur",
+    "disable": "Désactiver ce serveur"
   },
   "dashboard": {
-    "subtitle": "Ce que chaque worker d'inférence consomme en ce moment, rafraîchi toutes les cinq secondes.",
-    "loading": "Lecture...",
     "unavailable": "Ce worker est antérieur à la route des statistiques. Mettez son image à jour pour voir l'utilisation ici.",
     "cpu": "CPU du worker",
     "memory": "Mémoire du worker",

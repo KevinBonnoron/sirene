@@ -35,20 +35,30 @@ async function fetchCurrentUser(): Promise<User | null> {
   if (!token) {
     return null;
   }
-  const res = await fetch(`${config.server.url}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${config.server.url}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error('auth.unavailable:network');
+  }
   if (res.ok) {
     return res.json() as Promise<User>;
   }
-  clearStoredToken();
-  return null;
+  if (res.status === 401 || res.status === 403) {
+    clearStoredToken();
+    return null;
+  }
+  // Only outages are worth retrying; another 4xx would fail the same way five times.
+  throw new Error(`${res.status >= 500 ? 'auth.unavailable' : 'auth.failed'}:${res.status}`);
 }
 
 export const authMeQueryOptions = queryOptions({
   queryKey: AUTH_QUERY_KEY,
   queryFn: fetchCurrentUser,
-  retry: false,
+  retry: (count, err) => count < 5 && err instanceof Error && err.message.startsWith('auth.unavailable'),
+  retryDelay: 1000,
   staleTime: Number.POSITIVE_INFINITY,
 });
 

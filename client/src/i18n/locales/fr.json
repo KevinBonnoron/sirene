@@ -507,7 +507,25 @@
     "loadedModels": "Chargés en mémoire",
     "noneLoaded": "Aucun modèle chargé",
     "activity": "En cours",
-    "error": "Impossible de lire les statistiques de ce serveur."
+    "error": "Impossible de lire les statistiques de ce serveur.",
+    "openDetails": "Ouvrir le détail de {{name}}",
+    "generations": "Générations récentes sur ce serveur",
+    "noGenerations": "Aucune génération enregistrée sur ce serveur pour l'instant.",
+    "unknownUser": "Utilisateur inconnu",
+    "logs": "Journal du worker",
+    "logsUnavailable": "Ce worker est antérieur à la route du journal. Mettez son image à jour pour le voir ici.",
+    "noLogs": "Rien dans le journal depuis le démarrage du worker.",
+    "level": "Niveau du journal",
+    "levels": {
+      "DEBUG": "Debug",
+      "INFO": "Info",
+      "WARNING": "Avertissement",
+      "ERROR": "Erreur"
+    },
+    "period": "Période",
+    "minutes": "{{count}} min",
+    "hours_one": "{{count}} h",
+    "hours_other": "{{count}} h"
   },
   "cliAuth": {
     "title": "Autoriser le CLI",

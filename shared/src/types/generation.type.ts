@@ -11,6 +11,8 @@ export interface GenerationTuning {
 }
 
 export interface Generation extends PocketBaseRecord {
+  /** Inference server that produced the audio; empty for cloud providers and older records. */
+  server?: string;
   voice: string;
   model: string;
   text: string;

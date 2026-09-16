@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .routers import backends, cache, generate, health, models, stats, transcribe
+from .routers import backends, cache, events, generate, health, logs, models, stats, transcribe
 from .services import registration
 from .services.model_manager import model_manager
 
@@ -32,7 +32,7 @@ for _handler in (_stdout_handler, _stderr_handler):
     _handler.setFormatter(_log_format)
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    handlers=[_stdout_handler, _stderr_handler],
+    handlers=[_stdout_handler, _stderr_handler, logs.RingBufferHandler()],
     force=True,
 )
 # Uvicorn installs its own handlers on these loggers, bypassing basicConfig with a second format.
@@ -54,12 +54,17 @@ async def lifespan(app: FastAPI):
         f"Prompt cache: {settings.cache_dir} (max {settings.cache_max_disk_mb}MB)"
     )
     registration_task = asyncio.create_task(registration.register())
-    yield
-    registration_task.cancel()
-    with suppress(asyncio.CancelledError):
-        await registration_task
-    model_manager.unload_all()
-    logger.info("All models unloaded, shutting down")
+    sampling_task = asyncio.create_task(stats.sample_forever())
+    try:
+        yield
+    finally:
+        registration_task.cancel()
+        sampling_task.cancel()
+        for task in (registration_task, sampling_task):
+            with suppress(asyncio.CancelledError):
+                await task
+        model_manager.unload_all()
+        logger.info("All models unloaded, shutting down")
 
 
 app = FastAPI(
@@ -98,6 +103,8 @@ app.include_router(models.router)
 app.include_router(transcribe.router)
 app.include_router(cache.router)
 app.include_router(stats.router)
+app.include_router(logs.router)
+app.include_router(events.router)
 
 if __name__ == "__main__":
     import uvicorn

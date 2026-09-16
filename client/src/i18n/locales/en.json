@@ -574,7 +574,25 @@
     "loadedModels": "Loaded in memory",
     "noneLoaded": "No model loaded",
     "activity": "In progress",
-    "error": "Could not read stats from this server."
+    "error": "Could not read stats from this server.",
+    "openDetails": "Open details for {{name}}",
+    "generations": "Recent generations on this server",
+    "noGenerations": "No generation recorded on this server yet.",
+    "unknownUser": "Unknown user",
+    "logs": "Worker log",
+    "logsUnavailable": "This worker predates the log route. Update its image to see its log here.",
+    "noLogs": "Nothing logged since the worker started.",
+    "level": "Log level",
+    "levels": {
+      "DEBUG": "Debug",
+      "INFO": "Info",
+      "WARNING": "Warning",
+      "ERROR": "Error"
+    },
+    "period": "Period",
+    "minutes": "{{count}} min",
+    "hours_one": "{{count}} h",
+    "hours_other": "{{count}} h"
   },
   "deleteGeneration": {
     "title": "Delete generation?",

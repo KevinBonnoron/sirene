@@ -407,6 +407,7 @@ func (s *Service) run(ctx context.Context, r *resolved, rec *core.Record, userID
 	if err != nil {
 		return nil, err
 	}
+	rec.Set("server", server.Id)
 	release := s.router.Acquire(server.Id)
 
 	if !streaming {

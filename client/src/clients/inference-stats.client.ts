@@ -17,11 +17,47 @@ export interface ServerStats {
   disk: { used: number; total: number };
   gpus: GpuStats[];
   loadedModels: string[];
+  history?: StatsSample[];
+  historySeconds?: number;
+}
+
+export interface StatsSample {
+  t: number;
+  cpu: number;
+  memory: number;
+  gpu: number | null;
+  vram: number | null;
 }
 
 export const inferenceStatsClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
-    get: (serverId: string) => delegate.get<ServerStats>(`/inference-servers/${encodeURIComponent(serverId)}/stats`),
+    get: (serverId: string, history = false) => delegate.get<ServerStats>(`/inference-servers/${encodeURIComponent(serverId)}/stats${history ? '?history=true' : ''}`),
+  })),
+);
+
+export interface WorkerLogLine {
+  time: string;
+  level: string;
+  logger: string;
+  message: string;
+}
+
+export interface ServerGeneration {
+  id: string;
+  created: string;
+  text: string;
+  duration: number;
+  model: string;
+  state: string;
+  user: { id: string; name: string };
+  voice: { id: string; name: string };
+}
+
+export const inferenceDetailClient = universalClient(
+  withFetchDelegate(config.server.url, authInterceptor),
+  withMethods(({ delegate }) => ({
+    logs: (serverId: string, limit = 200, level = '') => delegate.get<{ lines: WorkerLogLine[]; capacity: number }>(`/inference-servers/${encodeURIComponent(serverId)}/logs?limit=${limit}&level=${encodeURIComponent(level)}`),
+    generations: (serverId: string, limit = 50) => delegate.get<ServerGeneration[]>(`/inference-servers/${encodeURIComponent(serverId)}/generations?limit=${limit}`),
   })),
 );

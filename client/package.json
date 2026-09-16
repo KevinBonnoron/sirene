@@ -36,6 +36,7 @@
     "pocketbase-db-collection": "^0.0.1",
     "radix-ui": "^1.4.3",
     "react": "^19.1.0",
+    "react-charts": "3.0.0-beta.57",
     "react-dom": "^19.1.0",
     "react-i18next": "^16.5.4",
     "sonner": "^2.0.7",

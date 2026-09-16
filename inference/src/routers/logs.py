@@ -36,15 +36,20 @@ def _fan_out(entry: dict) -> None:
 
 
 class RingBufferHandler(logging.Handler):
+    formatter_for_exceptions = logging.Formatter()
+
     def emit(self, record: logging.LogRecord) -> None:
         if record.name == "uvicorn.access" and _PROBE.search(record.getMessage()):
             return
         try:
+            message = record.getMessage()
+            if record.exc_info:
+                message += "\n" + self.formatter_for_exceptions.formatException(record.exc_info)
             entry = {
                 "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(timespec="milliseconds"),
                 "level": record.levelname,
                 "logger": record.name,
-                "message": record.getMessage(),
+                "message": message,
             }
             _buffer.append(entry)
             if _loop is not None and _subscribers:

@@ -10,6 +10,8 @@ export interface InferenceServerHealth {
   device?: string;
   /** Total memory of the worker's first GPU in bytes; 0 without a GPU. */
   vram?: number;
+  /** Backends the worker can run; absent on workers predating the list. */
+  backends?: string[];
 }
 
 export type SyncPolicy = 'all' | 'cpu' | 'gpu' | 'none';

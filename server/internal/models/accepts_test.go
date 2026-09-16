@@ -2,6 +2,18 @@ package models
 
 import "testing"
 
+func TestKnowsBackend(t *testing.T) {
+	if !KnowsBackend(nil, "fish_audio") {
+		t.Error("a worker without a backend list must not be excluded")
+	}
+	if KnowsBackend([]string{"piper", "kokoro"}, "fish_audio") {
+		t.Error("a listed worker missing the backend must be excluded")
+	}
+	if !KnowsBackend([]string{"piper", "fish_audio"}, "fish_audio") {
+		t.Error("a listed worker with the backend must be accepted")
+	}
+}
+
 func TestAccepts(t *testing.T) {
 	const gib = 1 << 30
 	cases := []struct {

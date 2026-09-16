@@ -171,28 +171,29 @@ func jobTarget(modelID, serverID string) string {
 }
 
 // A blanket pull lands on every online server whose policy takes the model; an explicit selection is honoured as is.
-func requirements(modelID string) (hardware string, minVram int) {
-	for _, m := range catalog.Models {
-		if m.ID == modelID {
-			return m.Hardware, m.MinVram
-		}
-	}
-	return "", 0
+func requirements(m catalog.Model) (hardware string, minVram int, backend string) {
+	return m.Hardware, m.MinVram, m.Backend
 }
 
-func acceptingServers(online []*core.Record, modelID string) []*core.Record {
-	hardware, minVram := requirements(modelID)
+// KnowsBackend is true when the worker lists the backend, or predates the list and can't be told apart.
+func KnowsBackend(backends []string, backend string) bool {
+	return len(backends) == 0 || backend == "" || slices.Contains(backends, backend)
+}
+
+func acceptingServers(online []*core.Record, m catalog.Model) []*core.Record {
+	hardware, minVram, backend := requirements(m)
 	var out []*core.Record
 	for _, rec := range online {
-		device, vram := serverHealth(rec)
-		if Accepts(rec.GetString("syncPolicy"), hardware, minVram, device, vram) {
+		device, vram, backends := serverHealth(rec)
+		if KnowsBackend(backends, backend) && Accepts(rec.GetString("syncPolicy"), hardware, minVram, device, vram) {
 			out = append(out, rec)
 		}
 	}
 	return out
 }
 
-func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs *[]string, verb string) ([]*core.Record, error) {
+func (s *Service) resolveTargets(ctx context.Context, m catalog.Model, serverIDs *[]string, verb string) ([]*core.Record, error) {
+	modelID := m.ID
 	all, err := s.servers.ListEnabled()
 	if err != nil {
 		return nil, err
@@ -209,15 +210,15 @@ func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs 
 	requested := online
 	if serverIDs == nil {
 		if verb == "pull" {
-			if requested = acceptingServers(online, modelID); len(requested) == 0 {
+			if requested = acceptingServers(online, m); len(requested) == 0 {
 				return nil, apierr.Unavailable(apierr.CodeModelNoAcceptingServer, "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy.")
 			}
 		}
 	} else {
 		unique := slices.Compact(slices.Sorted(slices.Values(*serverIDs)))
 		requested = nil
-		hardware, minVram := requirements(modelID)
-		var missing, unfit []string
+		hardware, minVram, backend := requirements(m)
+		var missing, unfit, unaware []string
 		for _, id := range unique {
 			idx := slices.IndexFunc(online, func(r *core.Record) bool { return r.Id == id })
 			if idx < 0 {
@@ -225,7 +226,12 @@ func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs 
 				continue
 			}
 			// A hand-picked server skips the sync policy, never the hardware check.
-			if device, vram := serverHealth(online[idx]); !Accepts("all", hardware, minVram, device, vram) {
+			device, vram, backends := serverHealth(online[idx])
+			if !KnowsBackend(backends, backend) {
+				unaware = append(unaware, online[idx].GetString("name"))
+				continue
+			}
+			if !Accepts("all", hardware, minVram, device, vram) {
 				unfit = append(unfit, online[idx].GetString("name"))
 				continue
 			}
@@ -233,6 +239,9 @@ func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs 
 		}
 		if len(missing) > 0 {
 			return nil, apierr.BadRequest(apierr.CodeModelInvalidServerSelection, "Servers not online or not found: "+strings.Join(missing, ", "))
+		}
+		if len(unaware) > 0 {
+			return nil, apierr.BadRequest(apierr.CodeModelInvalidServerSelection, fmt.Sprintf("Servers whose worker predates the %s backend, update their image: %s", backend, strings.Join(unaware, ", ")))
 		}
 		if len(unfit) > 0 {
 			return nil, apierr.BadRequest(apierr.CodeModelInvalidServerSelection, "Servers that can't run this model (hardware or VRAM): "+strings.Join(unfit, ", "))
@@ -255,7 +264,7 @@ func (s *Service) resolveTargets(ctx context.Context, modelID string, serverIDs 
 }
 
 func (s *Service) StartDownload(ctx context.Context, userID string, m catalog.Model, serverIDs *[]string) (jobIDs []string, alreadyRunning bool, err error) {
-	targets, err := s.resolveTargets(ctx, m.ID, serverIDs, "pull")
+	targets, err := s.resolveTargets(ctx, m, serverIDs, "pull")
 	if err != nil {
 		return nil, false, err
 	}
@@ -423,7 +432,7 @@ func (s *Service) ImportPiper(ctx context.Context, name string, onnx, config Upl
 		config.ContentType = "application/json"
 	}
 
-	targets, err := s.resolveTargets(ctx, slug, serverIDs, "import")
+	targets, err := s.resolveTargets(ctx, catalog.Model{ID: slug, Backend: "piper", Hardware: "cpu"}, serverIDs, "import")
 	if err != nil {
 		return "", nil, err
 	}
@@ -585,13 +594,14 @@ func Accepts(policy, hardware string, minVram int, device string, vram int64) bo
 	return true
 }
 
-func serverHealth(rec *core.Record) (device string, vram int64) {
+func serverHealth(rec *core.Record) (device string, vram int64, backends []string) {
 	var health struct {
-		Device string `json:"device"`
-		VRAM   int64  `json:"vram"`
+		Device   string   `json:"device"`
+		VRAM     int64    `json:"vram"`
+		Backends []string `json:"backends"`
 	}
 	_ = rec.UnmarshalJSONField("lastHealth", &health)
-	return health.Device, health.VRAM
+	return health.Device, health.VRAM, health.Backends
 }
 
 // ReplicateAll catches every online server up: a worker coming back brings models the others may lack.
@@ -620,7 +630,7 @@ func (s *Service) ReplicateTo(serverID string) {
 			return
 		}
 		policy := rec.GetString("syncPolicy")
-		device, vram := serverHealth(rec)
+		device, vram, backends := serverHealth(rec)
 		if policy == "none" {
 			return
 		}
@@ -651,7 +661,7 @@ func (s *Service) ReplicateTo(serverID string) {
 			if _, has := byServer[serverID][m.ID]; has {
 				continue
 			}
-			if !Accepts(policy, m.Hardware, m.MinVram, device, vram) {
+			if !KnowsBackend(backends, m.Backend) || !Accepts(policy, m.Hardware, m.MinVram, device, vram) {
 				continue
 			}
 			ids := []string{serverID}

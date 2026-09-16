@@ -112,6 +112,11 @@ tasks:
     cmds:
       - docker build -f docker/Dockerfile --build-arg VERSION={{.VERSION}} -t sirene:{{.TAG | default "local"}} .
 
+  docker:build:inference:
+    desc: Builds the inference worker image (VARIANT=cpu|cuda)
+    cmds:
+      - docker build -f docker/Dockerfile.inference --build-arg INFERENCE_VARIANT={{.VARIANT | default "cpu"}} -t ghcr.io/kevinbonnoron/sirene-inference:{{.VARIANT | default "cpu"}} .
+
   # ── Quality ────────────────────────────────────────────────────────────────
 
   test:

@@ -272,11 +272,12 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 	}
 	_ = rec.UnmarshalJSONField("lastHealth", &prev)
 	rec.Set("lastHealth", map[string]any{
-		"at":     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
-		"status": status,
-		"error":  message,
-		"device": info.Device,
-		"vram":   info.GPUMemory,
+		"at":       time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+		"status":   status,
+		"error":    message,
+		"device":   info.Device,
+		"vram":     info.GPUMemory,
+		"backends": info.Backends,
 	})
 	if err := s.app.Save(rec); err != nil {
 		return err
@@ -290,11 +291,12 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 // A failed probe must not forget what the worker runs on, or a CPU worker would accept GPU models until it comes back.
 func lastKnown(rec *core.Record) inference.HealthInfo {
 	var prev struct {
-		Device string `json:"device"`
-		VRAM   int64  `json:"vram"`
+		Device   string   `json:"device"`
+		VRAM     int64    `json:"vram"`
+		Backends []string `json:"backends"`
 	}
 	_ = rec.UnmarshalJSONField("lastHealth", &prev)
-	return inference.HealthInfo{Device: prev.Device, GPUMemory: prev.VRAM}
+	return inference.HealthInfo{Device: prev.Device, GPUMemory: prev.VRAM, Backends: prev.Backends}
 }
 
 func unknownHealth() map[string]any {

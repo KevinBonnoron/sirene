@@ -134,8 +134,9 @@ func NewClient(target Target, logf func(string, ...any)) *Client {
 }
 
 type HealthInfo struct {
-	Device    string `json:"device"`
-	GPUMemory int64  `json:"gpu_memory"`
+	Device    string   `json:"device"`
+	GPUMemory int64    `json:"gpu_memory"`
+	Backends  []string `json:"backends"`
 }
 
 func Health(ctx context.Context, t Target) (HealthInfo, error) {

@@ -504,30 +504,34 @@
     "legacy": true
   },
   {
-    "id": "openaudio-s1-mini",
-    "name": "OpenAudio S1 Mini",
-    "backend": "openaudio",
-    "backendDisplayName": "OpenAudio",
-    "backendDescription": "High-quality multilingual voice cloning with emotional expression by Fish Audio.",
-    "description": "OpenAudio S1-mini by Fish Audio - high-quality multilingual voice cloning with emotional expression.",
-    "repo": "fishaudio/openaudio-s1-mini",
+    "id": "fish-speech-s2-pro",
+    "name": "Fish Speech S2-Pro",
+    "backend": "fish_audio",
+    "backendDisplayName": "Fish Speech",
+    "backendDescription": "Multilingual voice cloning with inline emotion and prosody control by Fish Audio.",
+    "description": "Fish Speech S2-Pro by Fish Audio - zero-shot voice cloning in 80+ languages with free-form [emotion] tags inside the text.",
+    "repo": "fishaudio/s2-pro",
     "files": [
       "config.json",
-      "model.pth",
       "codec.pth",
-      "special_tokens.json",
-      "tokenizer.tiktoken"
+      "model.safetensors.index.json",
+      "model-00001-of-00002.safetensors",
+      "model-00002-of-00002.safetensors",
+      "special_tokens_map.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "chat_template.jinja"
     ],
-    "size": 3610000000,
+    "size": 11008068049,
     "types": [
       "cloning"
     ],
     "maxReferenceDuration": 25,
-    "gated": true,
     "supportsEffects": true,
-    "license": "CC-BY-NC-SA-4.0",
+    "license": "Fish Audio Research License",
     "commercial": false,
     "hardware": "gpu",
+    "minVram": 24,
     "languages": [
       "en",
       "zh",
@@ -541,9 +545,13 @@
       "nl",
       "it",
       "pl",
-      "pt"
-    ],
-    "legacy": true
+      "pt",
+      "tr",
+      "sv",
+      "hi",
+      "vi",
+      "th"
+    ]
   },
   {
     "id": "chatterbox-en",

@@ -17,7 +17,7 @@ const CAPABILITIES: Record<string, VoiceCapabilities> = {
   cosyvoice: SPEED_ONLY,
   f5tts: SPEED_ONLY,
   higgs_audio: SPEED_ONLY,
-  openaudio: SPEED_ONLY,
+  fish_audio: SPEED_ONLY,
   elevenlabs: SPEED_ONLY,
   openai: SPEED_ONLY,
 };

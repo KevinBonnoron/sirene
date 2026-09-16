@@ -122,6 +122,21 @@ func (s *Store) FindRunning(t Type, target string) (Job, bool) {
 	return Job{}, false
 }
 
+// StartUnlessRunning starts a job for target unless one is already running, under one lock so concurrent callers can't both start.
+func (s *Store) StartUnlessRunning(id string, t Type, label, target string) (Job, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, j := range s.jobs {
+		if j.Status == Running && j.Type == t && j.Target == target {
+			return j, false
+		}
+	}
+	j := Job{ID: id, Type: t, Status: Running, Label: label, Target: target, CreatedAt: s.now().UnixMilli()}
+	s.jobs[id] = j
+	s.emitLocked(Update{ID: id, Job: j})
+	return j, true
+}
+
 func (s *Store) Start(id string, t Type, label, target string) Job {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -216,7 +216,7 @@
       "showMore_other": "Voir {{count}} autres options"
     },
     "missingOn": "Absent de {{names}}",
-    "complete": "Compléter",
+    "complete": "Installer",
     "removeConfirmTitle": "Supprimer {{name}} ?",
     "removeConfirmDescription": "Les fichiers du modèle sont supprimés du serveur d'inférence. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
     "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",

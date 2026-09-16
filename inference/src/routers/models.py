@@ -3,7 +3,11 @@ import errno
 import io
 import json
 import logging
+import os
+import re
 import shutil
+import tempfile
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -29,7 +33,7 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
 
     custom = []
     for entry in sorted(models_path.iterdir()):
-        if not entry.is_dir():
+        if not entry.is_dir() or entry.name.startswith("."):
             continue
 
         onnx_files = [
@@ -90,7 +94,7 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
 async def list_models():
     models_path = Path(settings.models_path)
     installed = (
-        [d.name for d in sorted(models_path.iterdir()) if d.is_dir()]
+        [d.name for d in sorted(models_path.iterdir()) if d.is_dir() and not d.name.startswith(".")]
         if models_path.exists()
         else []
     )
@@ -115,9 +119,33 @@ def describe_pull_error(exc: BaseException) -> str:
     return "Model pull failed. See inference server logs for details."
 
 
+_MODEL_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_IMPORT_MAX_BYTES = 4 * 1024**3
+_IMPORT_MAX_ENTRIES = 512
+_publish_locks: dict[str, asyncio.Lock] = {}
+
+
+def _publish_lock(model_id: str) -> asyncio.Lock:
+    return _publish_locks.setdefault(model_id, asyncio.Lock())
+
+
+async def _publish(staging: Path, model_dir: Path) -> bool:
+    """Moves a finished staging directory into place; False when another pull got there first."""
+    async with _publish_lock(model_dir.name):
+        if model_dir.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+            return False
+        os.replace(staging, model_dir)
+        return True
+
+
 @router.post("/pull")
 async def pull_model(req: ModelPullRequest):
+    if not _MODEL_ID.fullmatch(req.model_id) or req.model_id in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid model id")
     model_path = Path(settings.models_path) / req.model_id
+    # Each pull owns a staging directory and publishes it atomically, so a failed or concurrent pull never touches a finished one.
+    staging = Path(settings.models_path) / f".{req.model_id}.pull-{uuid.uuid4().hex[:8]}"
 
     async def event_generator():
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
@@ -144,7 +172,7 @@ async def pull_model(req: ModelPullRequest):
             asyncio.create_task(
                 produce(
                     download_model_files(
-                        model_path=model_path,
+                        model_path=staging,
                         files=req.files,
                         total_size=req.total_size,
                         hf_token=req.hf_token,
@@ -168,6 +196,14 @@ async def pull_model(req: ModelPullRequest):
         async def drain():
             try:
                 await asyncio.gather(*tasks, return_exceptions=True)
+                if failed.is_set():
+                    shutil.rmtree(staging, ignore_errors=True)
+                elif staging.exists():
+                    try:
+                        await _publish(staging, model_path)
+                    except OSError as exc:
+                        shutil.rmtree(staging, ignore_errors=True)
+                        await queue.put({"status": "error", "message": f"Could not publish the model: {exc}"})
             finally:
                 await queue.put(None)
 
@@ -278,6 +314,50 @@ class _StreamBuffer(io.RawIOBase):
         data = bytes(self._buf)
         self._buf.clear()
         return data
+
+
+@router.post("/{model_id}/import")
+async def import_model(model_id: str, archive: UploadFile = File(...)):
+    if not _MODEL_ID.fullmatch(model_id) or model_id in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid model id")
+    model_dir = Path(settings.models_path) / model_id
+    if model_dir.exists():
+        raise HTTPException(status_code=409, detail=f'A model directory "{model_id}" already exists')
+    with tempfile.TemporaryFile() as tmp:
+        total = 0
+        while chunk := await archive.read(1024 * 1024):
+            total += len(chunk)
+            if total > _IMPORT_MAX_BYTES:
+                raise HTTPException(status_code=413, detail="Archive too large")
+            tmp.write(chunk)
+        tmp.seek(0)
+        try:
+            zf = zipfile.ZipFile(tmp)
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Archive is not a zip file")
+        with zf:
+            # One entry list for accounting, path checks and extraction, so duplicate names can't slip past the size sum.
+            entries = zf.infolist()
+            if len(entries) > _IMPORT_MAX_ENTRIES:
+                raise HTTPException(status_code=413, detail="Archive has too many entries")
+            if sum(info.file_size for info in entries) > _IMPORT_MAX_BYTES:
+                raise HTTPException(status_code=413, detail="Archive expands beyond the size limit")
+            staging = Path(settings.models_path) / f".{model_id}.import-{uuid.uuid4().hex[:8]}"
+            root = staging.resolve()
+            for info in entries:
+                dest = (staging / info.filename).resolve()
+                if dest != root and not str(dest).startswith(str(root) + os.sep):
+                    raise HTTPException(status_code=400, detail="Archive contains an invalid path")
+            staging.mkdir(parents=True)
+            try:
+                await asyncio.to_thread(zf.extractall, staging, entries)
+                published = await _publish(staging, model_dir)
+            except Exception:
+                shutil.rmtree(staging, ignore_errors=True)
+                raise
+    if not published:
+        raise HTTPException(status_code=409, detail=f'A model directory "{model_id}" already exists')
+    return {"id": model_id, "message": "Model imported"}
 
 
 @router.get("/{model_id}/export")

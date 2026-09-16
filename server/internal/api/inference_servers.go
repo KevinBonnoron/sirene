@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/router"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 	"github.com/KevinBonnoron/sirene/server/internal/inference"
 	"github.com/KevinBonnoron/sirene/server/internal/infsrv"
+	"github.com/KevinBonnoron/sirene/server/internal/sse"
 )
 
 type inferenceServerBody struct {
@@ -158,7 +161,7 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err != nil {
 			return err
 		}
-		body, err := inference.NewClient(infsrv.TargetOf(rec), nil).Stats(e.Request.Context())
+		body, err := inference.NewClient(infsrv.TargetOf(rec), nil).Stats(e.Request.Context(), e.Request.URL.Query().Get("history") == "true")
 		if errors.Is(err, inference.ErrStatsUnsupported) {
 			return apierr.NotFound(apierr.CodeInferenceServerStatsUnsupported, "This inference server does not expose usage statistics")
 		}
@@ -166,6 +169,111 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 			return err
 		}
 		return e.Blob(http.StatusOK, "application/json", body)
+	}).Bind(auth.RequireScope("inference-servers:read"))
+
+	s.GET("/{id}/logs", func(e *core.RequestEvent) error {
+		id, err := pathParam(e, "id")
+		if err != nil {
+			return err
+		}
+		rec, err := d.Servers.Get(id)
+		if err != nil {
+			return err
+		}
+		limit := 200
+		if raw := e.Request.URL.Query().Get("limit"); raw != "" {
+			v, err := strconv.Atoi(raw)
+			if err != nil || v < 1 || v > 1000 {
+				return apierr.Validation("limit: must be an integer between 1 and 1000")
+			}
+			limit = v
+		}
+		level := strings.ToUpper(e.Request.URL.Query().Get("level"))
+		switch level {
+		case "", "DEBUG", "INFO", "WARNING", "ERROR":
+		default:
+			return apierr.Validation("level: must be one of debug, info, warning, error")
+		}
+		body, err := inference.NewClient(infsrv.TargetOf(rec), nil).Logs(e.Request.Context(), limit, level)
+		if errors.Is(err, inference.ErrStatsUnsupported) {
+			return apierr.NotFound(apierr.CodeInferenceServerStatsUnsupported, "This inference server does not expose logs")
+		}
+		if err != nil {
+			return err
+		}
+		return e.Blob(http.StatusOK, "application/json", body)
+	}).Bind(auth.RequireScope("inference-servers:read"))
+
+	s.GET("/{id}/events", func(e *core.RequestEvent) error {
+		id, err := pathParam(e, "id")
+		if err != nil {
+			return err
+		}
+		rec, err := d.Servers.Get(id)
+		if err != nil {
+			return err
+		}
+		w := sse.Begin(e)
+		err = inference.NewClient(infsrv.TargetOf(rec), nil).Events(e.Request.Context(), func(name, data string) error { return w.Event(name, data) })
+		if errors.Is(err, inference.ErrStatsUnsupported) {
+			_ = w.Event("unsupported", "{}")
+		}
+		return nil
+	}).Bind(auth.RequireScope("inference-servers:read"), apis.SkipSuccessActivityLog())
+
+	s.GET("/{id}/generations", func(e *core.RequestEvent) error {
+		id, err := pathParam(e, "id")
+		if err != nil {
+			return err
+		}
+		if _, err := d.Servers.Get(id); err != nil {
+			return err
+		}
+		limit := 50
+		if v, err := strconv.Atoi(e.Request.URL.Query().Get("limit")); err == nil && v > 0 && v <= 200 {
+			limit = v
+		}
+		records, err := e.App.FindRecordsByFilter("generations", "server = {:id}", "-created", limit, 0, map[string]any{"id": id})
+		if err != nil {
+			return err
+		}
+		names := map[string]string{}
+		lookup := func(collection, recID string) string {
+			if recID == "" {
+				return ""
+			}
+			key := collection + ":" + recID
+			if v, ok := names[key]; ok {
+				return v
+			}
+			label := ""
+			if r, err := e.App.FindRecordById(collection, recID); err == nil {
+				label = r.GetString("name")
+				if label == "" {
+					label = r.GetString("email")
+				}
+			}
+			names[key] = label
+			return label
+		}
+		out := make([]map[string]any, 0, len(records))
+		for _, g := range records {
+			text := g.GetString("text")
+			if len(text) > 240 {
+				text = text[:240] + "…"
+			}
+			out = append(out, map[string]any{
+				"id":       g.Id,
+				"created":  g.GetDateTime("created").Time().UTC().Format(time.RFC3339),
+				"text":     text,
+				"duration": g.GetFloat("duration"),
+				"model":    g.GetString("model"),
+				"state":    g.GetString("state"),
+				"user":     map[string]string{"id": g.GetString("user"), "name": lookup("users", g.GetString("user"))},
+				"voice":    map[string]string{"id": g.GetString("voice"), "name": lookup("voices", g.GetString("voice"))},
+			})
+		}
+		return e.JSON(http.StatusOK, out)
 	}).Bind(auth.RequireScope("inference-servers:read"))
 
 	w.POST("/{id}/test", func(e *core.RequestEvent) error {

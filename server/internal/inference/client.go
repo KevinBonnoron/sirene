@@ -60,8 +60,19 @@ func refuseForbiddenAddr(_, address string, _ syscall.RawConn) error {
 var httpClient = &http.Client{
 	Transport: &http.Transport{
 		DialContext:         (&net.Dialer{Timeout: 10 * time.Second, Control: refuseForbiddenAddr}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second,
 		MaxIdleConnsPerHost: 8,
 		IdleConnTimeout:     90 * time.Second,
+	},
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
+
+// Event streams have no request deadline, so the wait for headers is bounded here instead.
+var streamClient = &http.Client{
+	Transport: &http.Transport{
+		DialContext:           (&net.Dialer{Timeout: 10 * time.Second, Control: refuseForbiddenAddr}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
 	},
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
@@ -176,10 +187,14 @@ type ModelsList struct {
 
 var ErrStatsUnsupported = errors.New("worker has no /stats route")
 
-func (c *Client) Stats(ctx context.Context) (json.RawMessage, error) {
+func (c *Client) Stats(ctx context.Context, history bool) (json.RawMessage, error) {
 	ctx, cancel := context.WithTimeout(ctx, listTimeout)
 	defer cancel()
-	req, err := c.target.newRequest(ctx, http.MethodGet, "/stats", nil)
+	path := "/stats"
+	if history {
+		path += "?history=true"
+	}
+	req, err := c.target.newRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -194,11 +209,57 @@ func (c *Client) Stats(ctx context.Context) (json.RawMessage, error) {
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, upstreamError("stats", res, c.logf)
 	}
-	body, err := io.ReadAll(io.LimitReader(res.Body, 256<<10))
+	// Six hours of samples every five seconds is well past 256 KiB.
+	body, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
 	if err != nil || !json.Valid(body) {
 		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "stats failed: invalid response")
 	}
 	return body, nil
+}
+
+func (c *Client) Logs(ctx context.Context, limit int, level string) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+	req, err := c.target.newRequest(ctx, http.MethodGet, fmt.Sprintf("/logs?limit=%d&level=%s", limit, url.QueryEscape(level)), nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.target.do(req, "logs")
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusMethodNotAllowed {
+		return nil, ErrStatsUnsupported
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, upstreamError("logs", res, c.logf)
+	}
+	body, err := io.ReadAll(io.LimitReader(res.Body, 2<<20))
+	if err != nil || !json.Valid(body) {
+		return nil, apierr.Upstream(apierr.CodeUpstreamInference, "logs failed: invalid response")
+	}
+	return body, nil
+}
+
+func (c *Client) Events(ctx context.Context, onEvent func(name, data string) error) error {
+	req, err := c.target.newRequest(ctx, http.MethodGet, "/events", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	res, err := streamClient.Do(req)
+	if err != nil {
+		return apierr.Upstream(apierr.CodeUpstreamInference, "events failed: "+transportReason(err))
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusMethodNotAllowed {
+		return ErrStatsUnsupported
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return upstreamError("events", res, c.logf)
+	}
+	return sse.Read(res.Body, func(ev sse.Event) error { return onEvent(ev.Name, ev.Data) })
 }
 
 func (c *Client) ListModels(ctx context.Context) (*ModelsList, error) {

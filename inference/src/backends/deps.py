@@ -23,6 +23,8 @@ class BackendDeps:
     check_modules: list[str]
     packages: list[str] = field(default_factory=list)
     extra_index_url: str | None = None
+    # module:attribute pairs that only a recent enough release provides
+    check_symbols: list[str] = field(default_factory=list)
 
 
 _REGISTRY: dict[str, BackendDeps] = {
@@ -66,6 +68,7 @@ _REGISTRY: dict[str, BackendDeps] = {
     ),
     "fish_audio": BackendDeps(
         check_modules=["torch", "torchaudio", "fish_speech"],
+        check_symbols=["fish_speech.models.text2semantic.inference:load_codec_model"],
         packages=[
             *_TORCH,
             "transformers>=4.47.0,<=4.57.3",
@@ -121,7 +124,17 @@ def is_installed(backend_name: str) -> bool:
     deps = _REGISTRY.get(backend_name)
     if deps is None:
         return True
-    return all(importlib.util.find_spec(m) is not None for m in deps.check_modules)
+    if not all(importlib.util.find_spec(m) is not None for m in deps.check_modules):
+        return False
+    for symbol in deps.check_symbols:
+        module_name, attr = symbol.split(":")
+        try:
+            module = importlib.import_module(module_name)
+        except Exception:
+            return False
+        if not hasattr(module, attr):
+            return False
+    return True
 
 
 async def install_backend_deps(backend_name: str, device: str = "cpu"):
@@ -178,12 +191,21 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
 
 
 async def _run_pip(*args: str) -> None:
+    cmd = [sys.executable, "-m", "pip", *args]
+    packages_dir = os.environ.get("PACKAGES_DIR")
+    if packages_dir and args and args[0] == "install":
+        cmd[3:3] = ["--target", packages_dir]
     proc = await asyncio.create_subprocess_exec(
-        sys.executable, "-m", "pip", *args,
+        *cmd,
         stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
     )
-    await proc.communicate()
+    _, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        error = stderr.decode(errors="replace") if stderr else "Unknown error"
+        logger.error("pip %s failed: %s", " ".join(args), error)
+        raise RuntimeError(error)
+    importlib.invalidate_caches()
 
 
 async def _install_chatterbox_extras() -> None:

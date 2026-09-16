@@ -20,20 +20,32 @@ class FishAudioBackend(TTSBackend):
         from fish_speech.models.text2semantic.inference import init_model, load_codec_model
 
         resolved_device = self._resolve_device(device)
-        precision = torch.bfloat16 if resolved_device != "cpu" else torch.float32
-        logger.info(f"[fish_audio] Loading model from {model_path} on {resolved_device}")
-
-        self._model, self._decode_one_token = init_model(
-            checkpoint_path=str(model_path),
-            device=resolved_device,
-            precision=precision,
-            compile=False,
-        )
-
+        if not resolved_device.startswith("cuda"):
+            raise RuntimeError("Fish Speech S2-Pro needs a CUDA GPU with 24 GB of memory; this worker has none")
+        precision = torch.bfloat16
         codec_path = model_path / "codec.pth"
         if not codec_path.exists():
             raise FileNotFoundError(f"Codec weights not found at {codec_path}")
-        self._codec = load_codec_model(str(codec_path), resolved_device, precision)
+        logger.info(f"[fish_audio] Loading model from {model_path} on {resolved_device}")
+
+        # fish-speech builds the 4B model in the default dtype before assigning the weights; bfloat16 halves that host-RAM peak.
+        default_dtype = torch.get_default_dtype()
+        torch.set_default_dtype(torch.bfloat16)
+        try:
+            self._model, self._decode_one_token = init_model(
+                checkpoint_path=str(model_path),
+                device=resolved_device,
+                precision=precision,
+                compile=False,
+            )
+        finally:
+            torch.set_default_dtype(default_dtype)
+
+        try:
+            self._codec = load_codec_model(str(codec_path), resolved_device, precision)
+        except Exception:
+            self.unload_model()
+            raise
         self._sample_rate = self._codec.sample_rate
 
         self._model_path = model_path
@@ -50,8 +62,9 @@ class FishAudioBackend(TTSBackend):
     def is_loaded(self) -> bool:
         return self._model is not None and self._codec is not None
 
+    # The whole waveform is decoded at once; chunking it afterwards is not streaming.
     def supports_streaming(self) -> bool:
-        return True
+        return False
 
     def _encode_reference(self, audio_path: str):
         from fish_speech.models.text2semantic.inference import encode_audio
@@ -71,6 +84,8 @@ class FishAudioBackend(TTSBackend):
         prompt_tokens = None
         if params.has_reference_audio:
             with self._reference_audio(params) as ref_audio_path:
+                if not params.joined_reference_text:
+                    raise ValueError("Fish Speech needs the transcript of the reference clips it keeps to clone a voice")
                 from ..services.prompt_cache import get_cache
 
                 cache = get_cache()

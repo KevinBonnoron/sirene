@@ -35,7 +35,8 @@ export function LoginForm() {
 
         navigate({ to: '/' });
       } catch (err) {
-        setServerError(t([`login.${err instanceof Error ? err.message : ''}`, 'login.failed']));
+        const code = err instanceof Error ? err.message : '';
+        setServerError(t([`login.${code}`, `errors.${code}`, 'login.failed']));
       }
     },
   });

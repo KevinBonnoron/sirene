@@ -35,7 +35,8 @@ export function RegisterForm() {
         await register(value.email, value.password, value.name);
         navigate({ to: '/' });
       } catch (err) {
-        setServerError(t([`register.${err instanceof Error ? err.message : ''}`, 'register.failed']));
+        const code = err instanceof Error ? err.message : '';
+        setServerError(t([`register.${code}`, `errors.${code}`, 'register.failed']));
       }
     },
   });

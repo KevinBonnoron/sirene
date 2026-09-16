@@ -40,7 +40,8 @@ export function SetupForm() {
         qc.setQueryData(SETUP_STATUS_QUERY_KEY, { needsSetup: false });
         navigate({ to: '/' });
       } catch (err) {
-        setServerError(t([`setup.${err instanceof Error ? err.message : ''}`, 'setup.failed']));
+        const code = err instanceof Error ? err.message : '';
+        setServerError(t([`setup.${code}`, `errors.${code}`, 'setup.failed']));
       }
     },
   });

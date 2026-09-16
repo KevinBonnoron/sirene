@@ -22,7 +22,7 @@ backends = [
     "torch>=2.10.0,<2.11",
     "torchaudio>=2.10.0,<2.11",
     "torchvision>=0.25.0,<0.26",
-    "transformers>=4.47.0",
+    "transformers>=4.47.0,<5",
     "qwen-tts>=0.1.0",
     "f5-tts>=1.1.15,<1.2",
     "cosyvoice>=0.0.8; sys_platform == 'linux' and platform_machine == 'x86_64' or sys_platform == 'win32'",

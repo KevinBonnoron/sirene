@@ -36,7 +36,7 @@ Then open [http://localhost](http://localhost).
 
 ## Features
 
-- **Multi-backend TTS** - Route requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, OpenAudio, or Chatterbox from a single interface
+- **Multi-backend TTS** - Route requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, Fish Speech, or Chatterbox from a single interface
 - **Voice cloning** - Create custom voices by uploading audio samples with zero-shot cloning
 - **Model management** - Download and manage TTS models on demand from the web UI
 - **Real-time updates** - Track downloads and generation progress via Server-Sent Events
@@ -52,7 +52,7 @@ Then open [http://localhost](http://localhost).
 | F5-TTS | Yes | Yes | Multilingual |
 | Piper | - | - | 26 languages |
 | CosyVoice | Yes | Yes | 9 languages |
-| OpenAudio S1 | Yes | - | Multilingual |
+| Fish Speech S2-Pro | Yes | - | 80+ languages |
 | Chatterbox | Yes | - | EN + 23 languages |
 
 ## Development

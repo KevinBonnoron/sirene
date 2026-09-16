@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: Multi-Backend
-    details: Route text-to-speech requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, OpenAudio, or Chatterbox from a single API.
+    details: Route text-to-speech requests to Kokoro, Qwen3-TTS, F5-TTS, Piper, CosyVoice, Fish Speech, or Chatterbox from a single API.
   - title: Custom Voices
     details: Create custom voices by uploading audio samples. Automatic transcription via Whisper, waveform preview, and zero-shot voice cloning.
   - title: Model Management

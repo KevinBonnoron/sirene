@@ -64,9 +64,25 @@ _REGISTRY: dict[str, BackendDeps] = {
         packages=[*_TORCH, "boson-multimodal>=0.1.0"],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
-    "openaudio": BackendDeps(
+    "fish_audio": BackendDeps(
         check_modules=["torch", "torchaudio", "fish_speech"],
-        packages=[*_TORCH, "transformers>=4.47.0"],
+        packages=[
+            *_TORCH,
+            "transformers>=4.47.0,<=4.57.3",
+            "hydra-core>=1.3.2",
+            "omegaconf>=2.3.0",
+            "einops>=0.7.0",
+            "einx[torch]==0.2.2",
+            "loguru>=0.6.0",
+            "tiktoken>=0.8.0",
+            "safetensors",
+            "loralib>=0.1.2",
+            "rich>=13.5.3",
+            "natsort>=8.4.0",
+            "pyrootutils>=1.0.4",
+            "descript-audio-codec",
+            "descript-audiotools",
+        ],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "voxtral": BackendDeps(
@@ -153,8 +169,8 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
         await _install_chatterbox_extras()
     elif backend_name == "cosyvoice":
         await _install_cosyvoice_extras()
-    elif backend_name == "openaudio":
-        await _install_openaudio_extras()
+    elif backend_name == "fish_audio":
+        await _install_fish_audio_extras()
     elif backend_name == "voxtral":
         await _install_voxtral_extras()
 
@@ -206,8 +222,9 @@ async def _install_cosyvoice_extras() -> None:
     )
 
 
-async def _install_openaudio_extras() -> None:
-    await _run_pip("install", "--no-deps", "fish-speech==0.1.0")
+# fish-speech 2.0 only exists as a git tag and pins torch 2.8; --no-deps keeps the one shared torch this env already has.
+async def _install_fish_audio_extras() -> None:
+    await _run_pip("install", "--no-deps", "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta")
 
 
 async def _install_voxtral_extras() -> None:

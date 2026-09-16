@@ -1,10 +1,10 @@
 from .base import TTSBackend
 from .chatterbox import ChatterboxBackend
 from .cosyvoice import CosyVoiceBackend
-from .openaudio import OpenAudioBackend
 from .kokoro import KokoroBackend
 from .qwen import QwenBackend
 from .f5tts import F5TTSBackend
+from .fish_audio import FishAudioBackend
 from .piper import PiperBackend
 from .higgs_audio import HiggsAudioBackend
 from .voxtral import VoxtralBackend
@@ -15,7 +15,7 @@ _BACKENDS: dict[str, type[TTSBackend]] = {
     "f5tts": F5TTSBackend,
     "piper": PiperBackend,
     "cosyvoice": CosyVoiceBackend,
-    "openaudio": OpenAudioBackend,
+    "fish_audio": FishAudioBackend,
     "chatterbox": ChatterboxBackend,
     "higgs_audio": HiggsAudioBackend,
     "voxtral": VoxtralBackend,

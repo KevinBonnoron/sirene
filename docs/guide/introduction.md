@@ -64,5 +64,5 @@ sirene/
 | F5-TTS | Yes | Yes | Multilingual |
 | Piper | - | - | 26 languages, 40+ voices |
 | CosyVoice | Yes | Yes (~150ms) | 9 languages |
-| OpenAudio S1 | Yes | - | Multilingual |
+| Fish Speech S2-Pro | Yes | - | 80+ languages |
 | Chatterbox | Yes | - | EN + 23 languages |

@@ -266,13 +266,12 @@ func (s *Service) StartDownload(ctx context.Context, userID string, m catalog.Mo
 	jobIDs = []string{}
 	for _, rec := range targets {
 		target := jobTarget(m.ID, rec.Id)
-		if existing, ok := s.jobs.FindRunning(jobs.ModelPull, target); ok {
+		id := jobs.NewID()
+		if existing, started := s.jobs.StartUnlessRunning(id, jobs.ModelPull, m.Name+" → "+rec.GetString("name"), target); !started {
 			jobIDs = append(jobIDs, existing.ID)
 			alreadyRunning = true
 			continue
 		}
-		id := jobs.NewID()
-		s.jobs.Start(id, jobs.ModelPull, m.Name+" → "+rec.GetString("name"), target)
 		s.wg.Add(1)
 		go func(rec *core.Record) {
 			defer s.wg.Done()
@@ -559,6 +558,20 @@ func serverHealth(rec *core.Record) (device string, vram int64) {
 	}
 	_ = rec.UnmarshalJSONField("lastHealth", &health)
 	return health.Device, health.VRAM
+}
+
+// ReplicateAll catches every online server up: a worker coming back brings models the others may lack.
+func (s *Service) ReplicateAll() {
+	servers, err := s.servers.ListEnabled()
+	if err != nil {
+		s.app.Logger().Warn("[replicate] listing servers failed", "error", err)
+		return
+	}
+	for _, rec := range servers {
+		if routing.StatusOf(rec) == "online" {
+			s.ReplicateTo(rec.Id)
+		}
+	}
 }
 
 // ReplicateTo pulls onto one server every catalog model that other servers

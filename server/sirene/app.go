@@ -72,6 +72,7 @@ func New(opts Options) *pocketbase.PocketBase {
 	store := jobs.New()
 	voiceSvc := voices.New(app)
 	modelSvc := models.New(app, servers, cache, rt, store, st)
+	servers.SetOnOnline(func(string) { modelSvc.ReplicateAll() })
 	deps := &api.Deps{
 		Config:     config.Config{InferenceURL: opts.InferenceURL, UIDir: opts.UIDir},
 		Keys:       keys,

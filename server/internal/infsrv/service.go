@@ -47,6 +47,7 @@ type Service struct {
 	app      core.App
 	localURL string
 	onChange func(serverID string)
+	onOnline func(serverID string)
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -54,11 +55,16 @@ type Service struct {
 }
 
 func New(app core.App, localURL string) *Service {
-	return &Service{app: app, localURL: strings.TrimRight(localURL, "/"), onChange: func(string) {}}
+	return &Service{app: app, localURL: strings.TrimRight(localURL, "/"), onChange: func(string) {}, onOnline: func(string) {}}
 }
 
 func (s *Service) SetOnChange(fn func(serverID string)) {
 	s.onChange = fn
+}
+
+// Runs when a probe finds a server online that was not; the models service uses it to catch the server up.
+func (s *Service) SetOnOnline(fn func(serverID string)) {
+	s.onOnline = fn
 }
 
 func TargetOf(rec *core.Record) inference.Target {
@@ -261,6 +267,10 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 		status, message = "offline", err.Error()
 		info = lastKnown(rec)
 	}
+	var prev struct {
+		Status string `json:"status"`
+	}
+	_ = rec.UnmarshalJSONField("lastHealth", &prev)
 	rec.Set("lastHealth", map[string]any{
 		"at":     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 		"status": status,
@@ -268,7 +278,13 @@ func (s *Service) probeAndPersist(ctx context.Context, rec *core.Record) error {
 		"device": info.Device,
 		"vram":   info.GPUMemory,
 	})
-	return s.app.Save(rec)
+	if err := s.app.Save(rec); err != nil {
+		return err
+	}
+	if status == "online" && prev.Status != "online" && rec.GetBool("enabled") {
+		s.onOnline(rec.Id)
+	}
+	return nil
 }
 
 // A failed probe must not forget what the worker runs on, or a CPU worker would accept GPU models until it comes back.

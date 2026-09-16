@@ -109,10 +109,10 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 		if err != nil {
 			return err
 		}
+		// The probe's online transition already replicates onto the new server.
 		if checked, err := d.Servers.CheckOne(e.Request.Context(), rec.Id); err == nil {
 			rec = checked
 		}
-		d.Models.ReplicateTo(rec.Id)
 		return e.JSON(http.StatusCreated, rec)
 	})
 
@@ -129,7 +129,7 @@ func registerInferenceServers(p *router.RouterGroup[*core.RequestEvent], d *Deps
 			return err
 		}
 		rec, err := d.Servers.Update(id, infsrv.UpdateInput{Name: body.Name, URL: body.URL, Enabled: body.Enabled, Priority: intPtr(body.Priority), AuthToken: body.AuthToken, SyncPolicy: body.SyncPolicy})
-		if err == nil && body.SyncPolicy != nil && *body.SyncPolicy != "none" {
+		if err == nil && ((body.SyncPolicy != nil && *body.SyncPolicy != "none") || (body.Enabled != nil && *body.Enabled)) {
 			d.Models.ReplicateTo(rec.Id)
 		}
 		if err != nil {
@@ -328,7 +328,6 @@ func registerInferenceServersPublic(g *router.RouterGroup[*core.RequestEvent], d
 		if checked, err := d.Servers.CheckOne(ctx, rec.Id); err == nil {
 			rec = checked
 		}
-		d.Models.ReplicateTo(rec.Id)
 		status := http.StatusOK
 		if created {
 			status = http.StatusCreated

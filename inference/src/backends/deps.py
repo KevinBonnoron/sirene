@@ -27,6 +27,9 @@ class BackendDeps:
     check_symbols: list[str] = field(default_factory=list)
 
 
+# pip --target is not concurrency-safe: two backends writing the same package left a half-written transformers.
+_install_lock = asyncio.Lock()
+
 _REGISTRY: dict[str, BackendDeps] = {
     "whisper": BackendDeps(
         check_modules=["faster_whisper"],
@@ -138,6 +141,12 @@ def is_installed(backend_name: str) -> bool:
 
 
 async def install_backend_deps(backend_name: str, device: str = "cpu"):
+    async with _install_lock:
+        async for event in _install_backend_deps(backend_name, device):
+            yield event
+
+
+async def _install_backend_deps(backend_name: str, device: str):
     deps = _REGISTRY.get(backend_name)
     if deps is None or is_installed(backend_name):
         return
@@ -156,7 +165,7 @@ async def install_backend_deps(backend_name: str, device: str = "cpu"):
 
     cmd = [sys.executable, "-m", "pip", "install"]
     if packages_dir:
-        cmd += ["--target", packages_dir]
+        cmd += ["--target", packages_dir, "--upgrade"]
     if device == "cpu" and deps.extra_index_url:
         cmd += ["--extra-index-url", deps.extra_index_url]
     cmd += packages
@@ -194,7 +203,7 @@ async def _run_pip(*args: str) -> None:
     cmd = [sys.executable, "-m", "pip", *args]
     packages_dir = os.environ.get("PACKAGES_DIR")
     if packages_dir and args and args[0] == "install":
-        cmd[3:3] = ["--target", packages_dir]
+        cmd[3:3] = ["--target", packages_dir, "--upgrade"]
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.DEVNULL,

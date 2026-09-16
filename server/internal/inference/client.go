@@ -111,6 +111,13 @@ func transportReason(err error) string {
 func upstreamError(op string, res *http.Response, logf func(string, ...any)) error {
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
 	logf("[inference/"+op+"] upstream error", "status", res.StatusCode, "body", string(body))
+	// A 4xx carries the worker's own reason (unknown backend, bad input); a 5xx body is a stack trace, kept in the log.
+	var detail struct {
+		Detail string `json:"detail"`
+	}
+	if res.StatusCode < 500 && json.Unmarshal(body, &detail) == nil && detail.Detail != "" {
+		return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d): %s", op, res.StatusCode, detail.Detail))
+	}
 	return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d)", op, res.StatusCode))
 }
 

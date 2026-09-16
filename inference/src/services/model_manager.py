@@ -3,7 +3,7 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from ..backends.base import GenerateParams, TTSBackend, TTSResult
+from ..backends.base import GenerateParams, TTSBackend, TTSResult, GENERATION_LOCK
 from ..backends.registry import get_backend_class, list_backend_names
 from ..config import settings
 
@@ -20,7 +20,8 @@ class ModelManager:
         self, backend_name: str, model_path: str, params: GenerateParams
     ) -> TTSResult:
         backend = self._get_or_load(backend_name, model_path)
-        return backend.generate(params)
+        with GENERATION_LOCK:
+            return backend.generate(params)
 
     def generate_stream(
         self, backend_name: str, model_path: str, params: GenerateParams
@@ -28,7 +29,8 @@ class ModelManager:
         backend = self._get_or_load(backend_name, model_path)
         if not backend.supports_streaming():
             raise ValueError(f"Backend {backend_name!r} does not support streaming")
-        yield from backend.generate_stream(params)
+        with GENERATION_LOCK:
+            yield from backend.generate_stream(params)
 
     def get_backend(self, backend_name: str, model_path: str) -> TTSBackend:
         return self._get_or_load(backend_name, model_path)

@@ -4,7 +4,9 @@ from dataclasses import dataclass
 import gc
 import logging
 import os
+import random
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -34,6 +36,7 @@ class GenerateParams:
     instruct_gender: str | None = None
     speed: float = 1.0
     noise_scale: float | None = None
+    seed: int | None = None
     language: str = "en"
 
     @property
@@ -50,6 +53,10 @@ class GenerateParams:
         if self.included_reference_count is not None:
             texts = texts[: self.included_reference_count]
         return " ".join(t for t in texts if t)
+
+
+# Seeding touches the process-wide RNGs, so only one generation may sample at a time, whatever the backend.
+GENERATION_LOCK = threading.Lock()
 
 
 class TTSBackend(ABC):
@@ -69,6 +76,7 @@ class TTSBackend(ABC):
     def load_model(self, model_path: Path, device: str) -> None: ...
 
     def generate(self, params: GenerateParams) -> TTSResult:
+        self._apply_seed(params)
         t0 = time.monotonic()
         result = self._generate(params)
         elapsed = time.monotonic() - t0
@@ -81,6 +89,20 @@ class TTSBackend(ABC):
 
     @abstractmethod
     def _generate(self, params: GenerateParams) -> TTSResult: ...
+
+    # Sampling backends draw tokens at random; the same seed makes a take reproducible and the variation slider meaningful.
+    def _apply_seed(self, params: GenerateParams) -> None:
+        if params.seed is None:
+            return
+        seed = params.seed % (2**63)
+        random.seed(seed)
+        np.random.seed(seed % (2**32))
+        try:
+            import torch
+
+            torch.manual_seed(seed)
+        except ImportError:
+            pass
 
     def unload_model(self) -> None:
         logger.info(f"[{self.name}] Unloading model")

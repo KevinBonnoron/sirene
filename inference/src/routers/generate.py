@@ -90,6 +90,7 @@ def _build_params(req: GenerateRequest) -> GenerateParams:
         instruct_gender=req.instruct_gender,
         speed=req.speed,
         noise_scale=req.noise_scale,
+        seed=req.seed,
         language=req.language,
     )
 

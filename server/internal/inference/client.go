@@ -482,6 +482,7 @@ type Request struct {
 	InstructText       *string  `json:"instruct_text"`
 	InstructGender     *string  `json:"instruct_gender"`
 	Speed              float64  `json:"speed"`
+	PitchShift         float64  `json:"pitch_shift"`
 	NoiseScale         *float64 `json:"noise_scale"`
 	Seed               *int64   `json:"seed"`
 	Language           string   `json:"language"`

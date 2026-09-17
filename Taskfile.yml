@@ -59,7 +59,7 @@ tasks:
     cmds:
       - rm -rf .venv
       - uv venv --python 3.11 --seed .venv
-      - uv pip install --python .venv/bin/python -e ./inference
+      - uv pip install --python .venv/bin/python -e "./inference[dev]"
 
   dev:docs:
     cmds:
@@ -120,17 +120,36 @@ tasks:
   # ── Quality ────────────────────────────────────────────────────────────────
 
   test:
-    desc: Runs the Go and client test suites
+    desc: Runs the Go, client and inference test suites
     cmds:
       - go test -tags gtk3 ./...
       - bun test client
+      - task: test:inference
+
+  test:inference:
+    desc: Runs the inference worker test suite
+    dir: inference
+    preconditions:
+      - sh: test -x ../.venv/bin/python && ../.venv/bin/python -c "import pytest"
+        msg: "Python venv missing pytest: run `task setup:python`"
+    cmds:
+      - ../.venv/bin/python -m pytest tests
 
   lint:
-    desc: Biome, gofmt and go vet
+    desc: Biome, gofmt, go vet and ruff
     cmds:
       - bunx biome ci .
       - test -z "$(gofmt -l server desktop)" || (gofmt -l server desktop && exit 1)
       - go vet -tags gtk3 ./...
+      - task: lint:inference
+
+  lint:inference:
+    desc: Ruff over the inference worker
+    preconditions:
+      - sh: test -x .venv/bin/ruff
+        msg: "Ruff missing from the venv: run `task setup:python`"
+    cmds:
+      - .venv/bin/ruff check inference
 
   format:
     cmds:

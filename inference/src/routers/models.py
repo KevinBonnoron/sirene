@@ -283,7 +283,10 @@ async def import_piper_model(
 
 @router.post("/unload")
 async def unload_model(req: ModelUnloadRequest):
-    unloaded = model_manager.unload(req.backend, req.model_path)
+    try:
+        unloaded = model_manager.unload(req.backend, req.model_path)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not unloaded:
         raise HTTPException(status_code=404, detail="Model not currently loaded")
     return {"message": f"Unloaded {req.backend} model from {req.model_path}"}

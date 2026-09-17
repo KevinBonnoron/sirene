@@ -38,6 +38,11 @@ backends = [
 ]
 cuda = ["sirene-inference[backends]", "onnxruntime-gpu>=1.20.0", "nvidia-ml-py>=12.0"]
 cpu = ["sirene-inference[backends]", "onnxruntime>=1.20.0"]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

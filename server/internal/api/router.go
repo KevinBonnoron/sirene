@@ -26,7 +26,6 @@ func Register(se *core.ServeEvent, d *Deps) {
 
 	registerAuth(g, d)
 	registerCliAuthPublic(g, d)
-	registerModelsPublic(g, d)
 	registerInferenceServersPublic(g, d)
 	registerOpenAPI(g)
 

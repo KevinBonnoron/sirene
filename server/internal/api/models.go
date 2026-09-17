@@ -8,6 +8,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/pocketbase/pocketbase/tools/router"
 
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
@@ -18,8 +19,12 @@ import (
 
 const multipartMemory = 32 << 20
 
-func registerModelsPublic(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
-	g.GET("/models/events", func(e *core.RequestEvent) error {
+func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
+	m := p.Group("/models")
+
+	// Authenticated like every other stream: an unauthenticated one is an endless
+	// goroutine and connection anyone can open, as many times as they like.
+	m.GET("/events", func(e *core.RequestEvent) error {
 		w := sse.Begin(e)
 		ch, unsubscribe := d.Models.Changes.Subscribe()
 		defer unsubscribe()
@@ -34,13 +39,11 @@ func registerModelsPublic(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 				}
 			}
 		}
-	}).Bind(apis.SkipSuccessActivityLog())
-}
-
-func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
-	m := p.Group("/models")
+	}).Bind(apis.SkipSuccessActivityLog(), auth.RequireScope("models:read"))
 	read := auth.RequireScope("models:read")
-	write := auth.RequireScope("models:write")
+	// The model store is shared by every user: downloading fills the host's disk, and
+	// removing one takes the voices that depend on it down for everybody.
+	write := []*hook.Handler[*core.RequestEvent]{auth.RequireScope("models:write"), auth.RequireAdmin()}
 
 	m.GET("/catalog", func(e *core.RequestEvent) error {
 		out, err := d.Models.FullCatalog(e.Request.Context(), auth.IdentityOf(e).UserID)
@@ -84,7 +87,7 @@ func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 			return err
 		}
 		return e.NoContent(http.StatusNoContent)
-	}).Bind(write)
+	}).Bind(write...)
 
 	m.POST("/{id}/pull", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")
@@ -121,7 +124,7 @@ func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 			status = http.StatusOK
 		}
 		return e.JSON(status, map[string][]string{"jobIds": jobIDs})
-	}).Bind(write)
+	}).Bind(write...)
 
 	m.POST("/piper/import", func(e *core.RequestEvent) error {
 		if err := e.Request.ParseMultipartForm(multipartMemory); err != nil {
@@ -160,7 +163,7 @@ func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 			return err
 		}
 		return e.JSON(http.StatusAccepted, map[string]any{"id": slug, "jobIds": jobIDs})
-	}).Bind(write)
+	}).Bind(write...)
 
 	m.GET("/{id}/export", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")

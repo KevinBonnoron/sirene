@@ -719,10 +719,18 @@
     "voiceDesigner.nameAudioRequired": "Name and audio are required",
     "voiceDesigner.textFieldsExpected": "description, language, model and transcript must be text fields",
     "auth.emailTaken": "An account with this email already exists",
-    "model.noAcceptingServer": "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy"
+    "model.noAcceptingServer": "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy",
+    "auth.registrationClosed": "This instance is not accepting new accounts."
   },
   "form": {
     "showPassword": "Show password",
     "hidePassword": "Hide password"
+  },
+  "instance": {
+    "title": "Instance",
+    "description": "Settings that apply to this Sirene instance, not just your account.",
+    "registration": "Allow sign-ups",
+    "registrationHint": "When off, only you can create accounts, from the PocketBase dashboard.",
+    "saveFailed": "Failed to save the instance settings"
   }
 }

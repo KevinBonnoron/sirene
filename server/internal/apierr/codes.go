@@ -14,6 +14,7 @@ const (
 	CodeAuthForbidden          = "auth.forbidden"
 	CodeAuthMissingScope       = "auth.missingScope"
 	CodeAuthEmailTaken         = "auth.emailTaken"
+	CodeAuthRegistrationClosed = "auth.registrationClosed"
 
 	CodeApiKeyNotFound     = "apiKey.notFound"
 	CodeApiKeyUnknownScope = "apiKey.unknownScope"
@@ -80,7 +81,7 @@ const (
 
 var AllCodes = []string{
 	CodeInternal, CodeNotFound, CodeValidation, CodeTooLarge,
-	CodeAuthInvalidCredentials, CodeAuthInvalidToken, CodeAuthRegistrationFailed, CodeAuthRequired, CodeAuthForbidden, CodeAuthMissingScope, CodeAuthEmailTaken,
+	CodeAuthInvalidCredentials, CodeAuthInvalidToken, CodeAuthRegistrationFailed, CodeAuthRequired, CodeAuthForbidden, CodeAuthMissingScope, CodeAuthEmailTaken, CodeAuthRegistrationClosed,
 	CodeApiKeyNotFound, CodeApiKeyUnknownScope,
 	CodeCliAuthSessionAlreadyUsed, CodeCliAuthSessionNotFound,
 	CodeGenerationNotFound, CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken, CodeInferenceServerStatsUnsupported,

@@ -719,10 +719,18 @@
     "voiceDesigner.nameAudioRequired": "Le nom et l'audio sont requis",
     "voiceDesigner.textFieldsExpected": "description, language, model et transcript doivent être des champs texte",
     "auth.emailTaken": "Un compte existe déjà avec cet email",
-    "model.noAcceptingServer": "Aucun serveur d'inférence en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et la politique de chaque serveur"
+    "model.noAcceptingServer": "Aucun serveur d'inférence en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et la politique de chaque serveur",
+    "auth.registrationClosed": "Cette instance n'accepte pas de nouveaux comptes."
   },
   "form": {
     "showPassword": "Afficher le mot de passe",
     "hidePassword": "Masquer le mot de passe"
+  },
+  "instance": {
+    "title": "Instance",
+    "description": "Réglages qui s'appliquent à cette instance Sirene, pas seulement à votre compte.",
+    "registration": "Autoriser les inscriptions",
+    "registrationHint": "Désactivé, vous seul pouvez créer des comptes, depuis le tableau de bord PocketBase.",
+    "saveFailed": "Échec de l'enregistrement des réglages de l'instance"
   }
 }

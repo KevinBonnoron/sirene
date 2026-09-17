@@ -18,6 +18,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { ApiKeysSection } from './api-keys-section';
 import { AppearanceSection } from './appearance-section';
 import { CloudKeysSection } from './cloud-keys-section';
+import { InstanceSection } from './instance-section';
 
 const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml';
 
@@ -241,6 +242,16 @@ export function ProfilePage() {
         <Separator />
 
         <ApiKeysSection />
+
+        {user?.role === 'admin' && (
+          <>
+            <Separator />
+
+            <Section title={t('instance.title')} description={t('instance.description')}>
+              <InstanceSection />
+            </Section>
+          </>
+        )}
       </main>
     </div>
   );

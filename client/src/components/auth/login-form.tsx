@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
+import { useSetupStatus } from '@/hooks/use-setup-status';
 import { useValidators } from '@/hooks/use-validators';
 import { useAppForm, zodValidator } from '@/lib/form';
 import { safeRedirect } from '@/lib/safe-redirect';
@@ -12,6 +13,8 @@ export function LoginForm() {
   const v = useValidators();
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { data: setupStatus } = useSetupStatus();
+  const registrationEnabled = setupStatus?.registrationEnabled ?? true;
   const [serverError, setServerError] = useState('');
 
   const schema = z.object({
@@ -71,12 +74,14 @@ export function LoginForm() {
         </form.AppForm>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t('login.noAccount')}{' '}
-        <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
-          {t('login.register')}
-        </Link>
-      </p>
+      {registrationEnabled && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          {t('login.noAccount')}{' '}
+          <Link to="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+            {t('login.register')}
+          </Link>
+        </p>
+      )}
     </>
   );
 }

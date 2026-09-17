@@ -5,6 +5,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/core"
 
+	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 	"github.com/KevinBonnoron/sirene/server/internal/config"
 )
@@ -21,7 +22,14 @@ func Register(se *core.ServeEvent, d *Deps) {
 		if err != nil {
 			return err
 		}
-		return e.JSON(http.StatusOK, map[string]bool{"needsSetup": count == 0})
+		enabled, err := d.AppConfig.Bool(appconfig.RegistrationEnabled, true)
+		if err != nil {
+			return err
+		}
+		return e.JSON(http.StatusOK, map[string]bool{
+			"needsSetup":          count == 0,
+			"registrationEnabled": enabled,
+		})
 	})
 
 	registerAuth(g, d)
@@ -36,6 +44,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 	registerMe(p, d)
 	registerAPIKeys(p, d)
 	registerAppSettings(p, d)
+	registerInstance(p, d)
 	registerInferenceServers(p, d)
 	registerJobs(p, d)
 	registerModels(p, d)

@@ -10,6 +10,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/router"
 
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
+	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 )
 
@@ -81,6 +82,14 @@ func registerAuth(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	})
 
 	g.POST("/auth/register", func(e *core.RequestEvent) error {
+		enabled, err := d.AppConfig.Bool(appconfig.RegistrationEnabled, true)
+		if err != nil {
+			e.App.Logger().Error("[auth/register] could not read the registration policy", "error", err)
+			return apierr.Internal()
+		}
+		if !enabled {
+			return apierr.Forbidden(apierr.CodeAuthRegistrationClosed, "This instance is not accepting new accounts")
+		}
 		var body struct {
 			Email           *string `json:"email"`
 			Password        *string `json:"password"`

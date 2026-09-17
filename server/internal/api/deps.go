@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 	"github.com/KevinBonnoron/sirene/server/internal/config"
 	"github.com/KevinBonnoron/sirene/server/internal/generation"
@@ -19,6 +20,7 @@ type Deps struct {
 	Keys       *auth.APIKeys
 	CliAuth    *auth.CliAuth
 	Settings   *settings.Service
+	AppConfig  *appconfig.Service
 	Servers    *infsrv.Service
 	Registry   *infsrv.Registrations
 	Cache      *servermodels.Cache

@@ -11,6 +11,7 @@ export type ErrorCode =
   | 'auth.required'
   | 'auth.forbidden'
   | 'auth.emailTaken'
+  | 'auth.registrationClosed'
   // API keys
   | 'apiKey.notFound'
   | 'apiKey.unknownScope'

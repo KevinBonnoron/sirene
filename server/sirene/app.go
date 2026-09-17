@@ -16,6 +16,7 @@ import (
 
 	"github.com/KevinBonnoron/sirene/server/internal/api"
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
+	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 	"github.com/KevinBonnoron/sirene/server/internal/config"
 	"github.com/KevinBonnoron/sirene/server/internal/generation"
@@ -65,6 +66,7 @@ func New(opts Options) *pocketbase.PocketBase {
 
 	keys := auth.NewAPIKeys(app)
 	st := settings.New(app)
+	cfgStore := appconfig.New(app)
 	servers := infsrv.New(app, opts.InferenceURL)
 	cache := servermodels.New(app, servers)
 	servers.SetOnChange(cache.Invalidate)
@@ -78,6 +80,7 @@ func New(opts Options) *pocketbase.PocketBase {
 		Keys:       keys,
 		CliAuth:    auth.NewCliAuth(keys),
 		Settings:   st,
+		AppConfig:  cfgStore,
 		Servers:    servers,
 		Registry:   infsrv.NewRegistrations(),
 		Cache:      cache,

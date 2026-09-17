@@ -21,8 +21,6 @@ def _patch_qwen2_attention_mask():
         import torch
         from cosyvoice.llm.llm import Qwen2Encoder
 
-        original = Qwen2Encoder.forward_one_step
-
         def _fixed_forward_one_step(self, xs, masks, cache=None):
             if cache is not None:
                 past_len = cache[0][0].shape[2]

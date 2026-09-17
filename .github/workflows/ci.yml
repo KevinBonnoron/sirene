@@ -14,10 +14,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # checkout leaves the workflow token in .git/config by default, and every job here runs
+  # repository code — package install scripts, go test, pytest. Nothing in this workflow
+  # pushes, so none of them need it.
   client:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.3.10
@@ -35,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
@@ -57,12 +64,37 @@ jobs:
           cp inference/pyproject.toml inference/overrides.txt desktop/internal/launcher/inference_src/
           CGO_ENABLED=1 go build -tags gtk3 -o /tmp/sirene-desktop ./desktop
 
+  # The worker is the most concurrent and least typed part of the codebase and had no
+  # check of any kind. Backends import their runtime dependencies lazily, inside the
+  # methods that use them, so the base install is enough to catch one that stopped
+  # importing — no torch, no CUDA, a few seconds.
+  inference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./inference[dev]"
+      - name: Ruff
+        run: ruff check inference
+      - name: Test
+        working-directory: inference
+        run: python -m pytest tests
+
   # Not filtered on docs/**: the build is short, and a dead link can be
   # introduced by a page that moves as easily as by the page that points at it.
   docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.3.10
@@ -77,6 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
@@ -92,6 +126,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
         with:

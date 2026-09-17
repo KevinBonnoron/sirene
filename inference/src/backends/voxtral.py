@@ -59,8 +59,6 @@ class VoxtralBackend(TTSBackend):
         return super().can_stream(params) and params.speed == 1.0
 
     def load_model(self, model_path: Path, device: str) -> None:
-        import httpx
-
         logger.info("[voxtral] Loading model from %s on %s", model_path, device)
 
         self._model_path = model_path

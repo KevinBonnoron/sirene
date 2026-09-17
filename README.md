@@ -99,8 +99,8 @@ task --list        # Every task
 task dev           # Server, client and inference worker
 task build         # Web UI, server binary and CLI
 task build:ui      # Build the client into server/ui/dist for embedding
-task test          # Go unit tests
-task lint          # Biome, gofmt, go vet
+task test          # Go, client and inference test suites
+task lint          # Biome, gofmt, go vet, ruff
 task desktop:build # Wails desktop app for the host OS
 task desktop:package
 ```

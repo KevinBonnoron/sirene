@@ -2,10 +2,10 @@
 
 ## Général
 
-- [ ] Gestion multi utilisateur
+- [x] Gestion multi utilisateur : comptes, rôles et cloisonnement par utilisateur. Reste l'administration (inviter, désactiver, quotas).
 - [ ] Ajouter des samples depuis son micro
 - [ ] Découper longue piste en plusieurs samples
-- [ ] Desktop app
+- [x] Desktop app : Wails + CPython embarqué, packagée pour Linux, macOS et Windows à chaque tag.
 
 ## Nouveaux backends TTS
 

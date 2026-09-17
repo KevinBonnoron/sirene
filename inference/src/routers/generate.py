@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -78,6 +79,9 @@ async def _generate_with_keepalive(
         yield chunk
 
 
+# Every params object comes from here, and SSML segments derive theirs with
+# dataclasses.replace: a field added to GenerateParams cannot be silently dropped on
+# one of the two paths, which is how the seed stopped reaching SSML takes.
 def _build_params(req: GenerateRequest) -> GenerateParams:
     return GenerateParams(
         text=req.text,
@@ -89,6 +93,7 @@ def _build_params(req: GenerateRequest) -> GenerateParams:
         instruct_text=req.instruct_text,
         instruct_gender=req.instruct_gender,
         speed=req.speed,
+        pitch_shift=req.pitch_shift,
         noise_scale=req.noise_scale,
         seed=req.seed,
         language=req.language,
@@ -117,48 +122,29 @@ def _check_reference_cache(
 
 def _generate_ssml(req: GenerateRequest, model_path: str) -> TTSResult:
     segments = parse_ssml_segments(req.text, base_speed=req.speed)
+    base = _build_params(req)
+    # Silences must be minted at the rate the spoken segments come back at, or concatenating
+    # the two resamples the speech; the backend's own rate is what the stream headers announce.
+    sample_rate = model_manager.get_backend(req.backend, model_path).sample_rate
     all_audio: list[np.ndarray] = []
-    sample_rate: int = 24000
 
     for seg in segments:
         if seg.effect is not None:
             pause_duration = PAUSE_DURATIONS.get(seg.effect.lower())
             if pause_duration is not None:
-                silence = np.zeros(int(pause_duration * sample_rate), dtype=np.float32)
-                all_audio.append(silence)
-            else:
-                # Unknown effects go through as literal text for backends that understand bracket tokens.
-                params = GenerateParams(
-                    text=f"[{seg.effect}]",
-                    voice_path=req.voice_path,
-                    reference_audio=_normalize_to_list(req.reference_audio),
-                    reference_audio_data=req.reference_audio_data,
-                    reference_cache_key=req.reference_cache_key,
-                    reference_text=_normalize_to_list(req.reference_text),
-                    instruct_text=req.instruct_text,
-                    instruct_gender=req.instruct_gender,
-                    speed=req.speed,
-                    noise_scale=req.noise_scale,
-                    language=req.language,
+                all_audio.append(
+                    np.zeros(int(pause_duration * sample_rate), dtype=np.float32)
                 )
-                result = model_manager.generate(req.backend, model_path, params)
-                all_audio.append(result.audio)
-                sample_rate = result.sample_rate
-            continue
-
-        params = GenerateParams(
-            text=seg.text,
-            voice_path=req.voice_path,
-            reference_audio=_normalize_to_list(req.reference_audio),
-            reference_audio_data=req.reference_audio_data,
-            reference_cache_key=req.reference_cache_key,
-            reference_text=_normalize_to_list(req.reference_text),
-            instruct_text=resolve_tone(seg.tone) if seg.tone else req.instruct_text,
-            instruct_gender=req.instruct_gender,
-            speed=seg.rate,
-            noise_scale=req.noise_scale,
-            language=req.language,
-        )
+                continue
+            # Unknown effects go through as literal text for backends that understand bracket tokens.
+            params = replace(base, text=f"[{seg.effect}]")
+        else:
+            params = replace(
+                base,
+                text=seg.text,
+                speed=seg.rate,
+                instruct_text=resolve_tone(seg.tone) if seg.tone else req.instruct_text,
+            )
         result = model_manager.generate(req.backend, model_path, params)
         all_audio.append(result.audio)
         sample_rate = result.sample_rate
@@ -262,7 +248,7 @@ async def generate_stream(req: GenerateRequest):
                 headers=headers,
             )
 
-        if backend.supports_streaming():
+        if backend.can_stream(params):
             gen = model_manager.generate_stream(req.backend, model_path, params)
             return StreamingResponse(
                 stream_pcm_chunks(gen),

@@ -71,6 +71,7 @@ class _EspeakG2P:
 
 class KokoroBackend(TTSBackend):
     name = "kokoro"
+    handles_speed = True
 
     def __init__(self):
         self._session = None

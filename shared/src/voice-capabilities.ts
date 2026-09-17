@@ -5,30 +5,36 @@ export interface VoiceCapabilities {
   perWordSpeed: boolean;
 }
 
-const NONE: VoiceCapabilities = { speed: false, pitch: false, variation: false, perWordSpeed: false };
-const SPEED_ONLY: VoiceCapabilities = { speed: true, pitch: false, variation: false, perWordSpeed: false };
+// Pitch, and speed on backends with no native control, are applied to the rendered signal
+// by the worker, so every local backend offers both. The cloud providers never reach the
+// worker and only expose what their own API takes.
+const LOCAL: VoiceCapabilities = { speed: true, pitch: true, variation: true, perWordSpeed: false };
+const CLOUD: VoiceCapabilities = { speed: true, pitch: false, variation: false, perWordSpeed: false };
 
 const CAPABILITIES: Record<string, VoiceCapabilities> = {
-  piper: { speed: true, pitch: false, variation: true, perWordSpeed: false },
-  qwen: SPEED_ONLY,
-  voxtral: NONE,
-  kokoro: SPEED_ONLY,
-  chatterbox: SPEED_ONLY,
-  cosyvoice: SPEED_ONLY,
-  f5tts: SPEED_ONLY,
-  higgs_audio: SPEED_ONLY,
-  fish_audio: NONE,
-  elevenlabs: SPEED_ONLY,
-  openai: SPEED_ONLY,
+  piper: LOCAL,
+  qwen: LOCAL,
+  voxtral: LOCAL,
+  // ONNX inference is deterministic: the same input always yields the same take.
+  kokoro: { ...LOCAL, variation: false },
+  chatterbox: LOCAL,
+  cosyvoice: LOCAL,
+  f5tts: LOCAL,
+  higgs_audio: LOCAL,
+  fish_audio: LOCAL,
+  elevenlabs: CLOUD,
+  openai: CLOUD,
 };
 
 export function getVoiceCapabilities(backend: string | undefined | null): VoiceCapabilities {
   if (!backend) {
-    return NONE;
+    return { speed: false, pitch: false, variation: false, perWordSpeed: false };
   }
-  return CAPABILITIES[backend] ?? SPEED_ONLY;
+  return CAPABILITIES[backend] ?? LOCAL;
 }
 
+// Deliberately not keyed on `pitch`: a global pitch offset is post-processing, while the
+// per-word panel edits a pitch curve and per-word rates that no backend consumes yet.
 export function hasPerWordTuning(capabilities: VoiceCapabilities): boolean {
-  return capabilities.pitch || capabilities.perWordSpeed;
+  return capabilities.perWordSpeed;
 }

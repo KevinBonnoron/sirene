@@ -43,6 +43,7 @@ def _get_port() -> int:
 
 class VoxtralBackend(TTSBackend):
     name = "voxtral"
+    handles_speed = True
 
     def __init__(self):
         super().__init__()
@@ -50,6 +51,12 @@ class VoxtralBackend(TTSBackend):
         self._server_url: str | None = None
         self._server_process: subprocess.Popen | None = None
         self._cloned_voices: dict[str, str] = {}
+
+    # The upstream server honours speed, but not on its streaming route: generate_stream
+    # falls back to generating the whole take, which without the keepalive can outlast the
+    # request while nothing is being written.
+    def can_stream(self, params: GenerateParams) -> bool:
+        return super().can_stream(params) and params.speed == 1.0
 
     def load_model(self, model_path: Path, device: str) -> None:
         import httpx

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import numpy as np
 
+from ..services import dsp
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,7 @@ class GenerateParams:
     instruct_text: str | None = None
     instruct_gender: str | None = None
     speed: float = 1.0
+    pitch_shift: float = 0.0
     noise_scale: float | None = None
     seed: int | None = None
     language: str = "en"
@@ -61,6 +64,8 @@ GENERATION_LOCK = threading.Lock()
 
 class TTSBackend(ABC):
     name: str
+    # False means the backend ignores params.speed and the post-processor stretches for it.
+    handles_speed: bool = False
 
     def __init__(self):
         self._model = None
@@ -75,10 +80,32 @@ class TTSBackend(ABC):
     @abstractmethod
     def load_model(self, model_path: Path, device: str) -> None: ...
 
+    # Pitch and, on backends that ignore speed, the tempo are applied to the rendered
+    # signal. Both need the whole take, so a stream has to be buffered to honour them.
+    def needs_post_processing(self, params: GenerateParams) -> bool:
+        return dsp.shifts_pitch(params.pitch_shift) or (
+            not self.handles_speed and dsp.stretches(params.speed)
+        )
+
+    # Whether this request can go out as a native stream. Buffering it instead costs
+    # latency but keeps the keepalive, which is what holds the connection open.
+    def can_stream(self, params: GenerateParams) -> bool:
+        return self.supports_streaming() and not self.needs_post_processing(params)
+
+    def _post_process(self, params: GenerateParams, result: TTSResult) -> TTSResult:
+        if not self.needs_post_processing(params):
+            return result
+        audio = result.audio
+        if not self.handles_speed and dsp.stretches(params.speed):
+            audio = dsp.time_stretch(audio, 1.0 / params.speed)
+        if dsp.shifts_pitch(params.pitch_shift):
+            audio = dsp.pitch_shift(audio, params.pitch_shift)
+        return TTSResult(audio=audio, sample_rate=result.sample_rate)
+
     def generate(self, params: GenerateParams) -> TTSResult:
         self._apply_seed(params)
         t0 = time.monotonic()
-        result = self._generate(params)
+        result = self._post_process(params, self._generate(params))
         elapsed = time.monotonic() - t0
         duration = len(result.audio) / result.sample_rate
         logger.debug(

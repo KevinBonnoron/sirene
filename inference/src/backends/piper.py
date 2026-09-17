@@ -16,6 +16,7 @@ _PAD = "_"
 
 class PiperBackend(TTSBackend):
     name = "piper"
+    handles_speed = True
 
     def __init__(self):
         self._session = None

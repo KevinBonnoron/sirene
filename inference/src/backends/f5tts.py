@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class F5TTSBackend(TTSBackend):
     name = "f5tts"
+    handles_speed = True
 
     def load_model(self, model_path: Path, device: str) -> None:
         from f5_tts.api import F5TTS

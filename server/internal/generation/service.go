@@ -225,6 +225,10 @@ func (s *Service) resolve(ctx context.Context, in Input, userID string) (*resolv
 	if v, ok := number(in.Tuning, "speedMultiplier"); ok {
 		speed = v
 	}
+	pitchShift := 0.0
+	if v, ok := number(in.Tuning, "pitchShift"); ok {
+		pitchShift = math.Max(-12, math.Min(12, v))
+	}
 	var noiseScale *float64
 	var seed *int64
 	if v, ok := number(in.Tuning, "variationSeed"); ok {
@@ -255,7 +259,7 @@ func (s *Service) resolve(ctx context.Context, in Input, userID string) (*resolv
 	}
 
 	r.kind = kindInference
-	r.req = inference.Request{Backend: model.Backend, Text: in.Text, ModelPath: model.ID, Speed: speed, NoiseScale: noiseScale, Seed: seed, Language: language}
+	r.req = inference.Request{Backend: model.Backend, Text: in.Text, ModelPath: model.ID, Speed: speed, PitchShift: pitchShift, NoiseScale: noiseScale, Seed: seed, Language: language}
 	if !model.HasType("preset") {
 		presetVoice = ""
 	}

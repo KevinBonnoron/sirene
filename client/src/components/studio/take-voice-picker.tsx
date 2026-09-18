@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { voiceCollection } from '@/collections';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useModelReach } from '@/hooks/use-model-reach';
 import { useModels } from '@/hooks/use-models';
 import { pb } from '@/lib/pocketbase';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ export function TakeVoicePicker({ voiceId, onChange, disabled }: Props) {
   const { t } = useTranslation();
   const { data: voices } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
   const { catalog } = useModels();
+  const reaches = useModelReach();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,8 +84,16 @@ export function TakeVoicePicker({ voiceId, onChange, disabled }: Props) {
               filtered.map((v) => {
                 const avatarUrl = v.avatar ? pb.files.getURL(v, v.avatar) : undefined;
                 const modelName = catalog.find((m) => m.id === v.model)?.name;
+                const unreachable = !reaches(v.model);
                 return (
-                  <button key={v.id} type="button" onClick={() => select(v)} className={cn('flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-muted', voiceId === v.id && 'bg-muted/60')}>
+                  <button
+                    key={v.id}
+                    type="button"
+                    disabled={unreachable}
+                    title={unreachable ? t('voice.modelUnreachable') : undefined}
+                    onClick={() => select(v)}
+                    className={cn('flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left transition-colors', unreachable ? 'cursor-not-allowed opacity-40' : 'hover:bg-muted', voiceId === v.id && 'bg-muted/60')}
+                  >
                     <Avatar className="size-7 shrink-0">
                       <AvatarImage src={avatarUrl} alt={v.name} />
                       <AvatarFallback className="text-xs">{v.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -101,6 +111,7 @@ export function TakeVoicePicker({ voiceId, onChange, disabled }: Props) {
                             {v.language}
                           </Badge>
                         )}
+                        {unreachable && <span className="text-2xs text-destructive">{t('model.status_missing')}</span>}
                       </div>
                     </div>
                   </button>

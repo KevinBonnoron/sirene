@@ -107,7 +107,8 @@
     "manage": "Manage voices",
     "pageSubtitle": "Create, import, and manage your voices.",
     "selectVoice": "Select a voice",
-    "emptyGoManage": "No voices yet. Head to the Voices page to create your first one."
+    "emptyGoManage": "No voices yet. Head to the Voices page to create your first one.",
+    "modelUnreachable": "Model on no reachable server"
   },
   "voiceDesigner": {
     "title": "Voice Designer",
@@ -222,7 +223,7 @@
     "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again.",
     "noAcceptingServer": "No online server accepts this model: check its hardware, VRAM and each server's automatic models setting.",
     "actionInstallNoServer": "No online inference server - check settings",
-    "status_missing": "Wanted, on no reachable server"
+    "status_missing": "Unreachable"
   },
   "notifications": {
     "title": "Activity",

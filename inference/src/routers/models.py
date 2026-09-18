@@ -94,7 +94,11 @@ def _scan_custom_piper_models(models_path: Path) -> list[dict]:
 async def list_models():
     models_path = Path(settings.models_path)
     installed = (
-        [d.name for d in sorted(models_path.iterdir()) if d.is_dir() and not d.name.startswith(".")]
+        [
+            d.name
+            for d in sorted(models_path.iterdir())
+            if not d.name.startswith(".") and holds_a_model(d)
+        ]
         if models_path.exists()
         else []
     )
@@ -125,6 +129,34 @@ _IMPORT_MAX_ENTRIES = 512
 _publish_locks: dict[str, asyncio.Lock] = {}
 
 
+LOCALE = re.compile(r"^[a-z]{2,3}(_[A-Z]{2,3})?$")
+
+
+# The pattern allows dots: "." and ".." would land beside or above the store, and a leading
+# dot hides the directory from the listing, so the import would succeed into nothing.
+def model_dir_for(model_id: str) -> Path:
+    if not _MODEL_ID.fullmatch(model_id) or model_id.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid model id")
+    return Path(settings.models_path) / model_id
+
+
+def locale_of(espeak_voice: str) -> str:
+    parts = espeak_voice.split("-")
+    lang = parts[0] if parts else ""
+    region = parts[1] if len(parts) > 1 else None
+    locale = f"{lang.lower()}_{region.upper()}" if region else lang.lower()
+    if not LOCALE.fullmatch(locale):
+        raise HTTPException(
+            status_code=400,
+            detail=f'Config declares an unusable espeak voice "{espeak_voice}"',
+        )
+    return locale
+
+
+def holds_a_model(path: Path) -> bool:
+    return path.is_dir() and any(f.is_file() for f in path.rglob("*"))
+
+
 def _publish_lock(model_id: str) -> asyncio.Lock:
     return _publish_locks.setdefault(model_id, asyncio.Lock())
 
@@ -132,20 +164,24 @@ def _publish_lock(model_id: str) -> asyncio.Lock:
 async def _publish(staging: Path, model_dir: Path) -> bool:
     """Moves a finished staging directory into place; False when another pull got there first."""
     async with _publish_lock(model_dir.name):
-        if model_dir.exists():
+        # os.replace onto a file or a symlink raises instead of publishing.
+        if holds_a_model(model_dir) or model_dir.is_symlink() or (model_dir.exists() and not model_dir.is_dir()):
             shutil.rmtree(staging, ignore_errors=True)
             return False
+        # os.replace only lands on a directory it can unlink, so nested empties must go.
+        if model_dir.exists():
+            shutil.rmtree(model_dir, ignore_errors=True)
         os.replace(staging, model_dir)
         return True
 
 
 @router.post("/pull")
 async def pull_model(req: ModelPullRequest):
-    if not _MODEL_ID.fullmatch(req.model_id) or req.model_id in (".", ".."):
-        raise HTTPException(status_code=400, detail="Invalid model id")
-    model_path = Path(settings.models_path) / req.model_id
+    model_path = model_dir_for(req.model_id)
     # Each pull owns a staging directory and publishes it atomically, so a failed or concurrent pull never touches a finished one.
-    staging = Path(settings.models_path) / f".{req.model_id}.pull-{uuid.uuid4().hex[:8]}"
+    staging = (
+        Path(settings.models_path) / f".{req.model_id}.pull-{uuid.uuid4().hex[:8]}"
+    )
 
     async def event_generator():
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
@@ -166,7 +202,9 @@ async def pull_model(req: ModelPullRequest):
                 )
                 failed.set()
                 if not reported:
-                    await queue.put({"status": "error", "message": describe_pull_error(exc)})
+                    await queue.put(
+                        {"status": "error", "message": describe_pull_error(exc)}
+                    )
 
         tasks = [
             asyncio.create_task(
@@ -200,10 +238,28 @@ async def pull_model(req: ModelPullRequest):
                     shutil.rmtree(staging, ignore_errors=True)
                 elif staging.exists():
                     try:
-                        await _publish(staging, model_path)
+                        # A refused publication discards the staged model, so reporting
+                        # success here would claim an install that never landed.
+                        if not await _publish(staging, model_path):
+                            await queue.put(
+                                {
+                                    "status": "error",
+                                    "message": f"Could not publish {req.model_id!r}: its directory is already taken",
+                                }
+                            )
                     except OSError as exc:
                         shutil.rmtree(staging, ignore_errors=True)
-                        await queue.put({"status": "error", "message": f"Could not publish the model: {exc}"})
+                        logger.exception(
+                            "Publishing model_id=%s failed", req.model_id
+                        )
+                        # str(exc) carries the staging path and its random suffix, which
+                        # names an implementation detail rather than anything actionable.
+                        await queue.put(
+                            {
+                                "status": "error",
+                                "message": f"Could not publish {req.model_id!r}: {exc.strerror or 'the model store refused the write'}",
+                            }
+                        )
             finally:
                 await queue.put(None)
 
@@ -236,15 +292,7 @@ async def import_piper_model(
             detail='Config must contain "espeak" and "phoneme_id_map" fields (Piper format)',
         )
 
-    espeak_voice = (config_data.get("espeak") or {}).get("voice", "")
-    parts = espeak_voice.split("-")
-    lang_part = parts[0] if parts else ""
-    region_part = parts[1] if len(parts) > 1 else None
-    locale = (
-        f"{lang_part.lower()}_{region_part.upper()}"
-        if region_part
-        else lang_part.lower()
-    )
+    locale = locale_of((config_data.get("espeak") or {}).get("voice", ""))
 
     sample_rate = (config_data.get("audio") or {}).get("sample_rate", 22050)
     quality = "low" if sample_rate <= 16000 else "medium"
@@ -260,24 +308,30 @@ async def import_piper_model(
     slug = f"piper-{locale}-{speaker_slug}-{quality}"
     model_dir = Path(settings.models_path) / slug
 
-    if model_dir.exists():
+    if holds_a_model(model_dir):
         raise HTTPException(
             status_code=409, detail=f'A model directory "{slug}" already exists'
         )
 
-    model_dir.mkdir(parents=True, exist_ok=True)
-
-    onnx_name = (
-        onnx.filename
-        if (onnx.filename or "").endswith(".onnx")
-        else f"{speaker_slug}.onnx"
-    )
+    uploaded_name = Path(onnx.filename or "").name
+    onnx_name = uploaded_name if uploaded_name.endswith(".onnx") else f"{speaker_slug}.onnx"
     config_name = f"{onnx_name}.json"
 
     onnx_data = await onnx.read()
-    (model_dir / onnx_name).write_bytes(onnx_data)
-    (model_dir / config_name).write_bytes(config_text)
 
+    staging = Path(settings.models_path) / f".{slug}.import-{uuid.uuid4().hex[:8]}"
+    staging.mkdir(parents=True)
+    try:
+        (staging / onnx_name).write_bytes(onnx_data)
+        (staging / config_name).write_bytes(config_text)
+        published = await _publish(staging, model_dir)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    if not published:
+        raise HTTPException(
+            status_code=409, detail=f'A model directory "{slug}" already exists'
+        )
     return {"id": slug, "message": "Piper model imported"}
 
 
@@ -293,7 +347,6 @@ async def unload_model(req: ModelUnloadRequest):
 
 
 class _StreamBuffer(io.RawIOBase):
-
     def __init__(self) -> None:
         self._buf = bytearray()
         self._pos = 0
@@ -321,11 +374,11 @@ class _StreamBuffer(io.RawIOBase):
 
 @router.post("/{model_id}/import")
 async def import_model(model_id: str, archive: UploadFile = File(...)):
-    if not _MODEL_ID.fullmatch(model_id) or model_id in (".", ".."):
-        raise HTTPException(status_code=400, detail="Invalid model id")
-    model_dir = Path(settings.models_path) / model_id
-    if model_dir.exists():
-        raise HTTPException(status_code=409, detail=f'A model directory "{model_id}" already exists')
+    model_dir = model_dir_for(model_id)
+    if holds_a_model(model_dir):
+        raise HTTPException(
+            status_code=409, detail=f'A model directory "{model_id}" already exists'
+        )
     with tempfile.TemporaryFile() as tmp:
         total = 0
         while chunk := await archive.read(1024 * 1024):
@@ -342,15 +395,24 @@ async def import_model(model_id: str, archive: UploadFile = File(...)):
             # One entry list for accounting, path checks and extraction, so duplicate names can't slip past the size sum.
             entries = zf.infolist()
             if len(entries) > _IMPORT_MAX_ENTRIES:
-                raise HTTPException(status_code=413, detail="Archive has too many entries")
+                raise HTTPException(
+                    status_code=413, detail="Archive has too many entries"
+                )
             if sum(info.file_size for info in entries) > _IMPORT_MAX_BYTES:
-                raise HTTPException(status_code=413, detail="Archive expands beyond the size limit")
-            staging = Path(settings.models_path) / f".{model_id}.import-{uuid.uuid4().hex[:8]}"
+                raise HTTPException(
+                    status_code=413, detail="Archive expands beyond the size limit"
+                )
+            staging = (
+                Path(settings.models_path)
+                / f".{model_id}.import-{uuid.uuid4().hex[:8]}"
+            )
             root = staging.resolve()
             for info in entries:
                 dest = (staging / info.filename).resolve()
                 if dest != root and not str(dest).startswith(str(root) + os.sep):
-                    raise HTTPException(status_code=400, detail="Archive contains an invalid path")
+                    raise HTTPException(
+                        status_code=400, detail="Archive contains an invalid path"
+                    )
             staging.mkdir(parents=True)
             try:
                 await asyncio.to_thread(zf.extractall, staging, entries)
@@ -359,13 +421,15 @@ async def import_model(model_id: str, archive: UploadFile = File(...)):
                 shutil.rmtree(staging, ignore_errors=True)
                 raise
     if not published:
-        raise HTTPException(status_code=409, detail=f'A model directory "{model_id}" already exists')
+        raise HTTPException(
+            status_code=409, detail=f'A model directory "{model_id}" already exists'
+        )
     return {"id": model_id, "message": "Model imported"}
 
 
 @router.get("/{model_id}/export")
 async def export_model(model_id: str):
-    model_dir = Path(settings.models_path) / model_id
+    model_dir = model_dir_for(model_id)
     if not model_dir.exists():
         raise HTTPException(status_code=404, detail=f"Model {model_id!r} not found")
 
@@ -395,7 +459,7 @@ async def export_model(model_id: str):
 
 @router.delete("/{model_id}")
 async def delete_model(model_id: str):
-    model_dir = Path(settings.models_path) / model_id
+    model_dir = model_dir_for(model_id)
     if not model_dir.exists():
         raise HTTPException(status_code=404, detail=f"Model {model_id!r} not found")
     shutil.rmtree(model_dir)

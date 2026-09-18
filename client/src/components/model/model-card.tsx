@@ -21,12 +21,14 @@ export function ModelCard({ family, onPull }: { family: Family; onPull: (id: str
     <div className="relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-border-strong">
       {pulling !== undefined && <Progress value={pulling} className="absolute inset-x-0 top-0 h-0.5 rounded-none" />}
       <Link to="/models/$family" params={{ family: family.key }} className="flex flex-1 flex-col gap-2 p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background">
-        <div className="flex min-w-0 items-start justify-between gap-2">
-          <h3 className="min-w-0 truncate font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
-          {recommended && <RecommendedStar className="mt-0.5 size-3.5 shrink-0" />}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <TypeChips types={types} gated={single?.catalog.gated} />
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-1.5">
+            <h3 className="min-w-0 truncate font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
+            {recommended && <RecommendedStar className="mt-1 size-3.5 shrink-0" />}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <TypeChips types={types} gated={single?.catalog.gated} />
+          </div>
         </div>
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
           <Facts entries={family.entries} gpuAvailable={gpuAvailable} hardwareOnly />

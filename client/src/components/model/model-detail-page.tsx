@@ -11,7 +11,7 @@ import { formatFileSize } from '@/utils/format';
 import { ModelActions, useServerFleet } from './model-actions';
 import { type Entry, Facts, ServerCoverage, TypeChips } from './model-list';
 
-const variantGrid = 'grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_5rem_4.5rem]';
+const variantGrid = 'grid grid-cols-[minmax(0,1fr)_2.25rem] items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_5rem_2.25rem]';
 
 export function ModelDetailPage({ family }: { family: string }) {
   const { t } = useTranslation();
@@ -65,7 +65,7 @@ export function ModelDetailPage({ family }: { family: string }) {
                   </div>
                   <span className="hidden text-right font-mono text-xs text-dim sm:block">{formatFileSize(entry.catalog.size)}</span>
                   <div className="flex justify-end">
-                    <ModelActions catalog={entry.catalog} installation={entry.installation} onPull={pullModel} slots />
+                    <ModelActions catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
                   </div>
                 </div>
               ))}

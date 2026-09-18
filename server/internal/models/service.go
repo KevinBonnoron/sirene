@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"slices"
 	"strings"
@@ -592,30 +591,6 @@ func (s *Service) RequireProviderKey(userID, backend string) (string, error) {
 		}
 	}
 	return key, nil
-}
-
-func (s *Service) ExportCustom(ctx context.Context, modelID string) (*http.Response, context.CancelFunc, error) {
-	custom, err := s.ScanCustom(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !slices.ContainsFunc(custom, func(m catalog.Model) bool { return m.ID == modelID }) {
-		return nil, nil, apierr.NotFound(apierr.CodeModelCustomNotFound, "Custom model not found")
-	}
-	rec, err := s.router.Pick(ctx, modelID)
-	if err != nil {
-		return nil, nil, err
-	}
-	res, cancel, err := s.client(rec).FetchExport(ctx, modelID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		res.Body.Close()
-		cancel()
-		return nil, nil, apierr.Upstream(apierr.CodeModelExportFailed, "Export failed")
-	}
-	return res, cancel, nil
 }
 
 // Accepts reports whether a server's sync policy, device and VRAM take a model; minVram is in GiB and only enforced when both sides are known.

@@ -32,9 +32,7 @@ const (
 	CodeModelAlreadyInstalled       = "model.alreadyInstalled"
 	CodeModelConfigInvalidJson      = "model.configInvalidJson"
 	CodeModelConfigNotPiper         = "model.configNotPiper"
-	CodeModelCustomNotFound         = "model.customNotFound"
 	CodeModelDeleteFailed           = "model.deleteFailed"
-	CodeModelExportFailed           = "model.exportFailed"
 	CodeModelInvalidName            = "model.invalidName"
 	CodeModelInvalidServerSelection = "model.invalidServerSelection"
 	CodeModelNameConflict           = "model.nameConflict"
@@ -85,7 +83,7 @@ var AllCodes = []string{
 	CodeApiKeyNotFound, CodeApiKeyUnknownScope,
 	CodeCliAuthSessionAlreadyUsed, CodeCliAuthSessionNotFound,
 	CodeGenerationNotFound, CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken, CodeInferenceServerStatsUnsupported,
-	CodeModelAlreadyInstalled, CodeModelConfigInvalidJson, CodeModelConfigNotPiper, CodeModelCustomNotFound, CodeModelDeleteFailed, CodeModelExportFailed,
+	CodeModelAlreadyInstalled, CodeModelConfigInvalidJson, CodeModelConfigNotPiper, CodeModelDeleteFailed,
 	CodeModelInvalidName, CodeModelInvalidServerSelection, CodeModelNameConflict, CodeModelNoAcceptingServer, CodeModelNoOnlineServer, CodeModelNotFound, CodeModelNotInCatalog,
 	CodeModelNotInstalled, CodeModelNotInstalledOnServer, CodeModelPiperFieldsRequired, CodeModelServerIdsInvalid, CodeModelServerIdsNotJson, CodeModelWhisperNotInstalled,
 	CodeSessionNotFound, CodeSettingsInvalidKey,

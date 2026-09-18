@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -165,28 +164,6 @@ func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		return e.JSON(http.StatusAccepted, map[string]any{"id": slug, "jobIds": jobIDs})
 	}).Bind(write...)
 
-	m.GET("/{id}/export", func(e *core.RequestEvent) error {
-		id, err := pathParam(e, "id")
-		if err != nil {
-			return err
-		}
-		res, cancel, err := d.Models.ExportCustom(e.Request.Context(), id)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-		defer res.Body.Close()
-		h := e.Response.Header()
-		h.Set("Content-Type", "application/zip")
-		h.Set("Content-Disposition", `attachment; filename="piper-`+id+`.zip"`)
-		if cl := res.Header.Get("Content-Length"); cl != "" {
-			h.Set("Content-Length", cl)
-		}
-		_ = http.NewResponseController(e.Response).SetWriteDeadline(time.Time{})
-		e.Response.WriteHeader(http.StatusOK)
-		_, _ = io.Copy(e.Response, res.Body)
-		return nil
-	}).Bind(read)
 }
 
 func readUpload(e *core.RequestEvent, field string) (*models.Upload, error) {

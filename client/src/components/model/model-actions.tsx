@@ -10,8 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { acceptsModel } from '@/lib/fleet';
-import { cn } from '@/lib/utils';
-import { downloadBlob } from '@/utils/download';
 
 export type ModelStatus = Model['status'] | 'available';
 
@@ -45,11 +43,9 @@ interface Props {
   catalog: CatalogModel;
   installation?: Model;
   onPull: (id: string, serverIds?: string[]) => void;
-  /** Reserves a slot per action so icons line up from one row to the next. */
-  slots?: boolean;
 }
 
-export function ModelActions({ catalog, installation, onPull, slots }: Props) {
+export function ModelActions({ catalog, installation, onPull }: Props) {
   const { t } = useTranslation();
   const { targetsFor, servers } = useServerFleet();
   const targets = targetsFor(catalog);
@@ -67,26 +63,10 @@ export function ModelActions({ catalog, installation, onPull, slots }: Props) {
     }
   }
 
-  async function handleExport() {
-    try {
-      const blob = await modelClient.exportPiper(catalog.id);
-      downloadBlob(blob, `piper-${catalog.id}.zip`);
-      toast.success(t('model.exported'));
-    } catch {
-      toast.error(t('model.exportFailed'));
-    }
-  }
-
   const showInstall = (status === 'available' || status === 'error') && !isCustom;
   const showRemove = status === 'installed' || status === 'missing';
   return (
-    <div className={cn('flex shrink-0 items-center gap-0.5', slots && 'grid grid-cols-2 justify-items-end')}>
-      {slots && !showInstall && status !== 'pulling' && !(status === 'installed' && isCustom) && <span aria-hidden className="size-7" />}
-      {status === 'installed' && isCustom && (
-        <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" onClick={handleExport} aria-label={t('common.download')}>
-          <Download className="size-3.5" />
-        </Button>
-      )}
+    <div className="flex shrink-0 items-center justify-end">
       {showInstall &&
         (targets.length > 0 ? (
           <Tooltip>
@@ -123,9 +103,8 @@ export function ModelActions({ catalog, installation, onPull, slots }: Props) {
           <Loader2 className="size-3.5 animate-spin" />
         </Button>
       )}
-      {slots && !showRemove && <span aria-hidden className="size-7" />}
       {showRemove && (
-        <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmRemove(true)} aria-label={t('model.actionRemove')}>
+        <Button size="icon" variant="outline" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmRemove(true)} aria-label={t('model.actionRemove')}>
           <Trash2 className="size-3.5" />
         </Button>
       )}

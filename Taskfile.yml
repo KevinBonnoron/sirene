@@ -51,6 +51,7 @@ tasks:
     env:
       INFERENCE_LOG_LEVEL: debug
       INFERENCE_ALLOW_NO_AUTH: "true"
+      PACKAGES_DIR: '{{.ROOT_DIR}}/data/packages'
     cmds:
       - ../.venv/bin/python -m uvicorn src.main:app --reload --port 8000
 

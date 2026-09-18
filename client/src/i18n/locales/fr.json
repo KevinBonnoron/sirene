@@ -221,7 +221,8 @@
     "removeConfirmDescription": "Les fichiers du modèle sont supprimés du serveur d'inférence. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
     "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
     "noAcceptingServer": "Aucun serveur en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et le réglage des modèles automatiques de chaque serveur.",
-    "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres"
+    "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
+    "status_missing": "Voulu, sur aucun serveur joignable"
   },
   "notifications": {
     "title": "Activité",

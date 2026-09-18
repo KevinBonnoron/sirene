@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -38,6 +39,7 @@ type Installation struct {
 	Progress  int      `json:"progress"`
 	Error     string   `json:"error,omitempty"`
 	ServerIDs []string `json:"serverIds"`
+	Wanted    bool     `json:"wanted"`
 }
 
 type Service struct {
@@ -47,12 +49,13 @@ type Service struct {
 	router   *routing.Router
 	jobs     *jobs.Store
 	settings *settings.Service
+	desired  *Desired
 	Changes  *Broadcaster
 	wg       sync.WaitGroup
 }
 
 func New(app core.App, servers *infsrv.Service, cache *servermodels.Cache, router *routing.Router, store *jobs.Store, st *settings.Service) *Service {
-	return &Service{app: app, servers: servers, cache: cache, router: router, jobs: store, settings: st, Changes: NewBroadcaster()}
+	return &Service{app: app, servers: servers, cache: cache, router: router, jobs: store, settings: st, desired: NewDesired(app), Changes: NewBroadcaster()}
 }
 
 func (s *Service) Wait(timeout time.Duration) {
@@ -89,6 +92,22 @@ func (s *Service) FullCatalog(ctx context.Context, userID string) ([]catalog.Mod
 	custom, err := s.ScanCustom(ctx)
 	if err != nil {
 		return nil, err
+	}
+	// A custom model is only described by the worker holding it, so a disabled server would
+	// otherwise take the description with it and the model would vanish from the page
+	// rather than read as wanted.
+	seen := make(map[string]struct{}, len(custom))
+	for _, m := range custom {
+		seen[m.ID] = struct{}{}
+	}
+	remembered, err := s.desired.Custom()
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range remembered {
+		if _, ok := seen[m.ID]; !ok {
+			custom = append(custom, m)
+		}
 	}
 	all := append(slices.Clone(catalog.Models), custom...)
 	out := make([]catalog.Model, 0, len(all))
@@ -127,6 +146,10 @@ func (s *Service) Installations(ctx context.Context, models []catalog.Model) ([]
 	if err != nil {
 		return nil, err
 	}
+	wanted, err := s.desired.List()
+	if err != nil {
+		return nil, err
+	}
 	running := s.jobs.List()
 	out := []Installation{}
 	for _, m := range models {
@@ -143,16 +166,23 @@ func (s *Service) Installations(ctx context.Context, models []catalog.Model) ([]
 				pulling = append(pulling, j)
 			}
 		}
+		_, isWanted := wanted[m.ID]
 		if len(pulling) > 0 {
 			sum := 0
 			for _, j := range pulling {
 				sum += j.Progress
 			}
-			out = append(out, Installation{ID: m.ID, Status: "pulling", Progress: sum / len(pulling), ServerIDs: serverIDs})
+			out = append(out, Installation{ID: m.ID, Status: "pulling", Progress: sum / len(pulling), ServerIDs: serverIDs, Wanted: isWanted})
 			continue
 		}
 		if m.HasType("api") || len(serverIDs) > 0 {
-			out = append(out, Installation{ID: m.ID, Status: "installed", Progress: 100, ServerIDs: serverIDs})
+			out = append(out, Installation{ID: m.ID, Status: "installed", Progress: 100, ServerIDs: serverIDs, Wanted: isWanted})
+			continue
+		}
+		// Asked for, and on no server that can be reached right now. Disabling a server is
+		// not a decision to stop wanting the model it held.
+		if isWanted {
+			out = append(out, Installation{ID: m.ID, Status: "missing", Progress: 0, ServerIDs: serverIDs, Wanted: true})
 		}
 	}
 	return out, nil
@@ -266,6 +296,15 @@ func (s *Service) resolveTargets(ctx context.Context, m catalog.Model, serverIDs
 func (s *Service) StartDownload(ctx context.Context, userID string, m catalog.Model, serverIDs *[]string) (jobIDs []string, alreadyRunning bool, err error) {
 	targets, err := s.resolveTargets(ctx, m, serverIDs, "pull")
 	if err != nil {
+		var ae *apierr.Error
+		if errors.As(err, &ae) && ae.Code == apierr.CodeModelAlreadyInstalled {
+			if derr := s.desired.Add(m); derr != nil {
+				return nil, false, derr
+			}
+		}
+		return nil, false, err
+	}
+	if err := s.desired.Add(m); err != nil {
 		return nil, false, err
 	}
 	hfToken, err := s.settings.Get("hf_token", userID)
@@ -469,6 +508,11 @@ func (s *Service) runImport(jobID string, rec *core.Record, name string, onnx, c
 }
 
 func (s *Service) Remove(ctx context.Context, modelID, serverID string) error {
+	if serverID == "" {
+		if err := s.desired.Remove(modelID); err != nil {
+			return err
+		}
+	}
 	byServer, err := s.cache.InstalledByServer(ctx)
 	if err != nil {
 		return err
@@ -618,9 +662,9 @@ func (s *Service) ReplicateAll() {
 	}
 }
 
-// ReplicateTo pulls onto one server every catalog model that other servers
-// already have, as far as its sync policy and hardware allow. Best effort:
-// failures surface as job errors, never to the caller.
+// ReplicateTo pulls onto one server every model the operator asked for, as far as its sync
+// policy and hardware allow. Best effort: failures surface as job errors, never to the
+// caller. What other servers happen to hold is an observation and does not decide this.
 func (s *Service) ReplicateTo(serverID string) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -640,14 +684,10 @@ func (s *Service) ReplicateTo(serverID string) {
 			s.app.Logger().Warn("[replicate] listing installed models failed", "server", rec.GetString("name"), "error", err)
 			return
 		}
-		wanted := map[string]struct{}{}
-		for id, installed := range byServer {
-			if id == serverID {
-				continue
-			}
-			for modelID := range installed {
-				wanted[modelID] = struct{}{}
-			}
+		wanted, err := s.desired.List()
+		if err != nil {
+			s.app.Logger().Warn("[replicate] listing wanted models failed", "server", rec.GetString("name"), "error", err)
+			return
 		}
 		custom, err := s.ScanCustom(ctx)
 		if err != nil {

@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { acceptsModel } from '@/lib/fleet';
 import { downloadBlob } from '@/utils/download';
 
-export type ModelStatus = 'available' | 'pulling' | 'installed' | 'error';
+export type ModelStatus = Model['status'] | 'available';
 
 function isOnline(s: InferenceServer): boolean {
   return s.lastHealth.status === 'online';

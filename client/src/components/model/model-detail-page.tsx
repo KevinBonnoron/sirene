@@ -1,0 +1,72 @@
+import { Link } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { SectionTopbar } from '@/components/layout/section-topbar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useModels, usePullModel } from '@/hooks/use-models';
+import { cn } from '@/lib/utils';
+import { formatFileSize } from '@/utils/format';
+import { ModelActions, useServerFleet } from './model-actions';
+import { type Entry, Facts, ServerCoverage, TypeChips } from './model-list';
+
+export function ModelDetailPage({ family }: { family: string }) {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const { catalog, installationsByName, isLoading } = useModels();
+  const { pullModel } = usePullModel();
+  const { gpuAvailable } = useServerFleet();
+
+  const entries = useMemo<Entry[]>(
+    () =>
+      catalog
+        .filter((c) => c.backend === family)
+        .map((c) => ({ catalog: c, installation: installationsByName.get(c.id) }))
+        .sort((a, b) => a.catalog.name.localeCompare(b.catalog.name)),
+    [catalog, family, installationsByName],
+  );
+  const first = entries[0]?.catalog;
+
+  return (
+    <div className="flex h-full flex-col">
+      <SectionTopbar
+        label={first?.backendDisplayName ?? family}
+        subtitle={first?.backendDescription}
+        actions={
+          <Link to="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="size-4" />
+            {t('nav.models')}
+          </Link>
+        }
+      />
+      <main className={cn('custom-scrollbar flex flex-1 flex-col gap-6 overflow-y-auto p-6', isMobile && 'pb-24')}>
+        {isLoading ? (
+          <Skeleton className="h-40" />
+        ) : entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('model.detail.unknown')}</p>
+        ) : (
+          <>
+            <section className="flex flex-wrap items-center gap-2">
+              <TypeChips types={[...new Set(entries.flatMap((e) => e.catalog.types))]} gated={first?.gated} />
+              <Facts entries={entries} gpuAvailable={gpuAvailable} />
+            </section>
+            <section className="divide-y divide-border-subtle rounded-lg border border-border bg-card">
+              {entries.map((entry) => (
+                <div key={entry.catalog.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{entry.catalog.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.catalog.description}</p>
+                  </div>
+                  <ServerCoverage catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
+                  <span className="font-mono text-xs text-dim">{formatFileSize(entry.catalog.size)}</span>
+                  <ModelActions catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
+                </div>
+              ))}
+            </section>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -1,14 +1,11 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { AudioLines, ChevronRight, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { AudioLines, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { languageName } from '@/lib/languages';
 import { cn } from '@/lib/utils';
-import { formatFileSize } from '@/utils/format';
-import { ModelActions, useServerFleet } from './model-actions';
+import { useServerFleet } from './model-actions';
 
 export interface Entry {
   catalog: CatalogModel;
@@ -24,7 +21,6 @@ export interface Family {
 type CatalogModelType = CatalogModel['types'][number];
 
 const chip = 'inline-flex items-center gap-0.5 rounded px-1 py-px text-2xs font-medium';
-const grid = 'grid grid-cols-[minmax(0,1fr)_3.75rem] items-center gap-x-4 px-4 sm:grid-cols-[minmax(0,1fr)_auto_5.5rem_3.75rem]';
 
 const TYPE_CHIPS: { type: CatalogModelType; icon: typeof Mic; className: string; label: string }[] = [
   { type: 'preset', icon: AudioLines, className: 'bg-accent-sky/15 text-accent-sky', label: 'voice.preset' },
@@ -33,7 +29,7 @@ const TYPE_CHIPS: { type: CatalogModelType; icon: typeof Mic; className: string;
   { type: 'transcription', icon: FileAudio, className: 'bg-accent-green/15 text-accent-green', label: 'model.stt' },
 ];
 
-function RecommendedStar({ className }: { className?: string }) {
+export function RecommendedStar({ className }: { className?: string }) {
   const { t } = useTranslation();
   return (
     <Tooltip>
@@ -174,98 +170,5 @@ export function ServerCoverage({ catalog, installation, onPull }: { catalog: Cat
         {t('model.complete')}
       </Button>
     </span>
-  );
-}
-
-function commonPrefix(names: string[]): string {
-  const first = names[0] ?? '';
-  let end = first.length;
-  for (const name of names) {
-    while (end > 0 && !name.startsWith(first.slice(0, end))) {
-      end--;
-    }
-  }
-  const cut = first.slice(0, end).lastIndexOf(' ');
-  return cut > 0 ? first.slice(0, cut + 1) : '';
-}
-
-export function variantName(catalog: CatalogModel, prefix: string): string {
-  return prefix && catalog.name.startsWith(prefix) ? catalog.name.slice(prefix.length) : catalog.name;
-}
-
-function Row({ main, aside, size, action, className, indent, progress }: { main: ReactNode; aside?: ReactNode; size?: ReactNode; action: ReactNode; className?: string; indent?: boolean; progress?: number }) {
-  return (
-    <div className={cn(grid, 'relative py-2.5', indent && 'bg-background/40', className)}>
-      {progress !== undefined && <Progress value={progress} className="absolute inset-x-0 bottom-0 h-0.5 rounded-none" />}
-      <div className={cn('min-w-0', indent && 'pl-6')}>{main}</div>
-      <div className="hidden sm:block">{aside}</div>
-      <span className="hidden text-right font-mono text-xs text-dim sm:block">{size}</span>
-      <div className="flex justify-end">{action}</div>
-    </div>
-  );
-}
-
-function VariantRow({ entry, prefix, onPull }: { entry: Entry; prefix: string; onPull: (id: string, serverIds?: string[]) => void }) {
-  const { catalog, installation } = entry;
-  const status = installation?.status ?? 'available';
-  return (
-    <Row
-      indent
-      main={
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className={cn('text-sm', status === 'installed' && 'font-medium')}>{variantName(catalog, prefix)}</span>
-          {catalog.recommended && <RecommendedStar className="size-3" />}
-          <ServerCoverage catalog={catalog} installation={installation} onPull={onPull} />
-          <span className="font-mono text-2xs text-dim sm:hidden">{formatFileSize(catalog.size)}</span>
-          {status === 'error' && installation?.error && <p className="basis-full truncate text-xs text-destructive">{installation.error}</p>}
-        </div>
-      }
-      size={formatFileSize(catalog.size)}
-      progress={status === 'pulling' ? installation?.progress : undefined}
-      action={<ModelActions catalog={catalog} installation={installation} onPull={onPull} />}
-    />
-  );
-}
-
-export function FamilyRow({ family, onPull, defaultOpen }: { family: Family; onPull: (id: string, serverIds?: string[]) => void; defaultOpen?: boolean }) {
-  const { t } = useTranslation();
-  const { gpuAvailable } = useServerFleet();
-  const [open, setOpen] = useState(!!defaultOpen);
-  const single = family.entries.length === 1 ? family.entries[0] : undefined;
-  const prefix = commonPrefix(family.entries.map((e) => e.catalog.name));
-  const recommended = family.entries.some((e) => e.catalog.recommended);
-  const types = [...new Set(family.entries.flatMap((e) => e.catalog.types))];
-  const installedCount = family.entries.filter((e) => e.installation?.status === 'installed').length;
-
-  return (
-    <div className="divide-y divide-border-subtle">
-      <Row
-        main={
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
-              {recommended && <RecommendedStar className="size-3.5" />}
-              <TypeChips types={types} gated={single?.catalog.gated} />
-              {single && <ServerCoverage catalog={single.catalog} installation={single.installation} onPull={onPull} />}
-              {!single && installedCount > 0 && <span className="text-2xs font-medium text-accent-sage">{t('model.installedCount', { count: installedCount })}</span>}
-            </div>
-            {single?.installation?.status === 'error' && single.installation.error && <p className="mt-1 truncate text-xs text-destructive">{single.installation.error}</p>}
-          </div>
-        }
-        aside={<Facts entries={family.entries} gpuAvailable={gpuAvailable} hardwareOnly />}
-        size={single ? formatFileSize(single.catalog.size) : t('model.variantCount', { count: family.entries.length })}
-        progress={single?.installation?.status === 'pulling' ? single.installation.progress : undefined}
-        action={
-          single ? (
-            <ModelActions catalog={single.catalog} installation={single.installation} onPull={onPull} />
-          ) : (
-            <Button size="icon" variant="ghost" className="size-7" aria-expanded={open} aria-label={t('model.expand', { name: family.name })} onClick={() => setOpen((v) => !v)}>
-              <ChevronRight className={cn('size-4 transition-transform', open && 'rotate-90')} />
-            </Button>
-          )
-        }
-      />
-      {!single && open && family.entries.map((entry) => <VariantRow key={entry.catalog.id} entry={entry} prefix={prefix} onPull={onPull} />)}
-    </div>
   );
 }

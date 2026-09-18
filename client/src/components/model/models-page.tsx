@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { AddModelDialog } from '@/components/model/add-model-dialog';
-import { type Entry, type Family, FamilyRow } from '@/components/model/model-list';
+import { ModelCard } from '@/components/model/model-card';
+import type { Entry, Family } from '@/components/model/model-list';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -68,18 +69,18 @@ export function ModelsPage() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-border rounded-lg border border-border bg-card">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {families.map((family) => (
-              <FamilyRow key={family.key} family={family} onPull={pullModel} defaultOpen />
+              <ModelCard key={family.key} family={family} onPull={pullModel} />
             ))}
           </div>
         )}
         {!isLoading && cloud.length > 0 && (
           <section className="space-y-2">
             <h2 className="px-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{t('model.cloudSection')}</h2>
-            <div className="divide-y divide-border rounded-lg border border-border bg-card">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {buildFamilies(cloud).map((family) => (
-                <FamilyRow key={family.key} family={family} onPull={pullModel} />
+                <ModelCard key={family.key} family={family} onPull={pullModel} />
               ))}
             </div>
           </section>

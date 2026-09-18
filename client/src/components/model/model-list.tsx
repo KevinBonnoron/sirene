@@ -143,7 +143,7 @@ export function ServerCoverage({ catalog, installation, onPull }: { catalog: Cat
   const { t } = useTranslation();
   const { targetsFor } = useServerFleet();
   if (installation?.status === 'missing') {
-    return <span className="text-2xs font-medium text-accent-rust">{t('model.status_missing')}</span>;
+    return <span className="text-2xs font-medium text-destructive">{t('model.status_missing')}</span>;
   }
   if (installation?.status !== 'installed') {
     return null;

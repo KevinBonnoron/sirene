@@ -226,7 +226,8 @@
     "status_missing": "Unreachable",
     "detail": {
       "unknown": "Unknown model family"
-    }
+    },
+    "removeConfirmUnreachable": "It is on no reachable server, so this only drops it from the models you asked for."
   },
   "notifications": {
     "title": "Activity",

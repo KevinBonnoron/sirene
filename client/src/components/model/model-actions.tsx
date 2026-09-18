@@ -118,7 +118,7 @@ export function ModelActions({ catalog, installation, onPull }: Props) {
           <Loader2 className="size-3.5 animate-spin" />
         </Button>
       )}
-      {status === 'installed' && (
+      {(status === 'installed' || status === 'missing') && (
         <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmRemove(true)} aria-label={t('model.actionRemove')}>
           <Trash2 className="size-3.5" />
         </Button>
@@ -127,7 +127,7 @@ export function ModelActions({ catalog, installation, onPull }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('model.removeConfirmTitle', { name: catalog.name })}</AlertDialogTitle>
-            <AlertDialogDescription>{installedOn.length > 1 ? t('model.removeConfirmServers', { names: installedOn.join(', ') }) : t('model.removeConfirmDescription')}</AlertDialogDescription>
+            <AlertDialogDescription>{status === 'missing' ? t('model.removeConfirmUnreachable') : installedOn.length > 1 ? t('model.removeConfirmServers', { names: installedOn.join(', ') }) : t('model.removeConfirmDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>

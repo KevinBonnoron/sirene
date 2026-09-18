@@ -226,7 +226,8 @@
     "status_missing": "Injoignable",
     "detail": {
       "unknown": "Famille de modèles inconnue"
-    }
+    },
+    "removeConfirmUnreachable": "Il n'est sur aucun serveur joignable : il sera seulement retiré des modèles que vous avez demandés."
   },
   "notifications": {
     "title": "Activité",

@@ -1,10 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { ModelsPage } from '@/components/model/models-page';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_app/models')({
-  component: RouteComponent,
+  component: Outlet,
 });
-
-function RouteComponent() {
-  return <ModelsPage />;
-}

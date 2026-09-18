@@ -223,7 +223,10 @@
     "removeConfirmServers": "Les fichiers du modèle sont supprimés de {{names}}. Les voix qui l'utilisent ne fonctionneront plus tant qu'il n'est pas réinstallé.",
     "noAcceptingServer": "Aucun serveur en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et le réglage des modèles automatiques de chaque serveur.",
     "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
-    "status_missing": "Injoignable"
+    "status_missing": "Injoignable",
+    "detail": {
+      "unknown": "Famille de modèles inconnue"
+    }
   },
   "notifications": {
     "title": "Activité",

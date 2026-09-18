@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { claimPlayback, releasePlayback } from '@/lib/playback-owner';
 
 type AudioWithHandlers = HTMLAudioElement & {
   _onPlay?: () => void;
@@ -6,20 +7,13 @@ type AudioWithHandlers = HTMLAudioElement & {
   _onEnded?: () => void;
   _onTimeUpdate?: () => void;
   _onError?: () => void;
+  // Exclusivity is shared with the studio's PCM stream, which is not an HTMLAudioElement.
+  _stop?: () => void;
 };
 
-let currentAudio: HTMLAudioElement | null = null;
-
-function claim(audio: HTMLAudioElement) {
-  if (currentAudio && currentAudio !== audio) {
-    currentAudio.pause();
-  }
-  currentAudio = audio;
-}
-
-function release(audio: HTMLAudioElement) {
-  if (currentAudio === audio) {
-    currentAudio = null;
+function release(audio: AudioWithHandlers) {
+  if (audio._stop) {
+    releasePlayback(audio._stop);
   }
 }
 
@@ -82,6 +76,7 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
     }
     const audio = new Audio(url) as AudioWithHandlers;
     audio.preload = 'metadata';
+    audio._stop = () => audio.pause();
 
     audio._onPlay = () => setIsPlaying(true);
     audio._onPause = () => setIsPlaying(false);
@@ -116,7 +111,9 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
       return;
     }
     if (audio.paused) {
-      claim(audio);
+      if (audio._stop) {
+        claimPlayback(audio._stop);
+      }
       audio.play().catch(() => {
         setIsPlaying(false);
       });

@@ -18,7 +18,6 @@ export interface Entry {
 export interface Family {
   key: string;
   name: string;
-  description: string;
   entries: Entry[];
 }
 
@@ -66,7 +65,7 @@ export function TypeChips({ types, gated }: { types: CatalogModelType[]; gated?:
   );
 }
 
-export function Facts({ entries, gpuAvailable, columns }: { entries: Entry[]; gpuAvailable: boolean; columns?: boolean }) {
+export function Facts({ entries, gpuAvailable, columns, hardwareOnly }: { entries: Entry[]; gpuAvailable: boolean; columns?: boolean; hardwareOnly?: boolean }) {
   const { t, i18n } = useTranslation();
   const first = entries[0]?.catalog;
   if (!first) {
@@ -121,6 +120,9 @@ export function Facts({ entries, gpuAvailable, columns }: { entries: Entry[]; gp
       {!allLanguages && languages.length > 1 && <TooltipContent className="max-w-xs">{languages.map((code) => languageName(code, i18n.language)).join(', ')}</TooltipContent>}
     </Tooltip>
   );
+  if (hardwareOnly) {
+    return <span className="min-w-0 truncate text-xs text-muted-foreground">{hardware}</span>;
+  }
   if (columns) {
     return (
       <div className="grid grid-cols-[5.5rem_minmax(0,8rem)_6.5rem] items-center gap-x-3 text-xs text-muted-foreground">
@@ -247,11 +249,10 @@ export function FamilyRow({ family, onPull, defaultOpen }: { family: Family; onP
               {single && <ServerCoverage catalog={single.catalog} installation={single.installation} onPull={onPull} />}
               {!single && installedCount > 0 && <span className="text-2xs font-medium text-accent-sage">{t('model.installedCount', { count: installedCount })}</span>}
             </div>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{family.description}</p>
             {single?.installation?.status === 'error' && single.installation.error && <p className="mt-1 truncate text-xs text-destructive">{single.installation.error}</p>}
           </div>
         }
-        aside={<Facts entries={family.entries} gpuAvailable={gpuAvailable} columns />}
+        aside={<Facts entries={family.entries} gpuAvailable={gpuAvailable} hardwareOnly />}
         size={single ? formatFileSize(single.catalog.size) : t('model.variantCount', { count: family.entries.length })}
         progress={single?.installation?.status === 'pulling' ? single.installation.progress : undefined}
         action={

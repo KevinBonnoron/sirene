@@ -11,6 +11,8 @@ import { formatFileSize } from '@/utils/format';
 import { ModelActions, useServerFleet } from './model-actions';
 import { type Entry, Facts, ServerCoverage, TypeChips } from './model-list';
 
+const variantGrid = 'grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-x-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_5rem_4.5rem]';
+
 export function ModelDetailPage({ family }: { family: string }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -53,14 +55,18 @@ export function ModelDetailPage({ family }: { family: string }) {
             </section>
             <section className="divide-y divide-border-subtle rounded-lg border border-border bg-card">
               {entries.map((entry) => (
-                <div key={entry.catalog.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
-                  <div className="min-w-0 flex-1">
+                <div key={entry.catalog.id} className={variantGrid}>
+                  <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{entry.catalog.name}</p>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">{entry.catalog.description}</p>
                   </div>
-                  <ServerCoverage catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
-                  <span className="font-mono text-xs text-dim">{formatFileSize(entry.catalog.size)}</span>
-                  <ModelActions catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
+                  <div className="hidden min-w-0 justify-end truncate sm:flex">
+                    <ServerCoverage catalog={entry.catalog} installation={entry.installation} onPull={pullModel} />
+                  </div>
+                  <span className="hidden text-right font-mono text-xs text-dim sm:block">{formatFileSize(entry.catalog.size)}</span>
+                  <div className="flex justify-end">
+                    <ModelActions catalog={entry.catalog} installation={entry.installation} onPull={pullModel} slots />
+                  </div>
                 </div>
               ))}
             </section>

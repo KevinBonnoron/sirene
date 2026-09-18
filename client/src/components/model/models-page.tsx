@@ -14,7 +14,7 @@ function buildFamilies(entries: Entry[]): Family[] {
   const map = new Map<string, Family>();
   for (const entry of entries) {
     const c = entry.catalog;
-    const fam = map.get(c.backend) ?? { key: c.backend, name: c.backendDisplayName, description: c.backendDescription, entries: [] };
+    const fam = map.get(c.backend) ?? { key: c.backend, name: c.backendDisplayName, entries: [] };
     fam.entries.push(entry);
     map.set(c.backend, fam);
   }

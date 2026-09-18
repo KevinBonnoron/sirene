@@ -107,18 +107,28 @@ func transportReason(err error) string {
 	return "inference server unreachable"
 }
 
-// Worker bodies can carry tracebacks and internal paths, so only a generic message goes out.
+// FastAPI puts str(exc) in detail and keeps the traceback on its own side, so a 5xx detail
+// is a sentence worth forwarding.
+const maxUpstreamDetail = 300
+
 func upstreamError(op string, res *http.Response, logf func(string, ...any)) error {
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
 	logf("[inference/"+op+"] upstream error", "status", res.StatusCode, "body", string(body))
-	// A 4xx carries the worker's own reason (unknown backend, bad input); a 5xx body is a stack trace, kept in the log.
 	var detail struct {
 		Detail string `json:"detail"`
 	}
-	if res.StatusCode < 500 && json.Unmarshal(body, &detail) == nil && detail.Detail != "" {
-		return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d): %s", op, res.StatusCode, detail.Detail))
+	if json.Unmarshal(body, &detail) == nil && detail.Detail != "" {
+		return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d): %s", op, res.StatusCode, truncate(detail.Detail, maxUpstreamDetail)))
 	}
 	return apierr.Upstream(apierr.CodeUpstreamInference, fmt.Sprintf("%s failed (HTTP %d)", op, res.StatusCode))
+}
+
+func truncate(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return strings.TrimSpace(string(runes[:max])) + "…"
 }
 
 type Client struct {

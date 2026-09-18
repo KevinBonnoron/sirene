@@ -221,7 +221,8 @@
     "removeConfirmDescription": "The model files are deleted from the inference server. Voices using it stop working until it is installed again.",
     "removeConfirmServers": "The model files are deleted from {{names}}. Voices using it stop working until it is installed again.",
     "noAcceptingServer": "No online server accepts this model: check its hardware, VRAM and each server's automatic models setting.",
-    "actionInstallNoServer": "No online inference server - check settings"
+    "actionInstallNoServer": "No online inference server - check settings",
+    "status_missing": "Wanted, on no reachable server"
   },
   "notifications": {
     "title": "Activity",

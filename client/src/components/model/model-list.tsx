@@ -142,6 +142,9 @@ export function Facts({ entries, gpuAvailable, columns }: { entries: Entry[]; gp
 export function ServerCoverage({ catalog, installation, onPull }: { catalog: CatalogModel; installation?: Model; onPull: (id: string, serverIds?: string[]) => void }) {
   const { t } = useTranslation();
   const { targetsFor } = useServerFleet();
+  if (installation?.status === 'missing') {
+    return <span className="text-2xs font-medium text-accent-rust">{t('model.status_missing')}</span>;
+  }
   if (installation?.status !== 'installed') {
     return null;
   }

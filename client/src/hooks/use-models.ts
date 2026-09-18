@@ -105,13 +105,13 @@ export function useModels() {
   for (const [modelId, progresses] of runningByModel) {
     const avg = Math.floor(progresses.reduce((acc, p) => acc + p, 0) / progresses.length);
     const existing = installationsByName.get(modelId);
-    installationsByName.set(modelId, { id: modelId, status: 'pulling', progress: avg, serverIds: existing?.serverIds ?? [] });
+    installationsByName.set(modelId, { id: modelId, status: 'pulling', progress: avg, serverIds: existing?.serverIds ?? [], wanted: existing?.wanted ?? true });
   }
   for (const [modelId, error] of failedByModel) {
     if (runningByModel.has(modelId) || installationsByName.get(modelId)?.status === 'installed') {
       continue;
     }
-    installationsByName.set(modelId, { id: modelId, status: 'error', progress: 0, error, serverIds: [] });
+    installationsByName.set(modelId, { id: modelId, status: 'error', progress: 0, error, serverIds: [], wanted: installationsByName.get(modelId)?.wanted ?? true });
   }
 
   return {

@@ -38,7 +38,7 @@ export interface CatalogModel {
   legacy?: boolean;
 }
 
-export type ModelStatus = 'pulling' | 'installed' | 'error';
+export type ModelStatus = 'pulling' | 'installed' | 'error' | 'missing';
 
 export interface Model {
   id: string;
@@ -46,4 +46,6 @@ export interface Model {
   progress: number;
   error?: string;
   serverIds: string[];
+  /** Asked for by the operator, as opposed to merely observed on a worker. */
+  wanted: boolean;
 }

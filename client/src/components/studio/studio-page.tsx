@@ -56,7 +56,7 @@ export function StudioPage() {
   const { data: voices, isLoading: voicesLoading } = useLiveQuery((q) => q.from({ voices: voiceCollection }).orderBy(({ voices }) => voices.created, 'desc'));
   const { data: generations, isLoading: generationsLoading } = useOwnGenerations();
   const { data: sessions, isLoading: sessionsLoading } = useLiveQuery((q) => q.from({ s: sessionCollection }).orderBy(({ s }) => s.updated, 'desc'));
-  const { generate } = useGenerate();
+  const { generate, cancel } = useGenerate();
   const { catalog } = useModels();
 
   const navigate = useNavigate({ from: '/' });
@@ -124,6 +124,10 @@ export function StudioPage() {
     const seedVoice = lastTake?.voice ?? voices[0].id;
     setDraft({ voiceId: seedVoice, content: EMPTY_DOC, tuning: { ...DEFAULT_TUNING } });
   }, [draft, voices, sessionGenerations]);
+
+  // A take carries on playing after generate() returns, and a request can still be in
+  // flight; leaving the studio has to stop both.
+  useEffect(() => cancel, [cancel]);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {

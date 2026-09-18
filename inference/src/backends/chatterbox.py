@@ -66,8 +66,11 @@ class ChatterboxBackend(TTSBackend):
             f"(multilingual={self._is_multilingual}, sr={self._sample_rate})"
         )
 
+    # The library exposes no incremental decode, so nothing overrides generate_stream and the
+    # base one renders the whole take before yielding. Saying so routes the request through
+    # the keepalive path, which at least holds the connection open while that happens.
     def supports_streaming(self) -> bool:
-        return True
+        return False
 
     def _generate(self, params: GenerateParams) -> TTSResult:
         if not self.is_loaded():

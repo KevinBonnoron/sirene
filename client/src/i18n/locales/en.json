@@ -363,6 +363,12 @@
   },
   "profile": {
     "subtitle": "Your account, credentials and API keys.",
+    "tabs": {
+      "account": "Account",
+      "appearance": "Appearance",
+      "cloud": "Cloud",
+      "apiKeys": "API keys"
+    },
     "currentPassword": "Current password",
     "save": "Save",
     "avatar": {
@@ -401,10 +407,12 @@
     "title": "Appearance",
     "description": "Theme and accent colour, saved on this device.",
     "mode": "Theme",
+    "modeHint": "Light, dark, or whatever the system asks for.",
     "light": "Light",
     "dark": "Dark",
     "system": "System",
     "accent": "Accent colour",
+    "accentHint": "Colours buttons, links and active states.",
     "accents": {
       "amber": "Amber",
       "sage": "Sage",
@@ -417,8 +425,11 @@
     "title": "Cloud integrations",
     "description": "Keys for third-party providers (OpenAI, ElevenLabs, HuggingFace). Stored securely and never displayed in full after saving.",
     "openAIKey": "OpenAI API Key",
+    "openAIHint": "Unlocks OpenAI TTS and its voices.",
     "elevenLabsKey": "ElevenLabs API Key",
+    "elevenLabsHint": "Unlocks ElevenLabs voices.",
     "hfToken": "HuggingFace Token",
+    "hfHint": "Required to download gated models from HuggingFace.",
     "removed": "{{key}} removed",
     "saved": "{{key}} saved",
     "removeFailed": "Failed to remove",
@@ -730,8 +741,9 @@
     "hidePassword": "Hide password"
   },
   "instance": {
-    "title": "Instance",
+    "title": "General",
     "description": "Settings that apply to this Sirene instance, not just your account.",
+    "access": "Access",
     "registration": "Allow sign-ups",
     "registrationHint": "When off, only you can create accounts, from the PocketBase dashboard.",
     "saveFailed": "Failed to save the instance settings"

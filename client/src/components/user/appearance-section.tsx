@@ -1,5 +1,6 @@
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Section } from '@/components/layout/section';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ACCENTS, type Theme, useTheme } from '@/providers/theme-provider';
@@ -15,9 +16,8 @@ export function AppearanceSection() {
   const { theme, setTheme, accent, setAccent } = useTheme();
 
   return (
-    <>
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-medium leading-none">{t('appearance.mode')}</legend>
+    <div className="space-y-8">
+      <Section title={t('appearance.mode')} description={t('appearance.modeHint')}>
         <div className="flex flex-wrap gap-2">
           {MODES.map(({ id, icon: Icon }) => (
             <Button key={id} type="button" variant={theme === id ? 'default' : 'outline'} size="sm" aria-pressed={theme === id} onClick={() => setTheme(id)}>
@@ -26,10 +26,9 @@ export function AppearanceSection() {
             </Button>
           ))}
         </div>
-      </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-medium leading-none">{t('appearance.accent')}</legend>
-        <div className="flex flex-wrap gap-2">
+      </Section>
+      <Section title={t('appearance.accent')} description={t('appearance.accentHint')}>
+        <div className="flex flex-wrap gap-3">
           {ACCENTS.map((value) => (
             <button
               key={value}
@@ -45,7 +44,7 @@ export function AppearanceSection() {
             </button>
           ))}
         </div>
-      </fieldset>
-    </>
+      </Section>
+    </div>
   );
 }

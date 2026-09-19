@@ -4,15 +4,15 @@ import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { type SettingEntry, settingsClient } from '@/clients/settings.client';
+import { Section } from '@/components/layout/section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const KEYS = [
-  { key: 'openai_api_key', labelKey: 'cloudKeys.openAIKey', placeholder: 'sk-...' },
-  { key: 'elevenlabs_api_key', labelKey: 'cloudKeys.elevenLabsKey', placeholder: 'sk-...' },
-  { key: 'hf_token', labelKey: 'cloudKeys.hfToken', placeholder: 'hf_...' },
+  { key: 'openai_api_key', labelKey: 'cloudKeys.openAIKey', hintKey: 'cloudKeys.openAIHint', placeholder: 'sk-...' },
+  { key: 'elevenlabs_api_key', labelKey: 'cloudKeys.elevenLabsKey', hintKey: 'cloudKeys.elevenLabsHint', placeholder: 'sk-...' },
+  { key: 'hf_token', labelKey: 'cloudKeys.hfToken', hintKey: 'cloudKeys.hfHint', placeholder: 'hf_...' },
 ] as const;
 
 type ApiKeyState = { editing: boolean; value: string; visible: boolean; saving: boolean; deleting: boolean };
@@ -84,10 +84,9 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
 
   if (existing && !editing) {
     return (
-      <div className="space-y-2">
-        <Label>{t(keyDef.labelKey)}</Label>
-        <div className="flex gap-2">
-          <Input readOnly value={existing.maskedValue} className="flex-1 font-mono text-muted-foreground" />
+      <Section title={t(keyDef.labelKey)} description={t(keyDef.hintKey)}>
+        <div className="flex max-w-xl gap-2">
+          <Input readOnly aria-label={t(keyDef.labelKey)} value={existing.maskedValue} className="flex-1 font-mono text-muted-foreground" />
           <Button
             onClick={() => {
               dispatch({ type: 'startEdit' });
@@ -102,18 +101,18 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
             {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           </Button>
         </div>
-      </div>
+      </Section>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <Label>{t(keyDef.labelKey)}</Label>
-      <div className="flex gap-2">
+    <Section title={t(keyDef.labelKey)} description={t(keyDef.hintKey)}>
+      <div className="flex max-w-xl gap-2">
         <div className="relative flex-1">
           <Input
             ref={inputRef}
             type={visible ? 'text' : 'password'}
+            aria-label={t(keyDef.labelKey)}
             placeholder={keyDef.placeholder}
             value={value}
             onChange={(e) => dispatch({ type: 'setValue', value: e.target.value })}
@@ -131,7 +130,7 @@ function ApiKeyField({ keyDef, settings }: { keyDef: (typeof KEYS)[number]; sett
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
         </Button>
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -146,10 +145,10 @@ export function CloudKeysSection() {
   }
 
   return (
-    <>
+    <div className="space-y-8">
       {KEYS.map((keyDef) => (
         <ApiKeyField key={keyDef.key} keyDef={keyDef} settings={settings ?? []} />
       ))}
-    </>
+    </div>
   );
 }

@@ -26,6 +26,7 @@ import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppModelsIndexRouteImport } from './routes/_app/models/index'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
 import { Route as AppModelsFamilyRouteImport } from './routes/_app/models/$family'
+import { Route as AppAdminGeneralRouteImport } from './routes/_app/admin/general'
 import { Route as AppAdminInferenceServersIndexRouteImport } from './routes/_app/admin/inference-servers.index'
 import { Route as AppAdminInferenceServersServerIdRouteImport } from './routes/_app/admin/inference-servers.$serverId'
 
@@ -112,6 +113,11 @@ const AppModelsFamilyRoute = AppModelsFamilyRouteImport.update({
   path: '/$family',
   getParentRoute: () => AppModelsRoute,
 } as any)
+const AppAdminGeneralRoute = AppAdminGeneralRouteImport.update({
+  id: '/general',
+  path: '/general',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminInferenceServersIndexRoute =
   AppAdminInferenceServersIndexRouteImport.update({
     id: '/inference-servers/',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
+  '/admin/general': typeof AppAdminGeneralRoute
   '/models/$family': typeof AppModelsFamilyRoute
   '/admin/': typeof AppAdminIndexRoute
   '/models/': typeof AppModelsIndexRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/': typeof AppIndexRoute
+  '/admin/general': typeof AppAdminGeneralRoute
   '/models/$family': typeof AppModelsFamilyRoute
   '/admin': typeof AppAdminIndexRoute
   '/models': typeof AppModelsIndexRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/_auth/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/admin/general': typeof AppAdminGeneralRoute
   '/_app/models/$family': typeof AppModelsFamilyRoute
   '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/models/': typeof AppModelsIndexRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
+    | '/admin/general'
     | '/models/$family'
     | '/admin/'
     | '/models/'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/share/$sessionId'
     | '/'
+    | '/admin/general'
     | '/models/$family'
     | '/admin'
     | '/models'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/_auth/register'
     | '/share/$sessionId'
     | '/_app/'
+    | '/_app/admin/general'
     | '/_app/models/$family'
     | '/_app/admin/'
     | '/_app/models/'
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModelsFamilyRouteImport
       parentRoute: typeof AppModelsRoute
     }
+    '/_app/admin/general': {
+      id: '/_app/admin/general'
+      path: '/general'
+      fullPath: '/admin/general'
+      preLoaderRoute: typeof AppAdminGeneralRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/_app/admin/inference-servers/': {
       id: '/_app/admin/inference-servers/'
       path: '/inference-servers'
@@ -389,12 +408,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppAdminRouteChildren {
+  AppAdminGeneralRoute: typeof AppAdminGeneralRoute
   AppAdminIndexRoute: typeof AppAdminIndexRoute
   AppAdminInferenceServersServerIdRoute: typeof AppAdminInferenceServersServerIdRoute
   AppAdminInferenceServersIndexRoute: typeof AppAdminInferenceServersIndexRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminGeneralRoute: AppAdminGeneralRoute,
   AppAdminIndexRoute: AppAdminIndexRoute,
   AppAdminInferenceServersServerIdRoute: AppAdminInferenceServersServerIdRoute,
   AppAdminInferenceServersIndexRoute: AppAdminInferenceServersIndexRoute,

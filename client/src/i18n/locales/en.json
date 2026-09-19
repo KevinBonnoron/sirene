@@ -712,6 +712,12 @@
     "apiKey.unknownScope": "Unknown or unauthorized scope",
     "auth.missingScope": "This API key is not allowed to perform this operation",
     "generation.notFound": "Generation not found",
+    "invite.alreadyPending": "This address already has a pending invitation",
+    "invite.alreadyUsed": "This invitation has already been used",
+    "invite.emailMismatch": "This invitation was issued to a different address",
+    "invite.expired": "This invitation has expired",
+    "invite.notFound": "Invitation not found",
+    "invite.required": "An invitation is required to sign up",
     "session.notFound": "Session not found",
     "inferenceServer.notFound": "Inference server not found",
     "inferenceServer.invalidRegistrationToken": "Invalid or expired registration token",
@@ -770,5 +776,21 @@
     "removed": "{{name}} deleted",
     "removeFailed": "Failed to delete the account",
     "loadFailed": "Failed to load the users"
+  },
+  "invites": {
+    "invite": "Invite someone",
+    "pending": "Invited",
+    "create": "Create the invitation",
+    "email": "Email address",
+    "dialogDescription": "The invitation works for this address only, and expires in seven days.",
+    "linkTitle": "Invitation for {{email}}",
+    "linkDescription": "Send them this link. It appears only once and can be used once.",
+    "copy": "Copy the link",
+    "copyFailed": "Failed to copy the link",
+    "expires": "Expires {{date}}",
+    "revoke": "Revoke",
+    "revoked": "Invitation revoked",
+    "revokeFailed": "Failed to revoke the invitation",
+    "createFailed": "Failed to create the invitation"
   }
 }

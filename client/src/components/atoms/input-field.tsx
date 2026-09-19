@@ -9,17 +9,35 @@ interface Props {
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
-export function InputField({ label, type = 'text', placeholder, autoComplete, required }: Props) {
+export function InputField({ label, type = 'text', placeholder, autoComplete, required, disabled }: Props) {
   const id = useId();
   const field = useFieldContext<string>();
   const errors = field.state.meta.errors.filter(Boolean);
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={type} placeholder={placeholder} autoComplete={autoComplete} required={required} className="h-11" value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
-      {errors.length > 0 && <p className="text-sm text-destructive">{errors.join(', ')}</p>}
+      <Input
+        id={id}
+        type={type}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        required={required}
+        disabled={disabled}
+        aria-invalid={errors.length > 0}
+        aria-describedby={errors.length > 0 ? `${id}-error` : undefined}
+        className="h-11"
+        value={field.state.value}
+        onChange={(e) => field.handleChange(e.target.value)}
+        onBlur={field.handleBlur}
+      />
+      {errors.length > 0 && (
+        <p id={`${id}-error`} className="text-sm text-destructive">
+          {errors.join(', ')}
+        </p>
+      )}
     </div>
   );
 }

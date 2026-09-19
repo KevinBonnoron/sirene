@@ -78,6 +78,7 @@ func New(opts Options) *pocketbase.PocketBase {
 	deps := &api.Deps{
 		Config:     config.Config{InferenceURL: opts.InferenceURL, UIDir: opts.UIDir},
 		Keys:       keys,
+		Invites:    auth.NewInvites(app),
 		CliAuth:    auth.NewCliAuth(keys),
 		Settings:   st,
 		AppConfig:  cfgStore,

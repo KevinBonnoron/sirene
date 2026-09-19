@@ -1,9 +1,10 @@
-import type { UserSummary } from '@sirene/shared';
+import type { InviteCreated, UserSummary } from '@sirene/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { inviteClient } from '@/clients/invite.client';
 import { userClient } from '@/clients/user.client';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -14,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { explainApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { INVITES_KEY, InviteDialog, InviteLinkDialog, PendingInviteRow } from './invite-section';
 
 const USERS_KEY = ['admin-users'] as const;
 const userGrid = 'grid grid-cols-1 gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_2.25rem] sm:items-center';
@@ -28,10 +30,22 @@ export function UsersPage() {
   const isMobile = useIsMobile();
   const { user: me } = useAuth();
   const { data: users, isLoading, isError, error, refetch } = useQuery({ queryKey: USERS_KEY, queryFn: () => userClient.list() });
+  const { data: invites } = useQuery({ queryKey: INVITES_KEY, queryFn: () => inviteClient.list() });
+  const [inviting, setInviting] = useState(false);
+  const [created, setCreated] = useState<InviteCreated | null>(null);
 
   return (
     <div className="flex h-full flex-col">
-      <SectionTopbar label={t('users.title')} subtitle={t('users.description')} />
+      <SectionTopbar
+        label={t('users.title')}
+        subtitle={t('users.description')}
+        actions={
+          <Button size="sm" onClick={() => setInviting(true)}>
+            <UserPlus className="size-4" />
+            {t('invites.invite')}
+          </Button>
+        }
+      />
       <main className={cn('custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-6', isMobile && 'pb-24')}>
         {isError && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
@@ -55,8 +69,13 @@ export function UsersPage() {
             {users?.map((entry) => (
               <UserRow key={entry.id} entry={entry} isSelf={entry.id === me?.id} />
             ))}
+            {invites?.map((invite) => (
+              <PendingInviteRow key={invite.id} invite={invite} className={userGrid} />
+            ))}
           </div>
         )}
+        <InviteDialog open={inviting} onOpenChange={setInviting} onCreated={setCreated} />
+        <InviteLinkDialog created={created} onClose={() => setCreated(null)} />
       </main>
     </div>
   );

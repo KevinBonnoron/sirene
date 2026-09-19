@@ -8,7 +8,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string, invitation?: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -76,8 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, name?: string) => {
-      const data = await authRequest('/register', { email, password, passwordConfirm: password, ...(name ? { name } : {}) });
+    async (email: string, password: string, name?: string, invitation?: string) => {
+      const data = await authRequest('/register', { email, password, passwordConfirm: password, ...(name ? { name } : {}), ...(invitation ? { invitation } : {}) });
       setStoredToken(data.token);
       qc.setQueryData(AUTH_QUERY_KEY, data.user);
     },

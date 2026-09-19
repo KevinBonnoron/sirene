@@ -18,6 +18,7 @@ import (
 type Deps struct {
 	Config     config.Config
 	Keys       *auth.APIKeys
+	Invites    *auth.Invites
 	CliAuth    *auth.CliAuth
 	Settings   *settings.Service
 	AppConfig  *appconfig.Service

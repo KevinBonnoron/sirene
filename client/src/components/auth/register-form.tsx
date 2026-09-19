@@ -1,17 +1,26 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
+import { inviteClient } from '@/clients/invite.client';
 import { useValidators } from '@/hooks/use-validators';
+import { explainApiError } from '@/lib/api-error';
 import { useAppForm, zodValidator } from '@/lib/form';
 import { useAuth } from '@/providers/auth-provider';
 
-export function RegisterForm() {
+export function RegisterForm({ invitation }: { invitation?: string }) {
   const { t } = useTranslation();
   const v = useValidators();
   const { register } = useAuth();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
+  const invite = useQuery({
+    queryKey: ['invitation', invitation],
+    queryFn: () => inviteClient.resolve(invitation ?? ''),
+    enabled: Boolean(invitation),
+    retry: false,
+  });
 
   const schema = z
     .object({
@@ -27,12 +36,12 @@ export function RegisterForm() {
     });
 
   const form = useAppForm({
-    defaultValues: { name: '', email: '', password: '', passwordConfirm: '' },
+    defaultValues: { name: '', email: invite.data?.email ?? '', password: '', passwordConfirm: '' },
     validators: { onSubmit: zodValidator(schema) },
     onSubmit: async ({ value }) => {
       setServerError('');
       try {
-        await register(value.email, value.password, value.name);
+        await register(value.email, value.password, value.name, invitation);
         navigate({ to: '/' });
       } catch (err) {
         const code = err instanceof Error ? err.message : '';
@@ -47,6 +56,12 @@ export function RegisterForm() {
         <h2 className="text-2xl font-bold tracking-tight">{t('register.title')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('register.subtitle')}</p>
       </div>
+
+      {invite.isError && (
+        <div role="alert" className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {explainApiError(invite.error, t('register.failed'))}
+        </div>
+      )}
 
       {serverError && (
         <div role="alert" className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -64,7 +79,7 @@ export function RegisterForm() {
       >
         <form.AppField name="name">{(field) => <field.InputField label={t('register.name')} placeholder={t('register.namePlaceholder')} autoComplete="name" />}</form.AppField>
 
-        <form.AppField name="email">{(field) => <field.EmailField label={t('register.email')} placeholder={t('register.emailPlaceholder')} autoComplete="email" />}</form.AppField>
+        <form.AppField name="email">{(field) => <field.EmailField label={t('register.email')} placeholder={t('register.emailPlaceholder')} autoComplete="email" disabled={Boolean(invite.data)} />}</form.AppField>
 
         <form.AppField name="password">{(field) => <field.PasswordField label={t('register.password')} autoComplete="new-password" />}</form.AppField>
 

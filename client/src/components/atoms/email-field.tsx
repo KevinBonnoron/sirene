@@ -5,6 +5,7 @@ interface Props {
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export function EmailField(props: Props) {

@@ -17,3 +17,14 @@ export interface UserSummary {
   verified: boolean;
   created: string;
 }
+
+export interface Invite {
+  id: string;
+  email: string;
+  expiresAt: string;
+  created: string;
+}
+
+export interface InviteCreated extends Invite {
+  token: string;
+}

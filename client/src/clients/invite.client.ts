@@ -6,9 +6,7 @@ import { config } from '@/lib/config';
 export const inviteClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
-    list: () => delegate.get<Invite[]>('/invitations'),
     create: (email: string) => delegate.post<InviteCreated>('/invitations', { email }),
-    revoke: (id: string) => delegate.delete<void>(`/invitations/${encodeURIComponent(id)}`),
     resolve: (token: string) => delegate.get<Invite>(`/invitations/${encodeURIComponent(token)}`),
   })),
 );

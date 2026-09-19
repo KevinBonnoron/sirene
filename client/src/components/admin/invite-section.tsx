@@ -1,10 +1,11 @@
 import type { Invite, InviteCreated } from '@sirene/shared';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Check, Copy, Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { inviteClient } from '@/clients/invite.client';
+import { invitationCollection } from '@/collections';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,8 +14,6 @@ import { Label } from '@/components/ui/label';
 import { explainApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 
-export const INVITES_KEY = ['admin-invites'] as const;
-
 function formatDate(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
@@ -22,14 +21,10 @@ function formatDate(iso: string): string {
 
 export function PendingInviteRow({ invite, className }: { invite: Invite; className?: string }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
 
   const revoke = useMutation({
-    mutationFn: () => inviteClient.revoke(invite.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: INVITES_KEY });
-      toast.success(t('invites.revoked'));
-    },
+    mutationFn: () => invitationCollection.delete(invite.id).isPersisted.promise,
+    onSuccess: () => toast.success(t('invites.revoked')),
     onError: (err) => toast.error(explainApiError(err, t('invites.revokeFailed'))),
   });
 
@@ -54,13 +49,11 @@ export function PendingInviteRow({ invite, className }: { invite: Invite; classN
 
 export function InviteDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (open: boolean) => void; onCreated: (invite: InviteCreated) => void }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const [email, setEmail] = useState('');
 
   const create = useMutation({
     mutationFn: () => inviteClient.create(email.trim()),
     onSuccess: (invite) => {
-      qc.invalidateQueries({ queryKey: INVITES_KEY });
       setEmail('');
       onOpenChange(false);
       onCreated(invite);

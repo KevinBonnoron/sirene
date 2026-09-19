@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"errors"
-	"net/http"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -13,41 +12,11 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 )
 
-type userSummary struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
-	Avatar   string `json:"avatar,omitempty"`
-	Verified bool   `json:"verified"`
-	Created  string `json:"created"`
-}
-
-// Sirene admins are ordinary records with role=admin, not PocketBase superusers, so the
-// collection hides the other users' emails from them; the listing goes through here instead.
-func registerUsers(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
+// Reading an account is a collection rule; deleting one is not, because what it owns has
+// to go first and in order.
+func registerUsers(p *router.RouterGroup[*core.RequestEvent]) {
 	u := p.Group("/users")
 	u.Bind(auth.RequireAdmin())
-
-	u.GET("", func(e *core.RequestEvent) error {
-		records, err := e.App.FindRecordsByFilter("users", "id != ''", "created", 0, 0)
-		if err != nil {
-			return err
-		}
-		out := make([]userSummary, 0, len(records))
-		for _, rec := range records {
-			out = append(out, userSummary{
-				ID:       rec.Id,
-				Email:    rec.Email(),
-				Name:     rec.GetString("name"),
-				Role:     rec.GetString("role"),
-				Avatar:   rec.GetString("avatar"),
-				Verified: rec.GetBool("verified"),
-				Created:  rec.GetDateTime("created").String(),
-			})
-		}
-		return e.JSON(http.StatusOK, out)
-	})
 
 	u.DELETE("/{id}", func(e *core.RequestEvent) error {
 		id, err := pathParam(e, "id")

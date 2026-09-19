@@ -1,15 +1,14 @@
 import type { Job } from '@sirene/shared';
 import { useSyncExternalStore } from 'react';
 import { jobsClient } from '@/clients/jobs.client';
-import { openAuthenticatedStream } from '@/lib/auth-stream';
-import { config } from '@/lib/config';
+import { subscribeToAppEvents } from '@/lib/app-events';
 
 type Listener = () => void;
 
 class JobsStore {
   private jobs: Job[] = [];
   private readonly listeners = new Set<Listener>();
-  private stream: { close: () => void } | null = null;
+  private unsubscribe: (() => void) | null = null;
   private refCount = 0;
 
   public getSnapshot = (): Job[] => this.jobs;
@@ -34,11 +33,11 @@ class JobsStore {
 
   private acquire() {
     this.refCount++;
-    if (this.stream) {
+    if (this.unsubscribe) {
       return;
     }
-    this.stream = openAuthenticatedStream(`${config.server.url}/jobs/stream`, ({ event, data }) => {
-      if (event === 'snapshot') {
+    this.unsubscribe = subscribeToAppEvents(({ event, data }) => {
+      if (event === 'jobs') {
         this.replace(JSON.parse(data) as Job[]);
       } else if (event === 'job') {
         const job = JSON.parse(data) as Job;
@@ -50,7 +49,7 @@ class JobsStore {
           next[idx] = job;
           this.replace(next);
         }
-      } else if (event === 'remove') {
+      } else if (event === 'job.removed') {
         const { id } = JSON.parse(data) as { id: string };
         this.replace(this.jobs.filter((j) => j.id !== id));
       }
@@ -59,11 +58,11 @@ class JobsStore {
 
   private release() {
     this.refCount--;
-    if (this.refCount > 0 || !this.stream) {
+    if (this.refCount > 0 || !this.unsubscribe) {
       return;
     }
-    this.stream.close();
-    this.stream = null;
+    this.unsubscribe();
+    this.unsubscribe = null;
     this.jobs = [];
   }
 

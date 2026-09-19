@@ -17,7 +17,7 @@ async function* streamJobEvents(config: CliConfig): AsyncGenerator<{ event: stri
   if (!config.url || !config.apiKey) {
     throw new ApiError(0, 'Not logged in');
   }
-  const url = `${config.url.replace(/\/+$/, '')}/api/jobs/stream`;
+  const url = `${config.url.replace(/\/+$/, '')}/api/events`;
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -25,7 +25,8 @@ async function* streamJobEvents(config: CliConfig): AsyncGenerator<{ event: stri
     },
   });
   if (!response.ok || !response.body) {
-    throw new ApiError(response.status, `Failed to open job stream: ${response.status}`);
+    const detail = (await response.text().catch(() => '')).trim().slice(0, 300);
+    throw new ApiError(response.status, `Failed to open the event stream: ${response.status}${detail ? `: ${detail}` : ''}`);
   }
 
   const reader = response.body.getReader();
@@ -150,7 +151,7 @@ export async function modelPullCommand(modelId: string, options: Options): Promi
 
   let allDone = false;
   for await (const { event, data } of streamJobEvents(config)) {
-    if (event === 'snapshot') {
+    if (event === 'jobs') {
       for (const job of data as Job[]) {
         if (tracked.has(job.id)) {
           state.set(job.id, job);
@@ -161,7 +162,7 @@ export async function modelPullCommand(modelId: string, options: Options): Promi
       if (tracked.has(job.id)) {
         state.set(job.id, job);
       }
-    } else if (event === 'remove') {
+    } else if (event === 'job.removed') {
       const { id } = data as { id: string };
       tracked.delete(id);
     }

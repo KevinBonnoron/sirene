@@ -49,6 +49,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 	registerAppSettings(p, d)
 	registerInstance(p, d)
 	registerInferenceServers(p, d)
+	registerEvents(p, d)
 	registerJobs(p, d)
 	registerModels(p, d)
 	registerGenerate(p, d)

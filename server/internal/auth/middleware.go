@@ -142,11 +142,15 @@ func RequireUser() *hook.Handler[*core.RequestEvent] {
 	}
 }
 
+func IsAdmin(e *core.RequestEvent) bool {
+	return e.Auth != nil && e.Auth.GetString("role") == "admin"
+}
+
 func RequireAdmin() *hook.Handler[*core.RequestEvent] {
 	return &hook.Handler[*core.RequestEvent]{
 		Id: "sireneRequireAdmin",
 		Func: func(e *core.RequestEvent) error {
-			if e.Auth == nil || e.Auth.GetString("role") != "admin" {
+			if !IsAdmin(e) {
 				return apierr.Forbidden(apierr.CodeAuthForbidden, "Forbidden")
 			}
 			return e.Next()

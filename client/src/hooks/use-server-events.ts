@@ -5,7 +5,6 @@ import { config } from '@/lib/config';
 
 const MAX_LOG_LINES = 1000;
 const MAX_SAMPLES = 6 * 60 * 12;
-const STREAM_RETRIES = 5;
 
 export interface ServerEventsFeed {
   snapshot?: ServerStats;
@@ -56,7 +55,6 @@ export function useServerEvents(serverId: string, enabled: boolean): ServerEvent
       `${config.server.url}/inference-servers/${encodeURIComponent(serverId)}/events`,
       ({ event, data }) => setFeed((f) => reduce(f, event, data)),
       () => setFeed((f) => reduce(f, 'error', '')),
-      STREAM_RETRIES,
     );
     return () => stream.close();
   }, [serverId, enabled]);
@@ -88,7 +86,6 @@ export function useFleetEvents(serverIds: string[]): Record<string, ServerEvents
         setFeeds((all) => ({ ...all, [frame.server]: reduce(all[frame.server] ?? EMPTY_FEED, event, JSON.stringify(frame.data)) }));
       },
       () => setFeeds((all) => Object.fromEntries(ids.map((id) => [id, reduce(all[id] ?? EMPTY_FEED, 'error', '')]))),
-      STREAM_RETRIES,
     );
     return () => stream.close();
   }, [key]);

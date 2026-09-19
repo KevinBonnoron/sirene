@@ -712,6 +712,12 @@
     "apiKey.unknownScope": "Scope inconnu ou non autorisé",
     "auth.missingScope": "Cette clé API n'est pas autorisée à effectuer cette opération",
     "generation.notFound": "Génération introuvable",
+    "invite.alreadyPending": "Cette adresse a déjà une invitation en attente",
+    "invite.alreadyUsed": "Cette invitation a déjà été utilisée",
+    "invite.emailMismatch": "Cette invitation a été émise pour une autre adresse",
+    "invite.expired": "Cette invitation a expiré",
+    "invite.notFound": "Invitation introuvable",
+    "invite.required": "Une invitation est nécessaire pour créer un compte",
     "session.notFound": "Session introuvable",
     "inferenceServer.notFound": "Serveur d'inférence introuvable",
     "inferenceServer.invalidRegistrationToken": "Jeton d'enregistrement invalide ou expiré",
@@ -770,5 +776,21 @@
     "removed": "{{name}} supprimé",
     "removeFailed": "Échec de la suppression du compte",
     "loadFailed": "Échec du chargement des utilisateurs"
+  },
+  "invites": {
+    "invite": "Inviter quelqu’un",
+    "pending": "Invité",
+    "create": "Créer l'invitation",
+    "email": "Adresse email",
+    "dialogDescription": "L'invitation ne vaut que pour cette adresse, et expire dans sept jours.",
+    "linkTitle": "Invitation pour {{email}}",
+    "linkDescription": "Envoyez-lui ce lien. Il n'apparaît qu'une fois et ne sert qu'une fois.",
+    "copy": "Copier le lien",
+    "copyFailed": "Échec de la copie du lien",
+    "expires": "Expire le {{date}}",
+    "revoke": "Révoquer",
+    "revoked": "Invitation révoquée",
+    "revokeFailed": "Échec de la révocation de l'invitation",
+    "createFailed": "Échec de la création de l'invitation"
   }
 }

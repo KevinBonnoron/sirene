@@ -22,6 +22,12 @@ export type ErrorCode =
   | 'cliAuth.sessionNotFound'
   // Generation
   | 'generation.notFound'
+  | 'invite.alreadyPending'
+  | 'invite.alreadyUsed'
+  | 'invite.emailMismatch'
+  | 'invite.expired'
+  | 'invite.notFound'
+  | 'invite.required'
   // Inference server
   | 'inferenceServer.notFound'
   | 'inferenceServer.invalidRegistrationToken'

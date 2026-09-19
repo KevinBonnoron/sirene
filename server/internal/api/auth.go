@@ -78,22 +78,23 @@ func registerAuth(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	})
 
 	g.POST("/auth/register", func(e *core.RequestEvent) error {
-		enabled, err := d.AppConfig.Bool(appconfig.RegistrationEnabled, true)
-		if err != nil {
-			e.App.Logger().Error("[auth/register] could not read the registration policy", "error", err)
-			return apierr.Internal()
-		}
-		if !enabled {
-			return apierr.Forbidden(apierr.CodeAuthRegistrationClosed, "This instance is not accepting new accounts")
-		}
 		var body struct {
 			Email           *string `json:"email"`
 			Password        *string `json:"password"`
 			PasswordConfirm *string `json:"passwordConfirm"`
 			Name            *string `json:"name"`
+			Invitation      *string `json:"invitation"`
 		}
 		if err := bindJSON(e, &body); err != nil {
 			return err
+		}
+		enabled, err := d.AppConfig.Bool(appconfig.RegistrationEnabled, true)
+		if err != nil {
+			e.App.Logger().Error("[auth/register] could not read the registration policy", "error", err)
+			return apierr.Internal()
+		}
+		if !enabled && body.Invitation == nil {
+			return apierr.Forbidden(apierr.CodeAuthRegistrationClosed, "This instance is not accepting new accounts")
 		}
 		if err := requireString("email", body.Email, 1, 0); err != nil {
 			return err
@@ -126,15 +127,27 @@ func registerAuth(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		if body.Name != nil {
 			rec.Set("name", *body.Name)
 		}
-		if err := e.App.Save(rec); err != nil {
-			var ve validation.Errors
-			if errors.As(err, &ve) {
-				if fieldErr, ok := ve["email"].(validation.Error); ok && fieldErr.Code() == "validation_not_unique" {
-					return apierr.BadRequest(apierr.CodeAuthEmailTaken, "An account with this email already exists")
+		// Claimed first: a sign-up that is then rejected rolls the claim back with it,
+		// and an invitation revoked in between can no longer open an account.
+		if err := e.App.RunInTransaction(func(tx core.App) error {
+			if body.Invitation != nil {
+				if err := d.Invites.With(tx).Claim(*body.Invitation, *body.Email); err != nil {
+					return err
 				}
-				e.App.Logger().Warn("[auth/register] rejected", "error", err)
-				return apierr.BadRequest(apierr.CodeAuthRegistrationFailed, "Registration failed")
 			}
+			if err := tx.Save(rec); err != nil {
+				var ve validation.Errors
+				if errors.As(err, &ve) {
+					if fieldErr, ok := ve["email"].(validation.Error); ok && fieldErr.Code() == "validation_not_unique" {
+						return apierr.BadRequest(apierr.CodeAuthEmailTaken, "An account with this email already exists")
+					}
+					e.App.Logger().Warn("[auth/register] rejected", "error", err)
+					return apierr.BadRequest(apierr.CodeAuthRegistrationFailed, "Registration failed")
+				}
+				return err
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 		out, err := authResponse(rec)

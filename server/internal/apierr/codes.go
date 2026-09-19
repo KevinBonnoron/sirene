@@ -23,6 +23,12 @@ const (
 	CodeCliAuthSessionNotFound    = "cliAuth.sessionNotFound"
 
 	CodeGenerationNotFound                      = "generation.notFound"
+	CodeInviteAlreadyPending                    = "invite.alreadyPending"
+	CodeInviteAlreadyUsed                       = "invite.alreadyUsed"
+	CodeInviteEmailMismatch                     = "invite.emailMismatch"
+	CodeInviteExpired                           = "invite.expired"
+	CodeInviteNotFound                          = "invite.notFound"
+	CodeInviteRequired                          = "invite.required"
 	CodeInferenceServerNotFound                 = "inferenceServer.notFound"
 	CodeInferenceServerInvalidRegistrationToken = "inferenceServer.invalidRegistrationToken"
 	CodeInferenceServerInvalidURL               = "inferenceServer.invalidUrl"
@@ -82,7 +88,8 @@ var AllCodes = []string{
 	CodeAuthInvalidCredentials, CodeAuthInvalidToken, CodeAuthRegistrationFailed, CodeAuthRequired, CodeAuthForbidden, CodeAuthMissingScope, CodeAuthEmailTaken, CodeAuthRegistrationClosed,
 	CodeApiKeyNotFound, CodeApiKeyUnknownScope,
 	CodeCliAuthSessionAlreadyUsed, CodeCliAuthSessionNotFound,
-	CodeGenerationNotFound, CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken, CodeInferenceServerStatsUnsupported,
+	CodeGenerationNotFound, CodeInviteAlreadyPending, CodeInviteAlreadyUsed, CodeInviteEmailMismatch, CodeInviteExpired, CodeInviteNotFound, CodeInviteRequired,
+	CodeInferenceServerNotFound, CodeInferenceServerInvalidRegistrationToken, CodeInferenceServerInvalidURL, CodeInferenceServerNameTaken, CodeInferenceServerStatsUnsupported,
 	CodeModelAlreadyInstalled, CodeModelConfigInvalidJson, CodeModelConfigNotPiper, CodeModelDeleteFailed,
 	CodeModelInvalidName, CodeModelInvalidServerSelection, CodeModelNameConflict, CodeModelNoAcceptingServer, CodeModelNoOnlineServer, CodeModelNotFound, CodeModelNotInCatalog,
 	CodeModelNotInstalled, CodeModelNotInstalledOnServer, CodeModelPiperFieldsRequired, CodeModelServerIdsInvalid, CodeModelServerIdsNotJson, CodeModelWhisperNotInstalled,

@@ -35,6 +35,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 	registerAuth(g, d)
 	registerCliAuthPublic(g, d)
 	registerInferenceServersPublic(g, d)
+	registerInvitationsPublic(g, d)
 	registerOpenAPI(g)
 
 	p := g.Group("")
@@ -43,6 +44,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 	registerCliAuthProtected(p, d)
 	registerMe(p, d)
 	registerUsers(p, d)
+	registerInvitations(p, d)
 	registerAPIKeys(p, d)
 	registerAppSettings(p, d)
 	registerInstance(p, d)

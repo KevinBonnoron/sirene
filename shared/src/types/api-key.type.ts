@@ -20,6 +20,7 @@ export interface ApiKeySummary {
   prefix: string;
   scopes: ApiKeyScope[] | null;
   lastUsedAt?: string;
+  revokedAt?: string;
   created: string;
 }
 

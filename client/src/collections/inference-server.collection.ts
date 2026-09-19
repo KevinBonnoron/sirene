@@ -3,10 +3,10 @@ import { createCollection } from '@tanstack/db';
 import { pocketbaseCollectionOptions } from 'pocketbase-db-collection';
 import { pb } from '@/lib/pocketbase';
 
-export const inferenceServerCollection = createCollection<InferenceServer, string>(
-  pocketbaseCollectionOptions<InferenceServer>({
+export const inferenceServerCollection = createCollection(
+  pocketbaseCollectionOptions({
     id: 'inference_servers',
-    recordService: pb.collection('inference_servers'),
+    recordService: pb.collection<InferenceServer>('inference_servers'),
     options: { sort: '-priority' },
   }),
 );

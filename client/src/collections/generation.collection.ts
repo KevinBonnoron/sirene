@@ -6,10 +6,10 @@ import { pb } from '@/lib/pocketbase';
 const byUser = new Map<string, ReturnType<typeof build>>();
 
 function build(userId: string) {
-  return createCollection<Generation, string>(
-    pocketbaseCollectionOptions<Generation>({
+  return createCollection(
+    pocketbaseCollectionOptions({
       id: `generations:${userId}`,
-      recordService: pb.collection('generations'),
+      recordService: pb.collection<Generation>('generations'),
       options: { sort: '-created', filter: pb.filter('user = {:userId}', { userId }) },
     }),
   );

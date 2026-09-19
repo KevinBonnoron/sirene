@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { acceptsModel } from './fleet';
+import { describe, expect, test } from 'bun:test';
 
 const server = (syncPolicy: 'all' | 'cpu' | 'gpu' | 'none', device: string, vram = 0, backends?: string[]) => ({ syncPolicy, lastHealth: { at: '', status: 'online' as const, error: '', device, vram, backends } });
 

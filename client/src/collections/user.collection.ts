@@ -3,10 +3,10 @@ import { createCollection } from '@tanstack/db';
 import { pocketbaseCollectionOptions } from 'pocketbase-db-collection';
 import { pb } from '@/lib/pocketbase';
 
-export const userCollection = createCollection<User, string>(
-  pocketbaseCollectionOptions<User>({
+export const userCollection = createCollection(
+  pocketbaseCollectionOptions({
     id: 'users',
-    recordService: pb.collection('users'),
+    recordService: pb.collection<User>('users'),
     options: { sort: 'created' },
   }),
 );

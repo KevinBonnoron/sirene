@@ -32,9 +32,9 @@
     "go"
   ],
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "^2.5.14",
     "bun-types": "latest",
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.4"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"

@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>Sirene</title>
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#06b6d4"/>

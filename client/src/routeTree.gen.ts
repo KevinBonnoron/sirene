@@ -9,39 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as ShareSessionIdRouteImport } from './routes/share.$sessionId'
-import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
-import { Route as AuthLoginRouteImport } from './routes/_auth/login'
-import { Route as AppVoicesRouteImport } from './routes/_app/voices'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
-import { Route as AppProfileRouteImport } from './routes/_app/profile'
-import { Route as AppHistoryRouteImport } from './routes/_app/history'
-import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as AppCliAuthRouteImport } from './routes/_app/cli-auth'
+import { Route as AppHistoryRouteImport } from './routes/_app/history'
+import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppVoicesRouteImport } from './routes/_app/voices'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
+import { Route as ShareSessionIdRouteImport } from './routes/share.$sessionId'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
-import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
-import { Route as AppAdminModelsRouteImport } from './routes/_app/admin/models'
 import { Route as AppAdminGeneralRouteImport } from './routes/_app/admin/general'
-import { Route as AppAdminModelsIndexRouteImport } from './routes/_app/admin/models/index'
+import { Route as AppAdminModelsRouteImport } from './routes/_app/admin/models'
+import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
 import { Route as AppAdminInferenceServersIndexRouteImport } from './routes/_app/admin/inference-servers.index'
-import { Route as AppAdminModelsFamilyRouteImport } from './routes/_app/admin/models/$family'
 import { Route as AppAdminInferenceServersServerIdRouteImport } from './routes/_app/admin/inference-servers.$serverId'
+import { Route as AppAdminModelsIndexRouteImport } from './routes/_app/admin/models/index'
+import { Route as AppAdminModelsFamilyRouteImport } from './routes/_app/admin/models/$family'
 
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -49,39 +49,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const ShareSessionIdRoute = ShareSessionIdRouteImport.update({
-  id: '/share/$sessionId',
-  path: '/share/$sessionId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRegisterRoute = AuthRegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AppVoicesRoute = AppVoicesRouteImport.update({
-  id: '/voices',
-  path: '/voices',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppProfileRoute = AppProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppHistoryRoute = AppHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCliAuthRoute = AppCliAuthRouteImport.update({
@@ -89,24 +59,44 @@ const AppCliAuthRoute = AppCliAuthRouteImport.update({
   path: '/cli-auth',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAdminRoute = AppAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVoicesRoute = AppVoicesRouteImport.update({
+  id: '/voices',
+  path: '/voices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AuthRoute,
+} as any)
+const ShareSessionIdRoute = ShareSessionIdRouteImport.update({
+  id: '/share/$sessionId',
+  path: '/share/$sessionId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppAdminRoute,
-} as any)
-const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AppAdminRoute,
-} as any)
-const AppAdminModelsRoute = AppAdminModelsRouteImport.update({
-  id: '/models',
-  path: '/models',
   getParentRoute: () => AppAdminRoute,
 } as any)
 const AppAdminGeneralRoute = AppAdminGeneralRouteImport.update({
@@ -114,10 +104,15 @@ const AppAdminGeneralRoute = AppAdminGeneralRouteImport.update({
   path: '/general',
   getParentRoute: () => AppAdminRoute,
 } as any)
-const AppAdminModelsIndexRoute = AppAdminModelsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppAdminModelsRoute,
+const AppAdminModelsRoute = AppAdminModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppAdminRoute,
 } as any)
 const AppAdminInferenceServersIndexRoute =
   AppAdminInferenceServersIndexRouteImport.update({
@@ -125,19 +120,25 @@ const AppAdminInferenceServersIndexRoute =
     path: '/inference-servers/',
     getParentRoute: () => AppAdminRoute,
   } as any)
-const AppAdminModelsFamilyRoute = AppAdminModelsFamilyRouteImport.update({
-  id: '/$family',
-  path: '/$family',
-  getParentRoute: () => AppAdminModelsRoute,
-} as any)
 const AppAdminInferenceServersServerIdRoute =
   AppAdminInferenceServersServerIdRouteImport.update({
     id: '/inference-servers/$serverId',
     path: '/inference-servers/$serverId',
     getParentRoute: () => AppAdminRoute,
   } as any)
+const AppAdminModelsIndexRoute = AppAdminModelsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminModelsRoute,
+} as any)
+const AppAdminModelsFamilyRoute = AppAdminModelsFamilyRouteImport.update({
+  id: '/$family',
+  path: '/$family',
+  getParentRoute: () => AppAdminModelsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof AppIndexRoute
   '/setup': typeof SetupRoute
   '/admin': typeof AppAdminRouteWithChildren
   '/cli-auth': typeof AppCliAuthRoute
@@ -148,17 +149,17 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
-  '/': typeof AppIndexRoute
   '/admin/general': typeof AppAdminGeneralRoute
   '/admin/models': typeof AppAdminModelsRouteWithChildren
   '/admin/users': typeof AppAdminUsersRoute
   '/admin/': typeof AppAdminIndexRoute
   '/admin/inference-servers/$serverId': typeof AppAdminInferenceServersServerIdRoute
   '/admin/models/$family': typeof AppAdminModelsFamilyRoute
-  '/admin/inference-servers': typeof AppAdminInferenceServersIndexRoute
+  '/admin/inference-servers/': typeof AppAdminInferenceServersIndexRoute
   '/admin/models/': typeof AppAdminModelsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof AppIndexRoute
   '/setup': typeof SetupRoute
   '/cli-auth': typeof AppCliAuthRoute
   '/history': typeof AppHistoryRoute
@@ -168,7 +169,6 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/share/$sessionId': typeof ShareSessionIdRoute
-  '/': typeof AppIndexRoute
   '/admin/general': typeof AppAdminGeneralRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/admin': typeof AppAdminIndexRoute
@@ -204,6 +204,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/setup'
     | '/admin'
     | '/cli-auth'
@@ -214,17 +215,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/share/$sessionId'
-    | '/'
     | '/admin/general'
     | '/admin/models'
     | '/admin/users'
     | '/admin/'
     | '/admin/inference-servers/$serverId'
     | '/admin/models/$family'
-    | '/admin/inference-servers'
+    | '/admin/inference-servers/'
     | '/admin/models/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/setup'
     | '/cli-auth'
     | '/history'
@@ -234,7 +235,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/share/$sessionId'
-    | '/'
     | '/admin/general'
     | '/admin/users'
     | '/admin'
@@ -276,25 +276,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
       id: '/_auth'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AppRouteImport
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -304,53 +304,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/share/$sessionId': {
-      id: '/share/$sessionId'
-      path: '/share/$sessionId'
-      fullPath: '/share/$sessionId'
-      preLoaderRoute: typeof ShareSessionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth/register': {
-      id: '/_auth/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_app/voices': {
-      id: '/_app/voices'
-      path: '/voices'
-      fullPath: '/voices'
-      preLoaderRoute: typeof AppVoicesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/profile': {
-      id: '/_app/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AppProfileRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/history': {
-      id: '/_app/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof AppHistoryRouteImport
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/cli-auth': {
@@ -360,32 +318,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCliAuthRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/admin': {
-      id: '/_app/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AppAdminRouteImport
+    '/_app/history': {
+      id: '/_app/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/voices': {
+      id: '/_app/voices'
+      path: '/voices'
+      fullPath: '/voices'
+      preLoaderRoute: typeof AppVoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/register': {
+      id: '/_auth/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/share/$sessionId': {
+      id: '/share/$sessionId'
+      path: '/share/$sessionId'
+      fullPath: '/share/$sessionId'
+      preLoaderRoute: typeof ShareSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/admin/': {
       id: '/_app/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AppAdminIndexRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/_app/admin/users': {
-      id: '/_app/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AppAdminUsersRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/_app/admin/models': {
-      id: '/_app/admin/models'
-      path: '/models'
-      fullPath: '/admin/models'
-      preLoaderRoute: typeof AppAdminModelsRouteImport
       parentRoute: typeof AppAdminRoute
     }
     '/_app/admin/general': {
@@ -395,26 +381,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminGeneralRouteImport
       parentRoute: typeof AppAdminRoute
     }
-    '/_app/admin/models/': {
-      id: '/_app/admin/models/'
-      path: '/'
-      fullPath: '/admin/models/'
-      preLoaderRoute: typeof AppAdminModelsIndexRouteImport
-      parentRoute: typeof AppAdminModelsRoute
+    '/_app/admin/models': {
+      id: '/_app/admin/models'
+      path: '/models'
+      fullPath: '/admin/models'
+      preLoaderRoute: typeof AppAdminModelsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/users': {
+      id: '/_app/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppAdminRoute
     }
     '/_app/admin/inference-servers/': {
       id: '/_app/admin/inference-servers/'
       path: '/inference-servers'
-      fullPath: '/admin/inference-servers'
+      fullPath: '/admin/inference-servers/'
       preLoaderRoute: typeof AppAdminInferenceServersIndexRouteImport
       parentRoute: typeof AppAdminRoute
-    }
-    '/_app/admin/models/$family': {
-      id: '/_app/admin/models/$family'
-      path: '/$family'
-      fullPath: '/admin/models/$family'
-      preLoaderRoute: typeof AppAdminModelsFamilyRouteImport
-      parentRoute: typeof AppAdminModelsRoute
     }
     '/_app/admin/inference-servers/$serverId': {
       id: '/_app/admin/inference-servers/$serverId'
@@ -422,6 +408,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/inference-servers/$serverId'
       preLoaderRoute: typeof AppAdminInferenceServersServerIdRouteImport
       parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/models/': {
+      id: '/_app/admin/models/'
+      path: '/'
+      fullPath: '/admin/models/'
+      preLoaderRoute: typeof AppAdminModelsIndexRouteImport
+      parentRoute: typeof AppAdminModelsRoute
+    }
+    '/_app/admin/models/$family': {
+      id: '/_app/admin/models/$family'
+      path: '/$family'
+      fullPath: '/admin/models/$family'
+      preLoaderRoute: typeof AppAdminModelsFamilyRouteImport
+      parentRoute: typeof AppAdminModelsRoute
     }
   }
 }

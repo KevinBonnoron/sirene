@@ -25,7 +25,9 @@ async def download_model_files(
             file_path = model_path / file_entry.path
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with client.stream("GET", file_entry.url, headers=headers) as response:
+            async with client.stream(
+                "GET", file_entry.url, headers=headers
+            ) as response:
                 response.raise_for_status()
                 with open(file_path, "wb") as f:
                     async for chunk in response.aiter_bytes(chunk_size=65536):

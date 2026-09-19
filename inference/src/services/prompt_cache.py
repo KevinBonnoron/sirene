@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class PromptCache:
-
     def __init__(self, cache_dir: str, max_disk_size_mb: int = 2048):
         self._cache_dir = Path(cache_dir)
         self._audio_dir = self._cache_dir / "audio"
@@ -21,8 +20,6 @@ class PromptCache:
         self._max_disk_bytes = max_disk_size_mb * 1024 * 1024
         self._memory: dict[str, Any] = {}
         self._lock = threading.Lock()
-
-
 
     @staticmethod
     def audio_cache_key(urls: list[str], max_duration: float) -> str:
@@ -38,8 +35,6 @@ class PromptCache:
             h.update(ref_text.encode())
         return f"{backend_name}_{h.hexdigest()[:24]}"
 
-
-
     def get_audio(self, key: str) -> str | None:
         path = self._audio_dir / f"{key}.wav"
         if path.exists():
@@ -52,7 +47,9 @@ class PromptCache:
         dest = self._audio_dir / f"{key}.wav"
         shutil.move(source_path, dest)
         if included is not None:
-            (self._audio_dir / f"{key}.json").write_text(json.dumps({"included": included}))
+            (self._audio_dir / f"{key}.json").write_text(
+                json.dumps({"included": included})
+            )
         logger.debug(f"[cache] L1 stored: {key}")
         return str(dest)
 
@@ -65,8 +62,6 @@ class PromptCache:
             return int(json.loads(meta.read_text())["included"])
         except (ValueError, KeyError, TypeError):
             return None
-
-
 
     def get_prompt(self, key: str) -> Any | None:
         with self._lock:
@@ -98,8 +93,6 @@ class PromptCache:
         path = self._prompt_dir / f"{key}.pt"
         torch.save(prompt, path)
         logger.debug(f"[cache] L2 stored: {key}")
-
-
 
     def clear_all(self) -> dict:
         with self._lock:

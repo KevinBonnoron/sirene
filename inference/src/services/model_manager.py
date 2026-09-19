@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-
     def __init__(self):
         self._loaded: OrderedDict[tuple[str, str], TTSBackend] = OrderedDict()
         self._lock = threading.Lock()
@@ -109,9 +108,7 @@ class ModelManager:
     def get_status(self) -> list[dict]:
         result = []
         for name in list_backend_names():
-            loaded_models = [
-                path for (bname, path) in self._loaded if bname == name
-            ]
+            loaded_models = [path for (bname, path) in self._loaded if bname == name]
             result.append(
                 {
                     "name": name,
@@ -123,9 +120,7 @@ class ModelManager:
         return result
 
     def get_backend_status(self, name: str) -> dict:
-        loaded_models = [
-            path for (bname, path) in self._loaded if bname == name
-        ]
+        loaded_models = [path for (bname, path) in self._loaded if bname == name]
         return {
             "name": name,
             "available": name in list_backend_names(),

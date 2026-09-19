@@ -25,14 +25,22 @@ _history: deque[dict[str, Any]] = deque(maxlen=_HISTORY_SECONDS // _SAMPLE_EVERY
 
 def _snapshot() -> dict[str, Any]:
     cores = psutil.cpu_count() or 1
-    disk = shutil.disk_usage(settings.models_path if os.path.isdir(settings.models_path) else "/")
+    disk = shutil.disk_usage(
+        settings.models_path if os.path.isdir(settings.models_path) else "/"
+    )
     return {
         "device": effective_device(),
         "cpu": {"percent": _cpu_percent, "cores": cores},
-        "memory": {"used": int(_proc.memory_info().rss), "total": int(psutil.virtual_memory().total)},
+        "memory": {
+            "used": int(_proc.memory_info().rss),
+            "total": int(psutil.virtual_memory().total),
+        },
         "disk": {"used": int(disk.used), "total": int(disk.total)},
         "gpus": gpu.query(),
-        "loadedModels": [f"{backend}/{os.path.basename(str(model))}" for backend, model in model_manager._loaded],
+        "loadedModels": [
+            f"{backend}/{os.path.basename(str(model))}"
+            for backend, model in model_manager._loaded
+        ],
     }
 
 
@@ -53,7 +61,9 @@ async def sample_forever() -> None:
     global _cpu_percent
     while True:
         try:
-            _cpu_percent = round(_proc.cpu_percent(interval=None) / (psutil.cpu_count() or 1), 1)
+            _cpu_percent = round(
+                _proc.cpu_percent(interval=None) / (psutil.cpu_count() or 1), 1
+            )
             _record(_snapshot())
         except Exception:
             pass

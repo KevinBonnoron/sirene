@@ -17,16 +17,23 @@ class FishAudioBackend(TTSBackend):
 
     def load_model(self, model_path: Path, device: str) -> None:
         import torch
-        from fish_speech.models.text2semantic.inference import init_model, load_codec_model
+        from fish_speech.models.text2semantic.inference import (
+            init_model,
+            load_codec_model,
+        )
 
         resolved_device = self._resolve_device(device)
         if not resolved_device.startswith("cuda"):
-            raise RuntimeError("Fish Speech S2-Pro needs a CUDA GPU with 24 GB of memory; this worker has none")
+            raise RuntimeError(
+                "Fish Speech S2-Pro needs a CUDA GPU with 24 GB of memory; this worker has none"
+            )
         precision = torch.bfloat16
         codec_path = model_path / "codec.pth"
         if not codec_path.exists():
             raise FileNotFoundError(f"Codec weights not found at {codec_path}")
-        logger.info(f"[fish_audio] Loading model from {model_path} on {resolved_device}")
+        logger.info(
+            f"[fish_audio] Loading model from {model_path} on {resolved_device}"
+        )
 
         # fish-speech builds the 4B model in the default dtype before assigning the weights; bfloat16 halves that host-RAM peak.
         default_dtype = torch.get_default_dtype()
@@ -77,7 +84,10 @@ class FishAudioBackend(TTSBackend):
             raise RuntimeError("Fish Audio model not loaded")
 
         import torch
-        from fish_speech.models.text2semantic.inference import decode_to_audio, generate_long
+        from fish_speech.models.text2semantic.inference import (
+            decode_to_audio,
+            generate_long,
+        )
 
         logger.info(f"[fish_audio] Generating: {params.text[:80]}...")
 
@@ -85,7 +95,9 @@ class FishAudioBackend(TTSBackend):
         if params.has_reference_audio:
             with self._reference_audio(params) as ref_audio_path:
                 if not params.joined_reference_text:
-                    raise ValueError("Fish Speech needs the transcript of the reference clips it keeps to clone a voice")
+                    raise ValueError(
+                        "Fish Speech needs the transcript of the reference clips it keeps to clone a voice"
+                    )
                 from ..services.prompt_cache import get_cache
 
                 cache = get_cache()
@@ -118,5 +130,7 @@ class FishAudioBackend(TTSBackend):
         audio = decode_to_audio(codes, self._codec).float().cpu().numpy()
         audio = self._normalize_audio(audio)
 
-        logger.info(f"[fish_audio] Generated {len(audio) / self._sample_rate:.2f}s of audio at {self._sample_rate}Hz")
+        logger.info(
+            f"[fish_audio] Generated {len(audio) / self._sample_rate:.2f}s of audio at {self._sample_rate}Hz"
+        )
         return TTSResult(audio=audio, sample_rate=self._sample_rate)

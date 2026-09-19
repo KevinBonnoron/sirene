@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 _TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
 # torch/torchaudio/torchvision share native bindings (torchvision::nms is bound to a libtorch ABI);
 # vllm 0.18.0 pulls torchvision 0.25, which pairs only with torch 2.10.
-_TORCH = ["torch>=2.10.0,<2.11", "torchaudio>=2.10.0,<2.11", "torchvision>=0.25.0,<0.26"]
+_TORCH = [
+    "torch>=2.10.0,<2.11",
+    "torchaudio>=2.10.0,<2.11",
+    "torchvision>=0.25.0,<0.26",
+]
 # transformers 5 dropped the top-level AutoProcessor export the backends import.
 _TRANSFORMERS = "transformers>=4.47.0,<5"
 _TRANSFORMERS_FISH = "transformers>=4.47.0,<=4.57.3"
@@ -54,12 +58,28 @@ _REGISTRY: dict[str, BackendDeps] = {
     ),
     "f5-tts": BackendDeps(
         check_modules=["torch", "torchaudio", "f5_tts"],
-        packages=[*_TORCH, "f5-tts>=1.1.15,<1.2", _TRANSFORMERS, "resemble-perth>=1.0.0", "loralib>=0.1.2", "onnx>=1.17.0,<1.21"],
+        packages=[
+            *_TORCH,
+            "f5-tts>=1.1.15,<1.2",
+            _TRANSFORMERS,
+            "resemble-perth>=1.0.0",
+            "loralib>=0.1.2",
+            "onnx>=1.17.0,<1.21",
+        ],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "cosyvoice": BackendDeps(
         check_modules=["torch", "torchaudio", "cosyvoice"],
-        packages=[*_TORCH, "cosyvoice>=0.0.8", _TRANSFORMERS, "pyworld>=0.3.4", "wetext>=0.0.4", "pykakasi>=2.0.0", "spacy-pkuseg>=1.0.0", "onnx>=1.17.0,<1.21"],
+        packages=[
+            *_TORCH,
+            "cosyvoice>=0.0.8",
+            _TRANSFORMERS,
+            "pyworld>=0.3.4",
+            "wetext>=0.0.4",
+            "pykakasi>=2.0.0",
+            "spacy-pkuseg>=1.0.0",
+            "onnx>=1.17.0,<1.21",
+        ],
         extra_index_url=_TORCH_CPU_INDEX,
     ),
     "chatterbox": BackendDeps(
@@ -102,10 +122,22 @@ _REGISTRY: dict[str, BackendDeps] = {
 
 
 _PIP_REASONS = (
-    ("No space left on device", "no space left on the inference server's disk (PACKAGES_DIR volume)"),
-    ("No matching distribution", "no compatible package found for this Python or platform"),
-    ("Could not find a version", "no compatible package found for this Python or platform"),
-    ("Temporary failure in name resolution", "network unreachable from the inference server"),
+    (
+        "No space left on device",
+        "no space left on the inference server's disk (PACKAGES_DIR volume)",
+    ),
+    (
+        "No matching distribution",
+        "no compatible package found for this Python or platform",
+    ),
+    (
+        "Could not find a version",
+        "no compatible package found for this Python or platform",
+    ),
+    (
+        "Temporary failure in name resolution",
+        "network unreachable from the inference server",
+    ),
     ("Read timed out", "network timeout while downloading packages"),
     ("ResolutionImpossible", "dependency conflict between installed backends"),
 )
@@ -118,7 +150,7 @@ def summarize_pip_error(stderr: str) -> str:
     lines = [ln.strip() for ln in stderr.splitlines() if ln.strip()]
     for ln in reversed(lines):
         if ln.startswith("ERROR:") and "Exception:" not in ln:
-            return ln[len("ERROR:"):].strip()[:300]
+            return ln[len("ERROR:") :].strip()[:300]
     return (lines[-1] if lines else "unknown error")[:300]
 
 
@@ -154,7 +186,10 @@ async def _install_backend_deps(backend_name: str, device: str):
     if deps is None or is_installed(backend_name):
         return
 
-    yield {"status": "installing_deps", "message": f"Installing {backend_name} dependencies..."}
+    yield {
+        "status": "installing_deps",
+        "message": f"Installing {backend_name} dependencies...",
+    }
 
     packages = list(deps.packages)
 
@@ -183,7 +218,10 @@ async def _install_backend_deps(backend_name: str, device: str):
     if proc.returncode != 0:
         error = stderr.decode(errors="replace") if stderr else "Unknown error"
         logger.error("pip install failed for %s: %s", backend_name, error)
-        yield {"status": "error", "message": f"Failed to install {backend_name} dependencies: {summarize_pip_error(error)}"}
+        yield {
+            "status": "error",
+            "message": f"Failed to install {backend_name} dependencies: {summarize_pip_error(error)}",
+        }
         raise RuntimeError(error)
 
     if packages_dir and packages_dir not in sys.path:
@@ -233,8 +271,13 @@ async def _install_cosyvoice_extras() -> None:
     tmpdir = tempfile.mkdtemp()
     try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "clone", "--depth=1", "--recursive", "--filter=blob:none",
-            "https://github.com/FunAudioLLM/CosyVoice.git", tmpdir,
+            "git",
+            "clone",
+            "--depth=1",
+            "--recursive",
+            "--filter=blob:none",
+            "https://github.com/FunAudioLLM/CosyVoice.git",
+            tmpdir,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -242,7 +285,10 @@ async def _install_cosyvoice_extras() -> None:
 
         for src, dst in [
             (Path(tmpdir) / "cosyvoice", site_pkg / "cosyvoice"),
-            (Path(tmpdir) / "third_party" / "Matcha-TTS" / "matcha", site_pkg / "matcha"),
+            (
+                Path(tmpdir) / "third_party" / "Matcha-TTS" / "matcha",
+                site_pkg / "matcha",
+            ),
         ]:
             if src.exists():
                 dst.mkdir(exist_ok=True)
@@ -258,7 +304,11 @@ async def _install_cosyvoice_extras() -> None:
 
 # fish-speech 2.0 only exists as a git tag and pins torch 2.8; --no-deps keeps the one shared torch this env already has.
 async def _install_fish_audio_extras() -> None:
-    await _run_pip("install", "--no-deps", "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta")
+    await _run_pip(
+        "install",
+        "--no-deps",
+        "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta",
+    )
 
 
 async def _install_voxtral_extras() -> None:

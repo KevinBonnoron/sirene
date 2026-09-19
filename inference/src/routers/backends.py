@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from ..backends.deps import install_backend_deps, is_installed, list_installable_backends
+from ..backends.deps import (
+    install_backend_deps,
+    is_installed,
+    list_installable_backends,
+)
 from ..backends.registry import list_backend_names
 from ..config import settings
 from ..services.model_manager import model_manager
@@ -31,6 +35,8 @@ async def install_backend(name: str):
 
     async for event in install_backend_deps(name, device=settings.device):
         if event.get("status") == "error":
-            raise HTTPException(status_code=500, detail=event.get("message", "Install failed"))
+            raise HTTPException(
+                status_code=500, detail=event.get("message", "Install failed")
+            )
 
     return JSONResponse({"status": "installed"})

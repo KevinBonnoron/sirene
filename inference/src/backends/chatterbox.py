@@ -41,9 +41,7 @@ class ChatterboxBackend(TTSBackend):
                 from chatterbox.tts import ChatterboxTTS
 
                 logger.info("[chatterbox] Loading English model")
-                self._model = ChatterboxTTS.from_local(
-                    model_path, resolved_device
-                )
+                self._model = ChatterboxTTS.from_local(model_path, resolved_device)
         finally:
             if resolved_device == "cpu":
                 torch.load = _orig_load
@@ -55,7 +53,10 @@ class ChatterboxBackend(TTSBackend):
             if isinstance(attr, nn.Module):
                 for module in attr.modules():
                     cfg = getattr(module, "config", None)
-                    if cfg is not None and getattr(cfg, "_attn_implementation", None) == "sdpa":
+                    if (
+                        cfg is not None
+                        and getattr(cfg, "_attn_implementation", None) == "sdpa"
+                    ):
                         cfg._attn_implementation = "eager"
 
         self._model_path = model_path

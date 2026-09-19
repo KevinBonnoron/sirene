@@ -44,9 +44,13 @@ class RingBufferHandler(logging.Handler):
         try:
             message = record.getMessage()
             if record.exc_info:
-                message += "\n" + self.formatter_for_exceptions.formatException(record.exc_info)
+                message += "\n" + self.formatter_for_exceptions.formatException(
+                    record.exc_info
+                )
             entry = {
-                "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(timespec="milliseconds"),
+                "time": datetime.fromtimestamp(
+                    record.created, tz=timezone.utc
+                ).isoformat(timespec="milliseconds"),
                 "level": record.levelname,
                 "logger": record.name,
                 "message": message,
@@ -62,5 +66,9 @@ class RingBufferHandler(logging.Handler):
 async def logs(limit: int = Query(200, ge=1, le=_CAPACITY), level: str = Query("")):
     floor = logging.getLevelNamesMapping().get(level.upper(), logging.NOTSET)
     # Snapshot first: the handler appends from other threads.
-    lines = [entry for entry in list(_buffer) if logging.getLevelNamesMapping().get(entry["level"], logging.NOTSET) >= floor]
+    lines = [
+        entry
+        for entry in list(_buffer)
+        if logging.getLevelNamesMapping().get(entry["level"], logging.NOTSET) >= floor
+    ]
     return {"lines": lines[-limit:], "capacity": _CAPACITY}

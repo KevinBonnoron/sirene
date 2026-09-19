@@ -76,7 +76,7 @@ class F5TTSBackend(TTSBackend):
                 speed=params.speed,
             )
 
-            if hasattr(wav, 'cpu'):
+            if hasattr(wav, "cpu"):
                 audio = wav.squeeze().cpu().numpy().astype(np.float32)
             else:
                 audio = np.asarray(wav, dtype=np.float32).squeeze()

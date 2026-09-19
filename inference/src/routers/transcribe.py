@@ -49,7 +49,9 @@ async def transcribe(audio: UploadFile, model_path: str = Form()):
     if audio.content_type and not audio.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="File must be an audio file")
 
-    with tempfile.NamedTemporaryFile(suffix=Path(audio.filename or "audio.wav").suffix, delete=True) as tmp:
+    with tempfile.NamedTemporaryFile(
+        suffix=Path(audio.filename or "audio.wav").suffix, delete=True
+    ) as tmp:
         content = await audio.read()
         tmp.write(content)
         tmp.flush()

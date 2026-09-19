@@ -57,7 +57,9 @@ async def register() -> None:
     url = public_url()
     if not url:
         _state.update(status="failed", error="INFERENCE_PUBLIC_URL is not set")
-        logger.error("[registration] SIRENE_URL is set but the worker's public URL is unknown; set INFERENCE_PUBLIC_URL")
+        logger.error(
+            "[registration] SIRENE_URL is set but the worker's public URL is unknown; set INFERENCE_PUBLIC_URL"
+        )
         return
 
     _state.update(status="pending", error="")
@@ -71,12 +73,22 @@ async def register() -> None:
                 res = await client.post(endpoint, json=payload, headers=headers)
             except httpx.HTTPError as exc:
                 error = "Sirene server unreachable"
-                logger.warning("[registration] attempt %d failed: %s: %s", attempt, type(exc).__name__, exc)
+                logger.warning(
+                    "[registration] attempt %d failed: %s: %s",
+                    attempt,
+                    type(exc).__name__,
+                    exc,
+                )
             else:
                 body = _json_object(res)
                 if res.status_code in (200, 201) and body is not None:
                     _state.update(status="registered", error="", server=body)
-                    logger.info("[registration] registered as %r at %s (%s)", body.get("name"), sirene_url, "created" if body.get("created") else "updated")
+                    logger.info(
+                        "[registration] registered as %r at %s (%s)",
+                        body.get("name"),
+                        sirene_url,
+                        "created" if body.get("created") else "updated",
+                    )
                     return
                 if res.status_code in (200, 201):
                     error = "unexpected response from Sirene"
@@ -84,7 +96,12 @@ async def register() -> None:
                     error = f"HTTP {res.status_code}"
                     if body and isinstance(body.get("message"), str):
                         error += f": {body['message']}"
-                logger.warning("[registration] attempt %d failed: %s (%s)", attempt, error, res.text[:300])
+                logger.warning(
+                    "[registration] attempt %d failed: %s (%s)",
+                    attempt,
+                    error,
+                    res.text[:300],
+                )
                 if res.status_code in (400, 401, 403, 404, 405):
                     break
             if delay is None:

@@ -326,7 +326,9 @@ class TTSBackend(ABC):
             finally:
                 os.unlink(tmp.name)
 
-            if not self._append_reference_sample(all_audio, audio, max_duration, target_sr):
+            if not self._append_reference_sample(
+                all_audio, audio, max_duration, target_sr
+            ):
                 break
 
         if not all_audio or target_sr is None:
@@ -422,7 +424,9 @@ class TTSBackend(ABC):
             finally:
                 os.unlink(tmp.name)
 
-            if not self._append_reference_sample(all_audio, audio, max_duration, target_sr):
+            if not self._append_reference_sample(
+                all_audio, audio, max_duration, target_sr
+            ):
                 break
 
         if not all_audio or target_sr is None:

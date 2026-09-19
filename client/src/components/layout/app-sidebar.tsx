@@ -1,6 +1,6 @@
 import { useLiveQuery } from '@tanstack/react-db';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, MessageSquareText, Mic, MoreHorizontal, Server, Trash2 } from 'lucide-react';
+import { AudioLines, Box, Clock, MessageSquareText, Mic, MoreHorizontal, Server, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sessionCollection } from '@/collections';
@@ -38,7 +38,10 @@ export function AppSidebar() {
     { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];
-  const adminItems = [{ label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server }];
+  const adminItems = [
+    { label: t('instance.title'), href: '/admin/general', icon: SlidersHorizontal },
+    { label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server },
+  ];
 
   return (
     <Sidebar collapsible="icon">

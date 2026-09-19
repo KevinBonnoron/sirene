@@ -1,6 +1,6 @@
 import { API_KEY_SCOPES, type ApiKeyCreated, type ApiKeyScope, type ApiKeySummary } from '@sirene/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Ban, Check, Copy, Loader2, Plus } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ import { apiKeyClient } from '@/clients/api-key.client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,39 +41,30 @@ export function ApiKeysSection() {
   const [revealed, setRevealed] = useState<ApiKeyCreated | null>(null);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('apiKeys.title')}</CardTitle>
-        <CardDescription>{t('apiKeys.description')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* The query can fail (network / server outage); falling back to the
-            empty-state copy would lie about there being no keys, so surface
-            the error explicitly with a way to retry. */}
-        {isError && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-            <span className="text-destructive">{explainApiError(error, t('apiKeys.loadFailed'))}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              {t('common.retry')}
-            </Button>
-          </div>
-        )}
+    <>
+      {isError && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <span className="text-destructive">{explainApiError(error, t('apiKeys.loadFailed'))}</span>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        </div>
+      )}
 
-        {!isLoading && !isError && (keys?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">{t('apiKeys.empty')}</p>}
+      {!isLoading && !isError && (keys?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">{t('apiKeys.empty')}</p>}
 
-        {keys?.map((key) => (
-          <KeyRow key={key.id} apiKey={key} />
-        ))}
+      {keys?.map((key) => (
+        <KeyRow key={key.id} apiKey={key} />
+      ))}
 
-        <Button variant="outline" size="sm" onClick={() => setCreating(true)} className="gap-2">
-          <Plus className="size-3.5" />
-          {t('apiKeys.create')}
-        </Button>
+      <Button variant="outline" size="sm" onClick={() => setCreating(true)} className="gap-2">
+        <Plus className="size-3.5" />
+        {t('apiKeys.create')}
+      </Button>
 
-        <CreateKeyDialog open={creating} onOpenChange={setCreating} onCreated={setRevealed} />
-        <RevealKeyDialog created={revealed} onClose={() => setRevealed(null)} />
-      </CardContent>
-    </Card>
+      <CreateKeyDialog open={creating} onOpenChange={setCreating} onCreated={setRevealed} />
+      <RevealKeyDialog created={revealed} onClose={() => setRevealed(null)} />
+    </>
   );
 }
 
@@ -120,8 +110,9 @@ function KeyRow({ apiKey }: { apiKey: ApiKeySummary }) {
             )}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setConfirming(true)} disabled={revoke.isPending} className="size-8 text-muted-foreground hover:text-destructive" aria-label={t('apiKeys.revoke')}>
-          {revoke.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+        <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={revoke.isPending} className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive">
+          {revoke.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Ban className="size-3.5" />}
+          {t('apiKeys.revoke')}
         </Button>
       </div>
 

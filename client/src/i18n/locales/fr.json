@@ -363,6 +363,12 @@
   },
   "profile": {
     "subtitle": "Votre compte, vos identifiants et vos clés API.",
+    "tabs": {
+      "account": "Compte",
+      "appearance": "Apparence",
+      "cloud": "Cloud",
+      "apiKeys": "Clés API"
+    },
     "currentPassword": "Mot de passe actuel",
     "save": "Enregistrer",
     "avatar": {
@@ -401,10 +407,12 @@
     "title": "Apparence",
     "description": "Thème et couleur d'accent, enregistrés sur cet appareil.",
     "mode": "Thème",
+    "modeHint": "Clair, sombre, ou ce que demande le système.",
     "light": "Clair",
     "dark": "Sombre",
     "system": "Système",
     "accent": "Couleur d'accent",
+    "accentHint": "Colore les boutons, les liens et les états actifs.",
     "accents": {
       "amber": "Ambre",
       "sage": "Sauge",
@@ -417,8 +425,11 @@
     "title": "Intégrations cloud",
     "description": "Clés pour les fournisseurs tiers (OpenAI, ElevenLabs, HuggingFace). Stockées de manière sécurisée et jamais affichées en entier après enregistrement.",
     "openAIKey": "Clé API OpenAI",
+    "openAIHint": "Débloque OpenAI TTS et ses voix.",
     "elevenLabsKey": "Clé API ElevenLabs",
+    "elevenLabsHint": "Débloque les voix ElevenLabs.",
     "hfToken": "Token HuggingFace",
+    "hfHint": "Nécessaire pour télécharger les modèles restreints de HuggingFace.",
     "removed": "{{key}} supprimé",
     "saved": "{{key}} enregistré",
     "removeFailed": "Échec de la suppression",
@@ -730,8 +741,9 @@
     "hidePassword": "Masquer le mot de passe"
   },
   "instance": {
-    "title": "Instance",
+    "title": "Général",
     "description": "Réglages qui s'appliquent à cette instance Sirene, pas seulement à votre compte.",
+    "access": "Accès",
     "registration": "Autoriser les inscriptions",
     "registrationHint": "Désactivé, vous seul pouvez créer des comptes, depuis le tableau de bord PocketBase.",
     "saveFailed": "Échec de l'enregistrement des réglages de l'instance"

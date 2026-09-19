@@ -82,7 +82,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e "./inference[dev]"
       - name: Ruff
-        run: ruff check inference
+        run: |
+          ruff check inference
+          ruff format --check inference
       - name: Test
         working-directory: inference
         run: python -m pytest tests

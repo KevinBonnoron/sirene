@@ -151,11 +151,13 @@ tasks:
         msg: "Ruff missing from the venv: run `task setup:python`"
     cmds:
       - .venv/bin/ruff check inference
+      - .venv/bin/ruff format --check inference
 
   format:
     cmds:
       - bunx biome format . --write
       - gofmt -w server desktop
+      - .venv/bin/ruff format inference
 
   type-check:
     desc: Type-checks the TypeScript workspaces

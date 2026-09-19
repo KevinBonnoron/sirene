@@ -35,11 +35,11 @@ export function AppSidebar() {
   const navItems = [
     { label: t('nav.studio'), href: '/', icon: Mic },
     { label: t('nav.voices'), href: '/voices', icon: AudioLines },
-    { label: t('nav.models'), href: '/models', icon: Box },
     { label: t('nav.history'), href: '/history', icon: Clock },
   ];
   const adminItems = [
     { label: t('instance.title'), href: '/admin/general', icon: SlidersHorizontal },
+    { label: t('nav.models'), href: '/admin/models', icon: Box },
     { label: t('users.title'), href: '/admin/users', icon: Users },
     { label: t('nav.inferenceServers'), href: '/admin/inference-servers', icon: Server },
   ];

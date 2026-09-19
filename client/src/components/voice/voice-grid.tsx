@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useModels } from '@/hooks/use-models';
+import { useAuth } from '@/providers/auth-provider';
 import { AddVoiceMenu } from './add-voice-menu';
 import { VoiceItem } from './voice-item';
 
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function VoiceGrid({ voices, selectedId, onSelect, empty, showAddButton = true, editOnClick }: Props) {
+  const isAdmin = useAuth().user?.role === 'admin';
   const { t } = useTranslation();
   const { catalog, installations } = useModels();
   const hasAnyModel = catalog.some((m) => !m.types.includes('transcription') && !m.types.every((t) => t === 'design') && installations?.some((i) => i.id === m.id && i.status === 'installed'));
@@ -39,9 +41,11 @@ export function VoiceGrid({ voices, selectedId, onSelect, empty, showAddButton =
       return (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-muted-foreground/25 py-6 text-center">
           <p className="text-sm text-muted-foreground">{t('voice.emptyNoModel')}</p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/models">{t('voice.installModel')}</Link>
-          </Button>
+          {isAdmin && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/models">{t('voice.installModel')}</Link>
+            </Button>
+          )}
         </div>
       );
     }

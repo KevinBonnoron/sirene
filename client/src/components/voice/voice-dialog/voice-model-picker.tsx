@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/auth-provider';
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function VoiceModelPicker({ open, installedModels, modelId, presetVoice, onModelChange, onPresetVoiceChange }: Props) {
+  const isAdmin = useAuth().user?.role === 'admin';
   const { t } = useTranslation();
 
   const backendGroups = useMemo(() => {
@@ -96,9 +98,11 @@ export function VoiceModelPicker({ open, installedModels, modelId, presetVoice, 
         {installedModels.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t('voice.noModels')}</p>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/models">{t('voice.installModel')}</Link>
-            </Button>
+            {isAdmin && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/admin/models">{t('voice.installModel')}</Link>
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">

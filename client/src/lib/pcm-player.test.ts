@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createPcmPlayer, openPlaybackContext } from './pcm-player';
 import { stopPlayback } from './playback-owner';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 interface FakeSource {
   buffer: { duration: number; channel: Float32Array } | null;

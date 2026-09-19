@@ -170,7 +170,7 @@ export function StudioPage() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    if (!draft || !draft.voiceId || busyTakeId) {
+    if (!draft?.voiceId || busyTakeId) {
       return;
     }
     const ssml = contentToSSML(draft.content);

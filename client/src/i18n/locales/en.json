@@ -224,7 +224,11 @@
     "actionInstallNoServer": "No online inference server - check settings",
     "status_missing": "Unreachable",
     "detail": {
-      "unknown": "Unknown model family"
+      "unknown": "Unknown model family",
+      "available": "Available ({{count}})",
+      "installed": "Installed ({{count}})",
+      "installedHint": "On this instance, ready to generate.",
+      "availableHint": "In the catalogue, not installed yet."
     },
     "removeConfirmUnreachable": "It is on no reachable server, so this only drops it from the models you asked for."
   },

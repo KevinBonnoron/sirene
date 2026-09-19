@@ -224,7 +224,11 @@
     "actionInstallNoServer": "Aucun serveur d'inférence en ligne - vérifiez les paramètres",
     "status_missing": "Injoignable",
     "detail": {
-      "unknown": "Famille de modèles inconnue"
+      "unknown": "Famille de modèles inconnue",
+      "available": "Disponibles ({{count}})",
+      "installed": "Installés ({{count}})",
+      "installedHint": "Sur cette instance, prêts à générer.",
+      "availableHint": "Au catalogue, pas encore installés."
     },
     "removeConfirmUnreachable": "Il n'est sur aucun serveur joignable : il sera seulement retiré des modèles que vous avez demandés."
   },

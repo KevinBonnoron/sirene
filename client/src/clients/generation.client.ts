@@ -4,8 +4,12 @@ import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
 import { closePlaybackContext, createPcmPlayer, openPlaybackContext } from '@/lib/pcm-player';
 
+/** How the server answered: PCM on the wire, or a finished file only the record carries. */
+export type Delivery = 'stream' | 'file';
+
 export interface GenerateResult {
   generationId: string | null;
+  delivery: Delivery;
 }
 
 export const generationClient = universalClient(
@@ -29,7 +33,7 @@ export const generationClient = universalClient(
         const sampleRate = Number.parseInt(response.headers.get('X-Sample-Rate') ?? '', 10);
         const body = response.body;
         if (!body) {
-          return { generationId };
+          return { generationId, delivery: 'file' };
         }
 
         // No sample rate means a buffered response: a cloud provider returns a finished file
@@ -55,7 +59,7 @@ export const generationClient = universalClient(
         // Deliberately not awaited: the take is generated once the stream ends, and holding
         // the caller until the audio finishes would delay adding it to the session.
         player?.endOfStream();
-        return { generationId };
+        return { generationId, delivery: player ? 'stream' : 'file' };
       } finally {
         // A player closes the context itself, on stop or once playback drains.
         if (context && !player) {

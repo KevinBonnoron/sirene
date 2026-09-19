@@ -20,7 +20,7 @@ export function useGenerate() {
       // An abort is a caller that walked away, not a failure to report. Callers already
       // treat a null id as nothing to add to the session.
       if (isAbort(e)) {
-        return { generationId: null };
+        return { generationId: null, delivery: 'file' };
       }
       throw e;
     } finally {

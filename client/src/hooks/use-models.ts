@@ -1,67 +1,16 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { modelClient } from '@/clients/model.client';
-import { openAuthenticatedStream } from '@/lib/auth-stream';
-import { config } from '@/lib/config';
+import { subscribeToAppEvents } from '@/lib/app-events';
 import { useJobs } from './use-jobs';
 
 const EMPTY_CATALOG: CatalogModel[] = [];
 const EMPTY_INSTALLED: Model[] = [];
 
-const STREAM_RETRIES = 5;
-// Slow enough that a worker that stays down is not hammered, quick enough that one
-// coming back is picked up without a reload.
-const REOPEN_DELAY_MS = 30_000;
-
 const INSTALLED_KEY = ['models', 'installed'] as const;
 const CATALOG_KEY = ['models', 'catalog'] as const;
-
-let sharedStream: { close: () => void } | null = null;
-let reopenTimer: ReturnType<typeof setTimeout> | undefined;
-let refCount = 0;
-
-function openModelEvents(queryClient: QueryClient) {
-  sharedStream = openAuthenticatedStream(
-    `${config.server.url}/models/events`,
-    (event) => {
-      if (event.event === 'change') {
-        queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
-      }
-    },
-    // The stream's own retry budget is spent. Dropping the handle is what lets it be
-    // reopened at all, and the refetch covers whatever changed while it was down.
-    () => {
-      sharedStream = null;
-      queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
-      if (refCount > 0) {
-        reopenTimer = setTimeout(() => {
-          if (refCount > 0 && !sharedStream) {
-            openModelEvents(queryClient);
-          }
-        }, REOPEN_DELAY_MS);
-      }
-    },
-    STREAM_RETRIES,
-  );
-}
-
-function acquireModelEvents(queryClient: QueryClient) {
-  refCount++;
-  if (!sharedStream) {
-    clearTimeout(reopenTimer);
-    openModelEvents(queryClient);
-  }
-  return () => {
-    refCount--;
-    if (refCount === 0) {
-      clearTimeout(reopenTimer);
-      sharedStream?.close();
-      sharedStream = null;
-    }
-  };
-}
 
 export function useModels() {
   const queryClient = useQueryClient();
@@ -80,7 +29,16 @@ export function useModels() {
     staleTime: 10 * 1000,
   });
 
-  useEffect(() => acquireModelEvents(queryClient), [queryClient]);
+  useEffect(
+    () =>
+      subscribeToAppEvents(({ event }) => {
+        // A dropped stream leaves an unknown amount of missed changes behind it.
+        if (event === 'models' || event === 'dropped') {
+          queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
+        }
+      }),
+    [queryClient],
+  );
 
   const installed = installedQuery.data ?? EMPTY_INSTALLED;
   const installationsByName = new Map<string, Model>(installed.map((i) => [i.id, i]));

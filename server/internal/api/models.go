@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/pocketbase/pocketbase/tools/router"
@@ -13,7 +12,6 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
 	"github.com/KevinBonnoron/sirene/server/internal/models"
-	"github.com/KevinBonnoron/sirene/server/internal/sse"
 )
 
 const multipartMemory = 32 << 20
@@ -21,24 +19,6 @@ const multipartMemory = 32 << 20
 func registerModels(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	m := p.Group("/models")
 
-	// Authenticated like every other stream: an unauthenticated one is an endless
-	// goroutine and connection anyone can open, as many times as they like.
-	m.GET("/events", func(e *core.RequestEvent) error {
-		w := sse.Begin(e)
-		ch, unsubscribe := d.Models.Changes.Subscribe()
-		defer unsubscribe()
-		ctx := e.Request.Context()
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-ch:
-				if err := w.Event("change", "1"); err != nil {
-					return nil
-				}
-			}
-		}
-	}).Bind(apis.SkipSuccessActivityLog(), auth.RequireScope("models:read"))
 	read := auth.RequireScope("models:read")
 	// The model store is shared by every user: downloading fills the host's disk, and
 	// removing one takes the voices that depend on it down for everybody.

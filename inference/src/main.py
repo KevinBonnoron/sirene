@@ -10,7 +10,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .routers import backends, cache, events, generate, health, logs, models, stats, transcribe
+from .routers import (
+    backends,
+    cache,
+    events,
+    generate,
+    health,
+    logs,
+    models,
+    stats,
+    transcribe,
+)
 from .services import registration
 from .services.model_manager import model_manager
 

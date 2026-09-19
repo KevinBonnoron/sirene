@@ -55,14 +55,15 @@ def _split_text(text: str) -> list[str]:
 
 
 class _EspeakG2P:
-
     def __init__(self, language: str):
         self._language = language
 
     def __call__(self, text: str) -> tuple[str, list]:
         result = subprocess.run(
             ["espeak-ng", "--ipa", "-q", "-v", self._language, text],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         phonemes = result.stdout.strip()
         phonemes = " ".join(phonemes.splitlines())
@@ -98,7 +99,9 @@ class KokoroBackend(TTSBackend):
                 providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
                 logger.info("[kokoro] Using CUDA execution provider")
             else:
-                logger.warning("[kokoro] CUDA requested but not available, falling back to CPU")
+                logger.warning(
+                    "[kokoro] CUDA requested but not available, falling back to CPU"
+                )
 
         self._session = ort.InferenceSession(str(onnx_path), providers=providers)
 
@@ -141,12 +144,19 @@ class KokoroBackend(TTSBackend):
     @staticmethod
     def _ensure_spacy_model(name: str = "en_core_web_sm") -> None:
         import spacy.util
+
         if spacy.util.is_package(name):
             return
         logger.info(f"[kokoro] Spacy model '{name}' not found, downloading...")
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--break-system-packages",
-             f"{name}@https://github.com/explosion/spacy-models/releases/download/{name}-3.8.0/{name}-3.8.0-py3-none-any.whl"],
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--break-system-packages",
+                f"{name}@https://github.com/explosion/spacy-models/releases/download/{name}-3.8.0/{name}-3.8.0-py3-none-any.whl",
+            ],
             stdout=subprocess.DEVNULL,
         )
 
@@ -160,9 +170,11 @@ class KokoroBackend(TTSBackend):
             if lang == "en":
                 self._ensure_spacy_model("en_core_web_sm")
                 from misaki import en
+
                 self._g2p = en.G2P()
             elif lang == "zh":
                 from misaki import zh
+
                 self._g2p = zh.G2P()
         elif lang in _ESPEAK_LANG_MAP:
             self._g2p = _EspeakG2P(_ESPEAK_LANG_MAP[lang])
@@ -170,7 +182,10 @@ class KokoroBackend(TTSBackend):
         else:
             self._ensure_spacy_model("en_core_web_sm")
             from misaki import en
-            logger.warning(f"[kokoro] Language '{lang}' not supported, falling back to English G2P")
+
+            logger.warning(
+                f"[kokoro] Language '{lang}' not supported, falling back to English G2P"
+            )
             self._g2p = en.G2P()
             lang = "en"
 
@@ -188,16 +203,22 @@ class KokoroBackend(TTSBackend):
             logger.warning(f"[kokoro] Voice '{voice_name}' not found, using default")
 
         lang_key = language.lower()
-        default_name = DEFAULT_VOICES.get(lang_key) or DEFAULT_VOICES.get(lang_key.split("-")[0], "af_heart")
+        default_name = DEFAULT_VOICES.get(lang_key) or DEFAULT_VOICES.get(
+            lang_key.split("-")[0], "af_heart"
+        )
 
         if default_name in self._voices:
             return self._voices[default_name]
 
         first_name = next(iter(self._voices))
-        logger.warning(f"[kokoro] Default voice '{default_name}' not found, using '{first_name}'")
+        logger.warning(
+            f"[kokoro] Default voice '{default_name}' not found, using '{first_name}'"
+        )
         return self._voices[first_name]
 
-    def _run_inference(self, tokens: list[int], voice: np.ndarray, speed: float) -> np.ndarray:
+    def _run_inference(
+        self, tokens: list[int], voice: np.ndarray, speed: float
+    ) -> np.ndarray:
         input_ids = np.array([[0, *tokens, 0]], dtype=np.int64)
 
         idx = min(len(tokens), voice.shape[0] - 1)

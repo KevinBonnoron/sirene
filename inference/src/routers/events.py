@@ -22,7 +22,10 @@ async def events(request: Request):
             # Logs and telemetry have independent deadlines, so a chatty worker still refreshes its gauges.
             while not await request.is_disconnected():
                 try:
-                    entry = await asyncio.wait_for(queue.get(), timeout=max(0.0, min(next_sample, next_stats) - loop.time()))
+                    entry = await asyncio.wait_for(
+                        queue.get(),
+                        timeout=max(0.0, min(next_sample, next_stats) - loop.time()),
+                    )
                     yield {"event": "log", "data": json.dumps(entry)}
                 except asyncio.TimeoutError:
                     pass
@@ -30,7 +33,10 @@ async def events(request: Request):
                 if now >= next_sample:
                     next_sample = now + stats._SAMPLE_EVERY
                     if stats._history:
-                        yield {"event": "sample", "data": json.dumps(stats._history[-1])}
+                        yield {
+                            "event": "sample",
+                            "data": json.dumps(stats._history[-1]),
+                        }
                 if now >= next_stats:
                     next_stats = now + _STATS_EVERY
                     yield {"event": "stats", "data": json.dumps(stats._snapshot())}

@@ -130,9 +130,7 @@ class HiggsAudioBackend(TTSBackend):
 
         generation_messages = [Message(role="user", content=text)]
         chatml_sample = ChatMLSample(messages=messages + generation_messages)
-        input_tokens, _, _, _ = prepare_chatml_sample(
-            chatml_sample, self._tokenizer
-        )
+        input_tokens, _, _, _ = prepare_chatml_sample(chatml_sample, self._tokenizer)
         postfix = self._tokenizer.encode(
             "<|start_header_id|>assistant<|end_header_id|>\n\n",
             add_special_tokens=False,
@@ -142,9 +140,7 @@ class HiggsAudioBackend(TTSBackend):
         curr_sample = ChatMLDatasetSample(
             input_ids=torch.LongTensor(input_tokens),
             label_ids=None,
-            audio_ids_concat=torch.concat(
-                [ele.cpu() for ele in audio_ids], dim=1
-            )
+            audio_ids_concat=torch.concat([ele.cpu() for ele in audio_ids], dim=1)
             if audio_ids
             else None,
             audio_ids_start=torch.cumsum(
@@ -186,9 +182,7 @@ class HiggsAudioBackend(TTSBackend):
             if self._config.use_delay_pattern:
                 audio_out_ids = revert_delay_pattern(audio_out_ids)
             audio_out_ids_list.append(
-                audio_out_ids.clip(0, self._audio_tokenizer.codebook_size - 1)[
-                    :, 1:-1
-                ]
+                audio_out_ids.clip(0, self._audio_tokenizer.codebook_size - 1)[:, 1:-1]
             )
 
         if not audio_out_ids_list:
@@ -199,9 +193,7 @@ class HiggsAudioBackend(TTSBackend):
         if concat_audio_ids.device.type == "mps":
             concat_audio_ids = concat_audio_ids.detach().cpu()
 
-        waveform = self._audio_tokenizer.decode(
-            concat_audio_ids.unsqueeze(0)
-        )[0, 0]
+        waveform = self._audio_tokenizer.decode(concat_audio_ids.unsqueeze(0))[0, 0]
 
         if isinstance(waveform, torch.Tensor):
             audio = waveform.float().cpu().numpy()

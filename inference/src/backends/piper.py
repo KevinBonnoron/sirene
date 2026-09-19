@@ -72,7 +72,9 @@ class PiperBackend(TTSBackend):
                 providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
                 logger.info("[piper] Using CUDA execution provider")
             else:
-                logger.warning("[piper] CUDA requested but not available, falling back to CPU")
+                logger.warning(
+                    "[piper] CUDA requested but not available, falling back to CPU"
+                )
 
         self._session = ort.InferenceSession(str(onnx_path), providers=providers)
         logger.info(f"[piper] Model loaded: {onnx_path.name}")
@@ -146,7 +148,9 @@ class PiperBackend(TTSBackend):
 
         length_scale = self._length_scale / params.speed
 
-        noise_scale = params.noise_scale if params.noise_scale is not None else self._noise_scale
+        noise_scale = (
+            params.noise_scale if params.noise_scale is not None else self._noise_scale
+        )
 
         scales = np.array(
             [noise_scale, length_scale, self._noise_w],
@@ -166,12 +170,8 @@ class PiperBackend(TTSBackend):
             if not phoneme_ids:
                 continue
 
-            phoneme_ids_array = np.expand_dims(
-                np.array(phoneme_ids, dtype=np.int64), 0
-            )
-            phoneme_ids_lengths = np.array(
-                [phoneme_ids_array.shape[1]], dtype=np.int64
-            )
+            phoneme_ids_array = np.expand_dims(np.array(phoneme_ids, dtype=np.int64), 0)
+            phoneme_ids_lengths = np.array([phoneme_ids_array.shape[1]], dtype=np.int64)
 
             args = {
                 "input": phoneme_ids_array,
@@ -194,5 +194,7 @@ class PiperBackend(TTSBackend):
             )
 
         full_audio = np.concatenate(audio_parts)
-        logger.info(f"[piper] Generated {len(full_audio) / self._sample_rate:.2f}s of audio")
+        logger.info(
+            f"[piper] Generated {len(full_audio) / self._sample_rate:.2f}s of audio"
+        )
         return TTSResult(audio=full_audio, sample_rate=self._sample_rate)

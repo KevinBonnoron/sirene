@@ -130,7 +130,17 @@ def test_an_espeak_voice_that_could_escape_the_models_path_is_rejected(voice):
 
 
 @pytest.mark.parametrize(
-    "model_id", ["..", ".", "../outside", "a/b", "", "x" * 129, ".hidden", ".piper-x.import-abcd1234"]
+    "model_id",
+    [
+        "..",
+        ".",
+        "../outside",
+        "a/b",
+        "",
+        "x" * 129,
+        ".hidden",
+        ".piper-x.import-abcd1234",
+    ],
 )
 def test_a_model_id_that_could_escape_the_store_is_rejected(models_path, model_id):
     with pytest.raises(HTTPException) as raised:
@@ -139,7 +149,10 @@ def test_a_model_id_that_could_escape_the_store_is_rejected(models_path, model_i
 
 
 def test_a_plain_model_id_resolves_inside_the_store(models_path):
-    assert models.model_dir_for("piper-fr_FR-siwis-medium") == models_path / "piper-fr_FR-siwis-medium"
+    assert (
+        models.model_dir_for("piper-fr_FR-siwis-medium")
+        == models_path / "piper-fr_FR-siwis-medium"
+    )
 
 
 def test_a_pull_whose_directory_is_taken_reports_an_error(models_path, monkeypatch):
@@ -177,7 +190,9 @@ def test_a_pull_whose_directory_is_taken_reports_an_error(models_path, monkeypat
     assert (taken / "existing.onnx").exists()
 
 
-def test_a_publication_error_names_the_cause_not_the_staging_path(models_path, monkeypatch):
+def test_a_publication_error_names_the_cause_not_the_staging_path(
+    models_path, monkeypatch
+):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 

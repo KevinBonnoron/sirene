@@ -26,8 +26,10 @@ def _patch_qwen2_attention_mask():
                 past_len = cache[0][0].shape[2]
                 current_len = xs.shape[1]
                 input_masks = torch.ones(
-                    xs.shape[0], past_len + current_len,
-                    device=xs.device, dtype=torch.long,
+                    xs.shape[0],
+                    past_len + current_len,
+                    device=xs.device,
+                    dtype=torch.long,
                 )
             else:
                 input_masks = masks[:, -1, :]
@@ -73,9 +75,7 @@ class CosyVoiceBackend(TTSBackend):
         self._sample_rate = self._model.sample_rate
         self._model_path = model_path
         self._device = device
-        logger.info(
-            f"[cosyvoice] Model loaded (sample_rate={self._sample_rate})"
-        )
+        logger.info(f"[cosyvoice] Model loaded (sample_rate={self._sample_rate})")
 
     def supports_streaming(self) -> bool:
         return True
@@ -108,13 +108,18 @@ class CosyVoiceBackend(TTSBackend):
 
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except Exception:
             pass
 
     def _infer_instruct(
-        self, params: GenerateParams, ref_audio_path: str | None, *, stream: bool = False,
+        self,
+        params: GenerateParams,
+        ref_audio_path: str | None,
+        *,
+        stream: bool = False,
     ):
         if not hasattr(self._model, "inference_instruct2"):
             raise ValueError(
@@ -128,7 +133,9 @@ class CosyVoiceBackend(TTSBackend):
             seed_name = f"seed_{lang}_{gender}.wav"
             seed_path = Path(__file__).parent.parent / "assets" / seed_name
             if not seed_path.exists():
-                seed_path = Path(__file__).parent.parent / "assets" / f"seed_en_{gender}.wav"
+                seed_path = (
+                    Path(__file__).parent.parent / "assets" / f"seed_en_{gender}.wav"
+                )
             ref_audio_path = str(seed_path)
 
         instruct_text = params.instruct_text
@@ -141,11 +148,19 @@ class CosyVoiceBackend(TTSBackend):
             f"text='{params.text[:80]}', ref='{ref_audio_path}', stream={stream}"
         )
         return self._model.inference_instruct2(
-            params.text, instruct_text, ref_audio_path, stream=stream,
+            params.text,
+            instruct_text,
+            ref_audio_path,
+            stream=stream,
         )
 
     def _infer(
-        self, params: GenerateParams, ref_audio_path: str, ref_text: str, *, stream: bool = False,
+        self,
+        params: GenerateParams,
+        ref_audio_path: str,
+        ref_text: str,
+        *,
+        stream: bool = False,
     ):
         if not ref_text:
             raise ValueError(
@@ -159,7 +174,10 @@ class CosyVoiceBackend(TTSBackend):
 
         logger.info(f"[cosyvoice] zero-shot ({ref_text[:50]}...), stream={stream}")
         return self._model.inference_zero_shot(
-            params.text, ref_text, ref_audio_path, stream=stream,
+            params.text,
+            ref_text,
+            ref_audio_path,
+            stream=stream,
         )
 
     def _generate(self, params: GenerateParams) -> TTSResult:
@@ -206,7 +224,9 @@ class CosyVoiceBackend(TTSBackend):
         if params.instruct_text:
             if params.has_reference_audio:
                 with self._reference_audio(params) as ref_audio_path:
-                    yield from self._stream_with_fallback(params, ref_audio_path, instruct=True)
+                    yield from self._stream_with_fallback(
+                        params, ref_audio_path, instruct=True
+                    )
             else:
                 yield from self._stream_with_fallback(params, None, instruct=True)
         else:
@@ -216,9 +236,13 @@ class CosyVoiceBackend(TTSBackend):
                     "Provide a voice with at least one audio sample."
                 )
             with self._reference_audio(params) as ref_audio_path:
-                yield from self._stream_with_fallback(params, ref_audio_path, instruct=False)
+                yield from self._stream_with_fallback(
+                    params, ref_audio_path, instruct=False
+                )
 
-    def _stream_with_fallback(self, params: GenerateParams, ref_audio_path: str | None, *, instruct: bool):
+    def _stream_with_fallback(
+        self, params: GenerateParams, ref_audio_path: str | None, *, instruct: bool
+    ):
         has_audio = False
         try:
             if instruct:

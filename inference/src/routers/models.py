@@ -165,7 +165,11 @@ async def _publish(staging: Path, model_dir: Path) -> bool:
     """Moves a finished staging directory into place; False when another pull got there first."""
     async with _publish_lock(model_dir.name):
         # os.replace onto a file or a symlink raises instead of publishing.
-        if holds_a_model(model_dir) or model_dir.is_symlink() or (model_dir.exists() and not model_dir.is_dir()):
+        if (
+            holds_a_model(model_dir)
+            or model_dir.is_symlink()
+            or (model_dir.exists() and not model_dir.is_dir())
+        ):
             shutil.rmtree(staging, ignore_errors=True)
             return False
         # os.replace only lands on a directory it can unlink, so nested empties must go.
@@ -249,9 +253,7 @@ async def pull_model(req: ModelPullRequest):
                             )
                     except OSError as exc:
                         shutil.rmtree(staging, ignore_errors=True)
-                        logger.exception(
-                            "Publishing model_id=%s failed", req.model_id
-                        )
+                        logger.exception("Publishing model_id=%s failed", req.model_id)
                         # str(exc) carries the staging path and its random suffix, which
                         # names an implementation detail rather than anything actionable.
                         await queue.put(
@@ -314,7 +316,9 @@ async def import_piper_model(
         )
 
     uploaded_name = Path(onnx.filename or "").name
-    onnx_name = uploaded_name if uploaded_name.endswith(".onnx") else f"{speaker_slug}.onnx"
+    onnx_name = (
+        uploaded_name if uploaded_name.endswith(".onnx") else f"{speaker_slug}.onnx"
+    )
     config_name = f"{onnx_name}.json"
 
     onnx_data = await onnx.read()

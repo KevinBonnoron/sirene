@@ -1,23 +1,22 @@
-import type { InviteCreated, UserSummary } from '@sirene/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { InviteCreated, User } from '@sirene/shared';
+import { useLiveQuery } from '@tanstack/react-db';
+import { useMutation } from '@tanstack/react-query';
 import { Loader2, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { inviteClient } from '@/clients/invite.client';
 import { userClient } from '@/clients/user.client';
+import { invitationCollection, userCollection } from '@/collections';
 import { SectionTopbar } from '@/components/layout/section-topbar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { explainApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
-import { INVITES_KEY, InviteDialog, InviteLinkDialog, PendingInviteRow } from './invite-section';
+import { InviteDialog, InviteLinkDialog, PendingInviteRow } from './invite-section';
 
-const USERS_KEY = ['admin-users'] as const;
 const userGrid = 'grid grid-cols-1 gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_2.25rem] sm:items-center';
 
 function formatDate(iso: string): string {
@@ -29,8 +28,8 @@ export function UsersPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { user: me } = useAuth();
-  const { data: users, isLoading, isError, error, refetch } = useQuery({ queryKey: USERS_KEY, queryFn: () => userClient.list() });
-  const { data: invites } = useQuery({ queryKey: INVITES_KEY, queryFn: () => inviteClient.list() });
+  const { data: users } = useLiveQuery((q) => q.from({ u: userCollection }));
+  const { data: invites } = useLiveQuery((q) => q.from({ i: invitationCollection }));
   const [inviting, setInviting] = useState(false);
   const [created, setCreated] = useState<InviteCreated | null>(null);
 
@@ -47,33 +46,21 @@ export function UsersPage() {
         }
       />
       <main className={cn('custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-6', isMobile && 'pb-24')}>
-        {isError && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-            <span className="text-destructive">{explainApiError(error, t('users.loadFailed'))}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              {t('common.retry')}
-            </Button>
+        <div className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-card/40">
+          <div className={cn(userGrid, 'hidden text-2xs font-medium uppercase tracking-wide text-muted-foreground sm:grid')}>
+            <span>{t('users.user')}</span>
+            <span>{t('users.role')}</span>
+            <span>{t('users.status')}</span>
+            <span>{t('users.joined')}</span>
+            <span className="sr-only">{t('users.remove')}</span>
           </div>
-        )}
-        {isLoading ? (
-          <Skeleton className="h-40" />
-        ) : (
-          <div className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-card/40">
-            <div className={cn(userGrid, 'hidden text-2xs font-medium uppercase tracking-wide text-muted-foreground sm:grid')}>
-              <span>{t('users.user')}</span>
-              <span>{t('users.role')}</span>
-              <span>{t('users.status')}</span>
-              <span>{t('users.joined')}</span>
-              <span className="sr-only">{t('users.remove')}</span>
-            </div>
-            {users?.map((entry) => (
-              <UserRow key={entry.id} entry={entry} isSelf={entry.id === me?.id} />
-            ))}
-            {invites?.map((invite) => (
-              <PendingInviteRow key={invite.id} invite={invite} className={userGrid} />
-            ))}
-          </div>
-        )}
+          {(users ?? []).map((entry) => (
+            <UserRow key={entry.id} entry={entry} isSelf={entry.id === me?.id} />
+          ))}
+          {(invites ?? []).map((invite) => (
+            <PendingInviteRow key={invite.id} invite={invite} className={userGrid} />
+          ))}
+        </div>
         <InviteDialog open={inviting} onOpenChange={setInviting} onCreated={setCreated} />
         <InviteLinkDialog created={created} onClose={() => setCreated(null)} />
       </main>
@@ -81,17 +68,15 @@ export function UsersPage() {
   );
 }
 
-function UserRow({ entry, isSelf }: { entry: UserSummary; isSelf: boolean }) {
+// Deletion goes through the API: voices, generations, sessions and settings all reference
+// the account as required without cascade, so they have to go first, in order.
+function UserRow({ entry, isSelf }: { entry: User; isSelf: boolean }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
 
   const remove = useMutation({
     mutationFn: () => userClient.remove(entry.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: USERS_KEY });
-      toast.success(t('users.removed', { name: entry.name || entry.email }));
-    },
+    onSuccess: () => toast.success(t('users.removed', { name: entry.name || entry.email })),
     onError: (err) => toast.error(explainApiError(err, t('users.removeFailed'))),
   });
 

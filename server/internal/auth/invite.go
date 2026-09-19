@@ -73,29 +73,6 @@ func (i *Invites) Create(invitedBy, email string) (*InviteCreated, error) {
 	return &InviteCreated{Invite: toInvite(rec), Token: token}, nil
 }
 
-func (i *Invites) ListPending() ([]Invite, error) {
-	records, err := i.app.FindRecordsByFilter("invitations", "acceptedAt = ''", "-created", 0, 0)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Invite, 0, len(records))
-	for _, rec := range records {
-		out = append(out, toInvite(rec))
-	}
-	return out, nil
-}
-
-func (i *Invites) Revoke(id string) error {
-	rec, err := i.app.FindRecordById("invitations", id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return apierr.NotFound(apierr.CodeInviteNotFound, "Invitation not found")
-	}
-	if err != nil {
-		return err
-	}
-	return i.app.Delete(rec)
-}
-
 // Resolve reports the invitation a token opens, so the sign-up form can show whose address it is.
 func (i *Invites) Resolve(token string) (*Invite, error) {
 	rec, err := i.find(token)

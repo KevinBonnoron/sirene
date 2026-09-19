@@ -8,16 +8,6 @@ export interface User extends PocketBaseRecord {
   role: 'user' | 'admin';
 }
 
-export interface UserSummary {
-  id: string;
-  email: string;
-  name: string;
-  role: User['role'];
-  avatar?: string;
-  verified: boolean;
-  created: string;
-}
-
 export interface Invite {
   id: string;
   email: string;

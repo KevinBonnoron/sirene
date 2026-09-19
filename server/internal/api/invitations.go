@@ -27,14 +27,6 @@ func registerInvitations(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 	i := p.Group("/invitations")
 	i.Bind(auth.RequireAdmin())
 
-	i.GET("", func(e *core.RequestEvent) error {
-		invites, err := d.Invites.ListPending()
-		if err != nil {
-			return err
-		}
-		return e.JSON(http.StatusOK, invites)
-	})
-
 	i.POST("", func(e *core.RequestEvent) error {
 		var body struct {
 			Email *string `json:"email"`
@@ -53,16 +45,5 @@ func registerInvitations(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 			return err
 		}
 		return e.JSON(http.StatusCreated, created)
-	})
-
-	i.DELETE("/{id}", func(e *core.RequestEvent) error {
-		id, err := pathParam(e, "id")
-		if err != nil {
-			return err
-		}
-		if err := d.Invites.Revoke(id); err != nil {
-			return err
-		}
-		return e.NoContent(http.StatusNoContent)
 	})
 }

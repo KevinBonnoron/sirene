@@ -1,6 +1,7 @@
 import { getStoredToken } from './auth-interceptor';
 
 const STABLE_MS = 30_000;
+const DEFAULT_RETRIES = 5;
 
 type SSEHandler = (event: { event: string; data: string }) => void;
 
@@ -9,7 +10,7 @@ interface StreamHandle {
 }
 
 // EventSource can't send an Authorization header, and a query-param token would leak into access logs.
-export function openAuthenticatedStream(url: string, handler: SSEHandler, onEnd?: (error?: unknown) => void, retries = 0): StreamHandle {
+export function openAuthenticatedStream(url: string, handler: SSEHandler, onEnd?: (error?: unknown) => void, retries = DEFAULT_RETRIES): StreamHandle {
   let controller = new AbortController();
   let closed = false;
   let attempt = 0;

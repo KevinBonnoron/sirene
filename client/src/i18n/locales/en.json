@@ -750,5 +750,25 @@
     "registration": "Allow sign-ups",
     "registrationHint": "When off, only you can create accounts, from the PocketBase dashboard.",
     "saveFailed": "Failed to save the instance settings"
+  },
+  "users": {
+    "title": "Users",
+    "description": "Everyone with an account on this instance.",
+    "user": "User",
+    "role": "Role",
+    "status": "Status",
+    "joined": "Joined",
+    "roles": {
+      "admin": "Admin",
+      "user": "User"
+    },
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "remove": "Delete",
+    "removeTitle": "Delete {{name}}?",
+    "removeDescription": "Their voices, sessions, generations and API keys are deleted with them. This cannot be undone.",
+    "removed": "{{name}} deleted",
+    "removeFailed": "Failed to delete the account",
+    "loadFailed": "Failed to load the users"
   }
 }

@@ -42,6 +42,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 
 	registerCliAuthProtected(p, d)
 	registerMe(p, d)
+	registerUsers(p, d)
 	registerAPIKeys(p, d)
 	registerAppSettings(p, d)
 	registerInstance(p, d)

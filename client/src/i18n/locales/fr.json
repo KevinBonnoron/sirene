@@ -750,5 +750,25 @@
     "registration": "Autoriser les inscriptions",
     "registrationHint": "Désactivé, vous seul pouvez créer des comptes, depuis le tableau de bord PocketBase.",
     "saveFailed": "Échec de l'enregistrement des réglages de l'instance"
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "description": "Tous les comptes de cette instance.",
+    "user": "Utilisateur",
+    "role": "Rôle",
+    "status": "Statut",
+    "joined": "Inscrit le",
+    "roles": {
+      "admin": "Admin",
+      "user": "Utilisateur"
+    },
+    "verified": "Vérifié",
+    "unverified": "Non vérifié",
+    "remove": "Supprimer",
+    "removeTitle": "Supprimer {{name}} ?",
+    "removeDescription": "Ses voix, sessions, générations et clés API sont supprimées avec lui. Cette action est irréversible.",
+    "removed": "{{name}} supprimé",
+    "removeFailed": "Échec de la suppression du compte",
+    "loadFailed": "Échec du chargement des utilisateurs"
   }
 }

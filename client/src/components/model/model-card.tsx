@@ -23,7 +23,7 @@ export function ModelCard({ family, onPull }: { family: Family; onPull: (id: str
       <Link to="/models/$family" params={{ family: family.key }} className="flex flex-1 flex-col gap-2 p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-1.5">
-            <h3 className="min-w-0 truncate font-serif text-base tracking-tight transition-colors group-hover:text-primary">{single ? single.catalog.name : family.name}</h3>
+            <h3 className="min-w-0 truncate font-serif text-base tracking-tight transition-colors group-hover:text-primary">{family.name}</h3>
             {recommended && <RecommendedStar className="mt-1 size-3.5 shrink-0" />}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -36,7 +36,7 @@ export function ModelCard({ family, onPull }: { family: Family; onPull: (id: str
         </div>
       </Link>
       <div className="flex min-h-9 items-center justify-between gap-2 border-t border-border-subtle px-4 py-1.5">
-        <span className={cn('truncate text-2xs font-medium', unreachable ? 'text-destructive' : 'text-accent-sage')}>{unreachable ? t('model.status_missing') : t('model.voiceCount', { count: installed.length })}</span>
+        <span className={cn('truncate text-2xs font-medium', unreachable ? 'text-destructive' : 'text-accent-sage')}>{unreachable ? t('model.status_missing') : t(family.key === 'piper' ? 'model.voiceCount' : 'model.variantCount', { count: installed.length })}</span>
         {single && <ModelActions catalog={single.catalog} installation={single.installation} onPull={onPull} />}
       </div>
     </div>

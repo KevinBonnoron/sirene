@@ -1,7 +1,8 @@
 import type { CatalogModel, Model } from '@sirene/shared';
-import { AudioLines, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Sparkles, Star, Zap } from 'lucide-react';
+import { AudioLines, Cpu, Download, FileAudio, Globe, KeyRound, Mic, Scale, Server, Sparkles, Star, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { languageName } from '@/lib/languages';
 import { cn } from '@/lib/utils';
@@ -137,9 +138,33 @@ export function Facts({ entries, gpuAvailable, columns, hardwareOnly }: { entrie
   );
 }
 
+function HostList({ names }: { names: string[] }) {
+  const { t } = useTranslation();
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="text-2xs font-medium text-accent-sage underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {t('model.status_installed')}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto min-w-40 p-2">
+        <p className="px-1 pb-1 text-2xs font-medium uppercase tracking-wide text-muted-foreground">{t('model.installedOn')}</p>
+        <ul className="space-y-0.5">
+          {names.map((name) => (
+            <li key={name} className="flex items-center gap-1.5 px-1 text-xs">
+              <Server className="size-3 shrink-0 text-muted-foreground" />
+              {name}
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function ServerCoverage({ catalog, installation, onPull }: { catalog: CatalogModel; installation?: Model; onPull: (id: string, serverIds?: string[]) => void }) {
   const { t } = useTranslation();
-  const { targetsFor } = useServerFleet();
+  const { targetsFor, servers } = useServerFleet();
   if (installation?.status === 'missing') {
     return <span className="text-2xs font-medium text-destructive">{t('model.status_missing')}</span>;
   }
@@ -147,9 +172,10 @@ export function ServerCoverage({ catalog, installation, onPull }: { catalog: Cat
     return null;
   }
   const on = new Set(installation.serverIds);
+  const hosts = servers.filter((s) => on.has(s.id)).map((s) => s.name);
   const missing = targetsFor(catalog).filter((s) => !on.has(s.id));
   if (missing.length === 0) {
-    return <span className="text-2xs font-medium text-accent-sage">{t('model.status_installed')}</span>;
+    return hosts.length > 0 ? <HostList names={hosts} /> : <span className="text-2xs font-medium text-accent-sage">{t('model.status_installed')}</span>;
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-2xs">

@@ -36,7 +36,7 @@ export function ModelDetailPage({ family }: { family: string }) {
         label={first?.backendDisplayName ?? family}
         subtitle={first?.backendDescription}
         actions={
-          <Link to="/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/admin/models" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" />
             {t('nav.models')}
           </Link>

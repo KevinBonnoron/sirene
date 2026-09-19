@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { AudioLines, Box, Clock, Mic, UserRound } from 'lucide-react';
+import { AudioLines, Clock, Mic, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,6 @@ export function BottomNav() {
     { label: t('nav.voices'), href: '/voices', icon: AudioLines, primary: false },
     { label: t('nav.history'), href: '/history', icon: Clock, primary: false },
     { label: t('nav.studio'), href: '/', icon: Mic, primary: true },
-    { label: t('nav.models'), href: '/models', icon: Box, primary: false },
     { label: t('nav.profile'), href: '/profile', icon: UserRound, primary: false },
   ];
 

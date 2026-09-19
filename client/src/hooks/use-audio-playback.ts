@@ -40,6 +40,8 @@ function detachAudio(audio: AudioWithHandlers) {
 export interface UseAudioPlaybackResult {
   isPlaying: boolean;
   progress: number; // 0..1
+  /** Resolves to whether playback actually started. */
+  play: () => Promise<boolean>;
   toggle: () => void;
   stop: () => void;
 }
@@ -105,18 +107,30 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
     return audio;
   }, [url]);
 
+  const play = useCallback(async () => {
+    const audio = ensureAudio();
+    if (!audio?.paused) {
+      return false;
+    }
+    if (audio._stop) {
+      claimPlayback(audio._stop);
+    }
+    try {
+      await audio.play();
+      return true;
+    } catch {
+      setIsPlaying(false);
+      return false;
+    }
+  }, [ensureAudio]);
+
   function toggle() {
     const audio = ensureAudio();
     if (!audio) {
       return;
     }
     if (audio.paused) {
-      if (audio._stop) {
-        claimPlayback(audio._stop);
-      }
-      audio.play().catch(() => {
-        setIsPlaying(false);
-      });
+      void play();
     } else {
       audio.pause();
     }
@@ -133,5 +147,5 @@ export function useAudioPlayback(url: string | null | undefined): UseAudioPlayba
     release(audio);
   }
 
-  return { isPlaying, progress, toggle, stop };
+  return { isPlaying, progress, play, toggle, stop };
 }

@@ -53,6 +53,9 @@ interface Props {
   onGenerate?: () => void;
   onRegenerate?: (tuning: TakeTuning) => void;
   onDelete?: () => void;
+  /** Set when the server delivered a file rather than a stream: nothing has played yet. */
+  autoPlay?: boolean;
+  onAutoPlayed?: () => void;
 }
 
 const STATE_BADGE: Record<TakeState, { labelKey: string; dotClass: string; textClass: string }> = {
@@ -63,12 +66,12 @@ const STATE_BADGE: Record<TakeState, { labelKey: string; dotClass: string; textC
 
 type AffinageMode = 'quick' | 'detailed';
 
-export function Take({ take, isFocused, isGenerating, disabled, capabilities, onContentChange, onVoiceChange, onGenerate, onRegenerate, onDelete }: Props) {
+export function Take({ take, isFocused, isGenerating, disabled, capabilities, onContentChange, onVoiceChange, onGenerate, onRegenerate, onDelete, autoPlay, onAutoPlayed }: Props) {
   const { t } = useTranslation();
   const [affinageMode, setAffinageMode] = useState<AffinageMode | null>(null);
   const [alignment, setAlignment] = useState<GenerationAlignment | null>(null);
   const [alignLoading, setAlignLoading] = useState(false);
-  const { isPlaying, progress, toggle } = useAudioPlayback(take.audioUrl);
+  const { isPlaying, progress, play, toggle } = useAudioPlayback(take.audioUrl);
   const editorRef = useRef<TakeEditorHandle>(null);
   const [activeMarks, setActiveMarks] = useState<ActiveMarks>(NO_ACTIVE_MARKS);
 
@@ -77,6 +80,23 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   useEffect(() => {
     setLocalTuning(take.tuning);
   }, [take.id]);
+
+  useEffect(() => {
+    if (!autoPlay || !take.audioUrl) {
+      return;
+    }
+    let abandoned = false;
+    // Cleared only once the take is actually audible: a rejected play must stay pending so
+    // the button can still pick it up.
+    play().then((started) => {
+      if (started && !abandoned) {
+        onAutoPlayed?.();
+      }
+    });
+    return () => {
+      abandoned = true;
+    };
+  }, [autoPlay, take.audioUrl, play, onAutoPlayed]);
 
   const badge = STATE_BADGE[take.state];
   const isDraft = take.state === 'draft';

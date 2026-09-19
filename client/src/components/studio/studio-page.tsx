@@ -73,6 +73,8 @@ export function StudioPage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number>(0);
   const [busyTakeId, setBusyTakeId] = useState<string | null>(null);
+  // A cloud take arrives as a finished file with no stream, so playback waits for its record.
+  const [autoPlayId, setAutoPlayId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState | null>(null);
 
   const activeSession = useMemo(() => (activeSessionId ? sessions?.find((s) => s.id === activeSessionId) : undefined), [activeSessionId, sessions]);
@@ -169,6 +171,8 @@ export function StudioPage() {
     setDraft((d) => (d ? { ...d, voiceId } : d));
   }, []);
 
+  const clearAutoPlay = useCallback(() => setAutoPlayId(null), []);
+
   const handleGenerate = useCallback(async () => {
     if (!draft?.voiceId || busyTakeId) {
       return;
@@ -180,13 +184,16 @@ export function StudioPage() {
 
     setBusyTakeId('draft');
     try {
-      const { generationId } = await generate({
+      const { generationId, delivery } = await generate({
         voice: draft.voiceId,
         input: ssml,
         tuning: draft.tuning,
         editorContent: draft.content as unknown as Record<string, unknown>,
       });
 
+      if (generationId && delivery === 'file') {
+        setAutoPlayId(generationId);
+      }
       if (generationId) {
         if (activeSessionId) {
           const session = sessions?.find((s) => s.id === activeSessionId);
@@ -225,7 +232,7 @@ export function StudioPage() {
       }
       setBusyTakeId(take.id);
       try {
-        const { generationId } = await generate({
+        const { generationId, delivery } = await generate({
           voice: take.voiceId,
           input: text,
           tuning,
@@ -233,6 +240,9 @@ export function StudioPage() {
         });
         if (!generationId) {
           return;
+        }
+        if (delivery === 'file') {
+          setAutoPlayId(generationId);
         }
         if (activeSessionId) {
           const session = sessions?.find((s) => s.id === activeSessionId);
@@ -511,6 +521,8 @@ export function StudioPage() {
                           onGenerate={isCurrentDraft ? handleGenerate : undefined}
                           onRegenerate={!isCurrentDraft && original ? (tuning) => handleRegenerate(take, original.text, tuning) : undefined}
                           onDelete={!isCurrentDraft && activeSession ? () => handleDeleteTake(take.id) : undefined}
+                          autoPlay={take.id === autoPlayId}
+                          onAutoPlayed={clearAutoPlay}
                         />
                       </li>
                     );

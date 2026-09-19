@@ -384,7 +384,7 @@
     "id": "f5-tts-default",
     "name": "F5-TTS",
     "backend": "f5tts",
-    "backendDisplayName": "F5",
+    "backendDisplayName": "F5-TTS",
     "backendDescription": "Zero-shot voice cloning with high fidelity from reference audio.",
     "description": "F5-TTS - zero-shot voice cloning with high fidelity from reference audio.",
     "repo": "SWivid/F5-TTS",

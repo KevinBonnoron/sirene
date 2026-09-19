@@ -18,12 +18,12 @@ export function ModelCard({ family, onPull }: { family: Family; onPull: (id: str
   const size = installed.reduce((total, e) => total + e.catalog.size, 0) || family.entries[0]?.catalog.size || 0;
 
   return (
-    <div className="relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-border-strong">
+    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lg hover:shadow-black/20 motion-reduce:transform-none">
       {pulling !== undefined && <Progress value={pulling} className="absolute inset-x-0 top-0 h-0.5 rounded-none" />}
       <Link to="/models/$family" params={{ family: family.key }} className="flex flex-1 flex-col gap-2 p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-1.5">
-            <h3 className="min-w-0 truncate font-serif text-base tracking-tight">{single ? single.catalog.name : family.name}</h3>
+            <h3 className="min-w-0 truncate font-serif text-base tracking-tight transition-colors group-hover:text-primary">{single ? single.catalog.name : family.name}</h3>
             {recommended && <RecommendedStar className="mt-1 size-3.5 shrink-0" />}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">

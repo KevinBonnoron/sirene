@@ -76,9 +76,9 @@ export function ModelsPage() {
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="group flex min-h-28 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="group flex min-h-28 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 transition duration-200 hover:-translate-y-0.5 hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transform-none"
             >
-              <Plus className="size-8 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+              <Plus className="size-8 text-muted-foreground/50 transition duration-200 group-hover:scale-110 group-hover:text-muted-foreground motion-reduce:transform-none" />
               <span className="sr-only">{t('model.add.title')}</span>
             </button>
           </div>

@@ -31,6 +31,7 @@ type KeySummary struct {
 	Prefix     string   `json:"prefix"`
 	Scopes     []string `json:"scopes"`
 	LastUsedAt string   `json:"lastUsedAt,omitempty"`
+	RevokedAt  string   `json:"revokedAt,omitempty"`
 	Created    string   `json:"created"`
 }
 
@@ -111,6 +112,22 @@ func (k *APIKeys) Revoke(userID, id string) error {
 	if err != nil {
 		return err
 	}
+	if !rec.GetDateTime("revokedAt").IsZero() {
+		return nil
+	}
+	rec.Set("revokedAt", types.NowDateTime())
+	return k.app.Save(rec)
+}
+
+// A key the CLI session never collected was never in anyone's hands, so it leaves no trace.
+func (k *APIKeys) Discard(userID, id string) error {
+	rec, err := k.app.FindRecordById("api_keys", id)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && rec.GetString("user") != userID) {
+		return apierr.NotFound(apierr.CodeApiKeyNotFound, "API key not found")
+	}
+	if err != nil {
+		return err
+	}
 	return k.app.Delete(rec)
 }
 
@@ -124,6 +141,9 @@ func (k *APIKeys) Resolve(secret string) (*ResolvedKey, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if !rec.GetDateTime("revokedAt").IsZero() {
+		return nil, nil
 	}
 	scopes, malformed := readScopes(rec)
 	if malformed {
@@ -182,6 +202,9 @@ func toSummary(rec *core.Record) KeySummary {
 	}
 	if last := rec.GetDateTime("lastUsedAt"); !last.IsZero() {
 		s.LastUsedAt = last.String()
+	}
+	if revoked := rec.GetDateTime("revokedAt"); !revoked.IsZero() {
+		s.RevokedAt = revoked.String()
 	}
 	return s
 }

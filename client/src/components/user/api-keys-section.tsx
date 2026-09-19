@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { explainApiError } from '@/lib/api-error';
+import { cn } from '@/lib/utils';
 
 function formatDate(iso: string | undefined, t: (k: string) => string): string {
   if (!iso) {
@@ -24,6 +25,8 @@ function formatDate(iso: string | undefined, t: (k: string) => string): string {
   }
   return date.toLocaleDateString();
 }
+
+const keyGrid = 'grid grid-cols-1 gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_7rem_7rem_7.5rem] sm:items-center';
 
 export function ApiKeysSection() {
   const { t } = useTranslation();
@@ -53,9 +56,20 @@ export function ApiKeysSection() {
 
       {!isLoading && !isError && (keys?.length ?? 0) === 0 && <p className="text-sm text-muted-foreground">{t('apiKeys.empty')}</p>}
 
-      {keys?.map((key) => (
-        <KeyRow key={key.id} apiKey={key} />
-      ))}
+      {(keys?.length ?? 0) > 0 && (
+        <div className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-card/40">
+          <div className={cn(keyGrid, 'hidden text-2xs font-medium uppercase tracking-wide text-muted-foreground sm:grid')}>
+            <span>{t('apiKeys.name')}</span>
+            <span>{t('apiKeys.access')}</span>
+            <span>{t('apiKeys.created')}</span>
+            <span>{t('apiKeys.lastUsed')}</span>
+            <span className="sr-only">{t('apiKeys.revoke')}</span>
+          </div>
+          {keys?.map((key) => (
+            <KeyRow key={key.id} apiKey={key} />
+          ))}
+        </div>
+      )}
 
       <Button variant="outline" size="sm" onClick={() => setCreating(true)} className="gap-2">
         <Plus className="size-3.5" />
@@ -82,38 +96,57 @@ function KeyRow({ apiKey }: { apiKey: ApiKeySummary }) {
     onError: (err) => toast.error(explainApiError(err, t('apiKeys.revokeFailed'))),
   });
 
+  const revoked = Boolean(apiKey.revokedAt);
+
   return (
     <>
-      <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-card/40 p-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-sm" title={apiKey.name}>
-            {apiKey.name}
+      <div className={cn(keyGrid, revoked && 'opacity-60')}>
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-medium" title={apiKey.name}>
+            <span className={cn('truncate', revoked && 'line-through')}>{apiKey.name}</span>
+            {revoked && (
+              <Badge variant="outline" className="shrink-0 text-2xs text-muted-foreground">
+                {t('apiKeys.revokedBadge')}
+              </Badge>
+            )}
           </p>
           <p className="truncate font-mono text-xs text-muted-foreground">{apiKey.prefix}...</p>
-          <p className="text-xs text-muted-foreground">
-            {t('apiKeys.created')}: {formatDate(apiKey.created, t)}
-            <span className="ml-3">
-              {t('apiKeys.lastUsed')}: {formatDate(apiKey.lastUsedAt, t)}
-            </span>
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {apiKey.scopes === null ? (
-              <Badge variant="secondary" className="text-2xs">
-                {t('apiKeys.fullAccess')}
-              </Badge>
-            ) : (
-              apiKey.scopes.map((scope) => (
-                <Badge key={scope} variant="outline" className="text-2xs font-mono">
-                  {scope}
-                </Badge>
-              ))
-            )}
-          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={revoke.isPending} className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive">
-          {revoke.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Ban className="size-3.5" />}
-          {t('apiKeys.revoke')}
-        </Button>
+        <div className="flex flex-wrap gap-1">
+          {apiKey.scopes === null ? (
+            <Badge variant="secondary" className="text-2xs">
+              {t('apiKeys.fullAccess')}
+            </Badge>
+          ) : (
+            apiKey.scopes.map((scope) => (
+              <Badge key={scope} variant="outline" className="text-2xs font-mono">
+                {scope}
+              </Badge>
+            ))
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          <span className="sm:hidden">{t('apiKeys.created')}: </span>
+          {formatDate(apiKey.created, t)}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {revoked ? (
+            t('apiKeys.revokedOn', { date: formatDate(apiKey.revokedAt, t) })
+          ) : (
+            <>
+              <span className="sm:hidden">{t('apiKeys.lastUsed')}: </span>
+              {formatDate(apiKey.lastUsedAt, t)}
+            </>
+          )}
+        </span>
+        <div className="flex justify-end">
+          {!revoked && (
+            <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={revoke.isPending} className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive">
+              {revoke.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Ban className="size-3.5" />}
+              {t('apiKeys.revoke')}
+            </Button>
+          )}
+        </div>
       </div>
 
       <AlertDialog open={confirming} onOpenChange={(open) => !open && setConfirming(false)}>

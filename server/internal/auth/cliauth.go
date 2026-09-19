@@ -214,7 +214,7 @@ func (c *CliAuth) Approve(userCode, userID, name string, scopes *[]string) error
 	}
 	// The session may have expired while the key was minted; a key nobody can collect must not survive.
 	if live, ok := c.byDevice[s.deviceCode]; !ok || live != s {
-		if rerr := c.keys.Revoke(userID, created.ID); rerr != nil {
+		if rerr := c.keys.Discard(userID, created.ID); rerr != nil {
 			return rerr
 		}
 		return apierr.NotFound(apierr.CodeCliAuthSessionNotFound, "CLI session not found or expired")

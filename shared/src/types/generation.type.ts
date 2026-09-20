@@ -5,7 +5,8 @@ export type GenerationState = 'draft' | 'ready' | 'tuned';
 export interface GenerationTuning {
   pitchShift: number;
   speedMultiplier: number;
-  variationSeed: number;
+  /** Absent means unseeded: the worker draws freely and needs no exclusivity. */
+  variationSeed?: number;
   prosodyCurve?: Array<[number, number]>;
   wordRates?: Record<string, number>;
 }

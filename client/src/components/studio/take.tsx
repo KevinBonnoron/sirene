@@ -26,7 +26,8 @@ export type TakeState = 'draft' | 'ready' | 'tuned';
 export interface TakeTuning {
   pitchShift: number;
   speedMultiplier: number;
-  variationSeed: number;
+  /** Absent means an unseeded take: a fresh draw each time, and no exclusivity on the worker. */
+  variationSeed?: number;
   prosodyCurve?: PitchPoint[];
   wordRates?: Record<string, number>;
 }
@@ -156,8 +157,9 @@ export function Take({ take, isFocused, isGenerating, disabled, capabilities, on
   }, []);
 
   const handleRegenerateClick = useCallback(() => {
-    // Same seed would reproduce the same take; a new draw is what "regenerate" means.
-    const next = { ...localTuning, variationSeed: Math.round(Math.random() * 100) / 100 };
+    // Without a seed the take already comes out different; with one, holding it would
+    // reproduce the same take, so a new draw is what "regenerate" means.
+    const next = localTuning.variationSeed === undefined ? localTuning : { ...localTuning, variationSeed: Math.round(Math.random() * 100) / 100 };
     setLocalTuning(next);
     onRegenerate?.(next);
   }, [onRegenerate, localTuning]);

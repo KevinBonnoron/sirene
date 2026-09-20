@@ -58,16 +58,66 @@ class GenerateParams:
         return " ".join(t for t in texts if t)
 
 
-# Seeding touches the process-wide RNGs, so only one generation may sample at a time, whatever the backend.
-GENERATION_LOCK = threading.Lock()
+class _SamplingGate:
+    """Many unseeded generations at once, or one seeded generation alone.
+
+    Seeding sets the process-wide RNGs, and any other local sampling draws from the same
+    stream: letting one run alongside a seeded take would make that take's output depend on
+    how the two interleaved, which is the opposite of what a seed is for.
+    """
+
+    def __init__(self) -> None:
+        self._cond = threading.Condition()
+        self._readers = 0
+        self._writer = False
+        self._waiting_writers = 0
+
+    @contextmanager
+    def shared(self):
+        with self._cond:
+            # Waiting writers go first, or a steady stream of unseeded takes starves them.
+            while self._writer or self._waiting_writers:
+                self._cond.wait()
+            self._readers += 1
+        try:
+            yield
+        finally:
+            with self._cond:
+                self._readers -= 1
+                if self._readers == 0:
+                    self._cond.notify_all()
+
+    @contextmanager
+    def exclusive(self):
+        with self._cond:
+            self._waiting_writers += 1
+            while self._writer or self._readers:
+                self._cond.wait()
+            self._waiting_writers -= 1
+            self._writer = True
+        try:
+            yield
+        finally:
+            with self._cond:
+                self._writer = False
+                self._cond.notify_all()
+
+
+SAMPLING_GATE = _SamplingGate()
 
 
 class TTSBackend(ABC):
     name: str
     # False means the backend ignores params.speed and the post-processor stretches for it.
     handles_speed: bool = False
+    # False when generation happens elsewhere: nothing to seed, no model state to protect,
+    # and serialising it would hold a lock for the length of a network round trip.
+    samples_locally: bool = True
 
     def __init__(self):
+        # Backends keep per-call state on the model object, so one generation at a time per
+        # instance — but two different models may run at once.
+        self.generation_lock = threading.Lock()
         self._model = None
         self._model_path: Path | None = None
         self._device: str = "cpu"
@@ -119,7 +169,7 @@ class TTSBackend(ABC):
 
     # Sampling backends draw tokens at random; the same seed makes a take reproducible and the variation slider meaningful.
     def _apply_seed(self, params: GenerateParams) -> None:
-        if params.seed is None:
+        if params.seed is None or not self.samples_locally:
             return
         seed = params.seed % (2**63)
         random.seed(seed)

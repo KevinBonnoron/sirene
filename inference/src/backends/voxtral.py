@@ -44,6 +44,8 @@ def _get_port() -> int:
 class VoxtralBackend(TTSBackend):
     name = "voxtral"
     handles_speed = True
+    # Generation happens in the served model, not here: self._model is only a sentinel.
+    samples_locally = False
 
     def __init__(self):
         super().__init__()
@@ -296,7 +298,6 @@ class VoxtralBackend(TTSBackend):
         return TTSResult(audio=audio, sample_rate=sr)
 
     def generate_stream(self, params: GenerateParams):
-        self._apply_seed(params)
         import httpx
 
         if not self.is_loaded():

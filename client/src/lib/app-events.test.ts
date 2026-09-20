@@ -28,26 +28,45 @@ mock.module('./auth-stream', () => ({
 const { subscribeToAppEvents } = await import('./app-events');
 
 describe('app events', () => {
-  // The reopen is deferred, so the test owns the clock: a captured callback is the only
-  // way to tell a scheduled reopen from no reopen at all.
-  let scheduled: (() => void)[] = [];
+  // The module defers work on timers, so the test owns the clock. Cancellation has to be
+  // honoured or a cleared timer would still fire and hide the very bug being tested.
+  let timers = new Map<number, () => void>();
+  let nextTimerId = 1;
   const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
 
   beforeEach(() => {
     opened.length = 0;
-    scheduled = [];
+    timers = new Map();
+    nextTimerId = 1;
     globalThis.setTimeout = ((fn: () => void) => {
-      scheduled.push(fn);
-      return 0 as unknown as ReturnType<typeof setTimeout>;
+      const id = nextTimerId++;
+      timers.set(id, fn);
+      return id as unknown as ReturnType<typeof setTimeout>;
     }) as typeof globalThis.setTimeout;
+    globalThis.clearTimeout = ((id: number) => {
+      timers.delete(id);
+    }) as typeof globalThis.clearTimeout;
   });
 
   let release: (() => void) | undefined;
   afterEach(() => {
     release?.();
     release = undefined;
+    // The stream now outlives its last subscriber, so the module only returns to a clean
+    // state once the idle timer has run.
+    fireAll();
     globalThis.setTimeout = realSetTimeout;
+    globalThis.clearTimeout = realClearTimeout;
   });
+
+  function fireAll() {
+    const due = [...timers.values()];
+    timers.clear();
+    for (const fire of due) {
+      fire();
+    }
+  }
 
   test('one stream is shared by every subscriber', () => {
     const first = subscribeToAppEvents(() => {});
@@ -56,7 +75,18 @@ describe('app events', () => {
     first();
     expect(opened[0]?.closed).toBe(false);
     second();
+    fireAll();
     expect(opened[0]?.closed).toBe(true);
+  });
+
+  test('a subscriber arriving during the idle delay keeps the stream', () => {
+    const leaving = subscribeToAppEvents(() => {});
+    leaving();
+    // The navigation's next page subscribes before the idle timer fires.
+    release = subscribeToAppEvents(() => {});
+    fireAll();
+    expect(opened.length).toBe(1);
+    expect(opened[0]?.closed).toBe(false);
   });
 
   test('every subscriber receives an event', () => {
@@ -90,25 +120,27 @@ describe('app events', () => {
     expect(seen).toEqual(['dropped']);
     // Scheduled, not immediate: a server that stays down is not hammered.
     expect(opened.length).toBe(1);
-    expect(scheduled.length).toBe(1);
+    expect(timers.size).toBe(1);
 
-    scheduled[0]?.();
+    fireAll();
     expect(opened.length).toBe(2);
   });
 
   test('a reopen scheduled before the last unsubscribe never happens', () => {
     const stop = subscribeToAppEvents(() => {});
     opened[0]?.onEnd?.();
-    expect(scheduled.length).toBe(1);
+    expect(timers.size).toBe(1);
 
     stop();
-    scheduled[0]?.();
+    fireAll();
     expect(opened.length).toBe(1);
   });
 
-  test('the last unsubscribe stops the stream', () => {
+  test('the last unsubscribe stops the stream once the idle delay passes', () => {
     const stop = subscribeToAppEvents(() => {});
     stop();
+    expect(opened[0]?.closed).toBe(false);
+    fireAll();
     expect(opened[0]?.closed).toBe(true);
     // A fresh subscriber opens a new one rather than reusing the closed handle.
     const again = subscribeToAppEvents(() => {});

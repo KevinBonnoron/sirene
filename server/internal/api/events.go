@@ -17,9 +17,6 @@ func registerEvents(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		w := sse.Begin(e)
 		changes, unsubscribe := d.Models.Changes.Subscribe()
 		defer unsubscribe()
-		if err := w.Event("models", "1"); err != nil {
-			return nil
-		}
 
 		// Every job installs or removes a model, which only an admin can ask for.
 		var board <-chan jobs.Update

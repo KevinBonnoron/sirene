@@ -95,6 +95,7 @@
     "all": "Toutes",
     "noMatch": "Aucune voix ne correspond à vos filtres.",
     "add": "Ajouter",
+    "addVoice": "Ajouter une voix",
     "tags": "Tags",
     "tagsPlaceholder": "Ajouter un tag...",
     "visibility": "Visibilité",

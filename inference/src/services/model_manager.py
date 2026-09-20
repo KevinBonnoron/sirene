@@ -4,7 +4,12 @@ from collections import Counter, OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
 
-from ..backends.base import GenerateParams, TTSBackend, TTSResult, GENERATION_LOCK
+from ..backends.base import (
+    SAMPLING_GATE,
+    GenerateParams,
+    TTSBackend,
+    TTSResult,
+)
 from ..backends.registry import get_backend_class, list_backend_names
 from ..config import settings
 
@@ -17,11 +22,27 @@ class ModelManager:
         self._lock = threading.Lock()
         self._in_use: Counter[tuple[str, str]] = Counter()
 
+    # Exclusivity is asked for what each generation actually shares: the process RNGs,
+    # which a seeded take needs to itself, and its own model instance.
+    @contextmanager
+    def _exclusive(self, backend: TTSBackend, params: GenerateParams):
+        if not backend.samples_locally:
+            yield
+            return
+        # The gate first, always in this order, so the two cannot deadlock.
+        lease = (
+            SAMPLING_GATE.exclusive()
+            if params.seed is not None
+            else SAMPLING_GATE.shared()
+        )
+        with lease, backend.generation_lock:
+            yield
+
     def generate(
         self, backend_name: str, model_path: str, params: GenerateParams
     ) -> TTSResult:
         with self._checkout(backend_name, model_path) as backend:
-            with GENERATION_LOCK:
+            with self._exclusive(backend, params):
                 return backend.generate(params)
 
     def generate_stream(
@@ -30,15 +51,15 @@ class ModelManager:
         with self._checkout(backend_name, model_path) as backend:
             if not backend.supports_streaming():
                 raise ValueError(f"Backend {backend_name!r} does not support streaming")
-            with GENERATION_LOCK:
+            with self._exclusive(backend, params):
                 yield from backend.generate_stream(params)
 
     def get_backend(self, backend_name: str, model_path: str) -> TTSBackend:
         return self._get_or_load(backend_name, model_path)
 
-    # GENERATION_LOCK serialises sampling but not loading, so without this a request for a
-    # third model would evict — and unload_model() — a backend another thread is generating
-    # on, freeing tensors from under it.
+    # Generation locks do not cover loading, so without this a request for a third model
+    # would evict — and unload_model() — a backend another thread is generating on, freeing
+    # tensors from under it.
     @contextmanager
     def _checkout(self, backend_name: str, model_path: str):
         key = (backend_name, model_path)

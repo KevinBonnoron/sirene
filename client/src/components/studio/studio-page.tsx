@@ -33,7 +33,7 @@ interface DraftState {
   tuning: TakeTuning;
 }
 
-const DEFAULT_TUNING: TakeTuning = { pitchShift: 0, speedMultiplier: 1, variationSeed: 0.5 };
+const DEFAULT_TUNING: TakeTuning = { pitchShift: 0, speedMultiplier: 1 };
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
 
 function makeDraftTake(orderIndex: number, version: number, draft: DraftState): TakeData {

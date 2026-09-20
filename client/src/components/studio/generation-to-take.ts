@@ -31,7 +31,7 @@ export function generationToTake(generation: Generation, orderIndex: number): Ta
     tuning: {
       pitchShift: generation.tuning?.pitchShift ?? 0,
       speedMultiplier: generation.tuning?.speedMultiplier ?? generation.speed ?? 1,
-      variationSeed: generation.tuning?.variationSeed ?? 0.5,
+      variationSeed: generation.tuning?.variationSeed,
       prosodyCurve: generation.tuning?.prosodyCurve,
       wordRates: generation.tuning?.wordRates,
     },

@@ -9,6 +9,9 @@ interface Props {
   onChange: (tuning: TakeTuning) => void;
 }
 
+// Where the slider sits before anyone touches it; sending it would seed the take.
+const DEFAULT_VARIATION = 0.5;
+
 interface SliderRowProps {
   label: string;
   unit: string;
@@ -118,11 +121,11 @@ export function TakeQuickTuning({ tuning, capabilities, onChange }: Props) {
       <SliderRow
         label={t('studio.variation')}
         unit="seed"
-        value={tuning.variationSeed}
+        value={tuning.variationSeed ?? DEFAULT_VARIATION}
         min={0}
         max={1}
         step={0.05}
-        displayValue={tuning.variationSeed.toFixed(1)}
+        displayValue={(tuning.variationSeed ?? DEFAULT_VARIATION).toFixed(1)}
         disabled={!capabilities.variation}
         disabledHint={unsupportedHint}
         onChange={(variationSeed) => onChange({ ...tuning, variationSeed })}

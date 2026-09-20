@@ -15,12 +15,13 @@ import (
 )
 
 type authUser struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Avatar   string `json:"avatar"`
-	Verified bool   `json:"verified"`
-	Role     string `json:"role"`
+	ID                 string `json:"id"`
+	Email              string `json:"email"`
+	Name               string `json:"name"`
+	Avatar             string `json:"avatar"`
+	Verified           bool   `json:"verified"`
+	Role               string `json:"role"`
+	MustChangePassword bool   `json:"mustChangePassword"`
 }
 
 type authResult struct {
@@ -30,12 +31,13 @@ type authResult struct {
 
 func toAuthUser(rec *core.Record) authUser {
 	return authUser{
-		ID:       rec.Id,
-		Email:    rec.Email(),
-		Name:     rec.GetString("name"),
-		Avatar:   rec.GetString("avatar"),
-		Verified: rec.Verified(),
-		Role:     rec.GetString("role"),
+		ID:                 rec.Id,
+		Email:              rec.Email(),
+		Name:               rec.GetString("name"),
+		Avatar:             rec.GetString("avatar"),
+		Verified:           rec.Verified(),
+		Role:               rec.GetString("role"),
+		MustChangePassword: rec.GetBool("mustChangePassword"),
 	}
 }
 
@@ -69,6 +71,9 @@ func registerAuth(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		if err != nil || !rec.ValidatePassword(*body.Password) {
 			e.App.Logger().Warn("[auth/login] invalid credentials")
 			return apierr.Unauthorized(apierr.CodeAuthInvalidCredentials, "Invalid email or password")
+		}
+		if rec.GetBool("disabled") {
+			return apierr.Forbidden(apierr.CodeAuthAccountDisabled, "This account has been disabled")
 		}
 		out, err := authResponse(rec)
 		if err != nil {

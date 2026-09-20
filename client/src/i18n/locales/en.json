@@ -748,7 +748,9 @@
     "voiceDesigner.textFieldsExpected": "description, language, model and transcript must be text fields",
     "auth.emailTaken": "An account with this email already exists",
     "model.noAcceptingServer": "No online inference server accepts this model: check its hardware, VRAM and each server's sync policy",
-    "auth.registrationClosed": "This instance is not accepting new accounts."
+    "auth.registrationClosed": "This instance is not accepting new accounts.",
+    "auth.accountDisabled": "This account has been disabled",
+    "auth.passwordChangeRequired": "This account must choose a new password first"
   },
   "form": {
     "showPassword": "Show password",
@@ -780,7 +782,18 @@
     "removeDescription": "Their voices, sessions, generations and API keys are deleted with them. This cannot be undone.",
     "removed": "{{name}} deleted",
     "removeFailed": "Failed to delete the account",
-    "loadFailed": "Failed to load the users"
+    "loadFailed": "Failed to load the users",
+    "edit": "Edit",
+    "editTitle": "Edit {{name}}",
+    "name": "Name",
+    "newPassword": "New password",
+    "passwordUnchanged": "Leave blank to keep it",
+    "passwordHint": "Set only to replace their password; you will have to pass it on yourself.",
+    "active": "Active",
+    "activeHint": "A disabled account cannot sign in, and its open sessions end at once.",
+    "disabled": "Disabled",
+    "saved": "Account updated",
+    "saveFailed": "Failed to update the account"
   },
   "invites": {
     "invite": "Invite someone",
@@ -797,5 +810,14 @@
     "revoked": "Invitation revoked",
     "revokeFailed": "Failed to revoke the invitation",
     "createFailed": "Failed to create the invitation"
+  },
+  "forcedPassword": {
+    "title": "Choose a password",
+    "description": "The password on this account was set by an administrator. Pick your own to carry on.",
+    "current": "Current password",
+    "newPassword": "New password",
+    "confirm": "Confirm the password",
+    "submit": "Continue",
+    "failed": "Failed to set the password"
   }
 }

@@ -39,7 +39,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 	registerOpenAPI(g)
 
 	p := g.Group("")
-	p.Bind(auth.RequireUser())
+	p.Bind(auth.RequireUser(), auth.RequireCurrentPassword())
 
 	registerCliAuthProtected(p, d)
 	registerMe(p, d)

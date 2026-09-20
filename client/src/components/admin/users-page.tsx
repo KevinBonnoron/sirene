@@ -1,7 +1,7 @@
 import type { InviteCreated, User } from '@sirene/shared';
 import { useLiveQuery } from '@tanstack/react-db';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, Trash2, UserPlus } from 'lucide-react';
+import { Loader2, Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -15,9 +15,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { explainApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { EditUserDialog } from './edit-user-dialog';
 import { InviteDialog, InviteLinkDialog, PendingInviteRow } from './invite-section';
 
-const userGrid = 'grid grid-cols-1 gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_2.25rem] sm:items-center';
+const userGrid = 'grid grid-cols-1 gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_8rem_5rem] sm:items-center';
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -73,6 +74,7 @@ export function UsersPage() {
 function UserRow({ entry, isSelf }: { entry: User; isSelf: boolean }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const remove = useMutation({
     mutationFn: () => userClient.remove(entry.id),
@@ -92,9 +94,12 @@ function UserRow({ entry, isSelf }: { entry: User; isSelf: boolean }) {
             {t(`users.roles.${entry.role}`)}
           </Badge>
         </span>
-        <span className={cn('text-xs', entry.verified ? 'text-accent-sage' : 'text-muted-foreground')}>{t(entry.verified ? 'users.verified' : 'users.unverified')}</span>
+        <span className={cn('text-xs', entry.disabled ? 'text-destructive' : entry.verified ? 'text-accent-sage' : 'text-muted-foreground')}>{t(entry.disabled ? 'users.disabled' : entry.verified ? 'users.verified' : 'users.unverified')}</span>
         <span className="text-xs text-muted-foreground">{formatDate(entry.created)}</span>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
+          <Button variant="outline" size="icon" className="size-7 text-muted-foreground" onClick={() => setEditing(true)} aria-label={t('users.edit')}>
+            <Pencil className="size-3.5" />
+          </Button>
           {!isSelf && (
             <Button variant="outline" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirming(true)} disabled={remove.isPending} aria-label={t('users.remove')}>
               {remove.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
@@ -102,6 +107,8 @@ function UserRow({ entry, isSelf }: { entry: User; isSelf: boolean }) {
           )}
         </div>
       </div>
+
+      <EditUserDialog user={entry} isSelf={isSelf} open={editing} onOpenChange={setEditing} />
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>

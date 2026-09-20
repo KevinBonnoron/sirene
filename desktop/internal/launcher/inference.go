@@ -155,7 +155,8 @@ func (r *Reservation) Release() {
 func Start(ctx context.Context, p Paths, port *Reservation, logf func(string, ...any)) (*Process, error) {
 	device := os.Getenv("SIRENE_INFERENCE_DEVICE")
 	if device == "" {
-		device = "cpu"
+		device = detectDevice(ctx)
+		logf("inference device: %s", device)
 	}
 	cmd := exec.Command(p.PythonBin(), "-m", "uvicorn", "src.main:app", "--host", "127.0.0.1", "--port", strconv.Itoa(port.Port()))
 	cmd.Dir = p.Inference

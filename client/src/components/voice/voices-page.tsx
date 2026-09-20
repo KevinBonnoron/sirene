@@ -20,9 +20,9 @@ export function VoicesPage() {
         subtitle={t('voice.pageSubtitle')}
         actions={
           <AddVoiceMenu>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Plus className="size-3.5" />
-              {t('voice.add')}
+            <Button size="sm">
+              <Plus className="size-4" />
+              {t('voice.addVoice')}
             </Button>
           </AddVoiceMenu>
         }

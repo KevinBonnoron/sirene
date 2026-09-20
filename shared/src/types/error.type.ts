@@ -12,6 +12,8 @@ export type ErrorCode =
   | 'auth.forbidden'
   | 'auth.emailTaken'
   | 'auth.registrationClosed'
+  | 'auth.accountDisabled'
+  | 'auth.passwordChangeRequired'
   // API keys
   | 'apiKey.notFound'
   | 'apiKey.unknownScope'

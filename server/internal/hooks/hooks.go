@@ -16,4 +16,26 @@ func Register(app core.App) {
 		}
 		return e.Next()
 	})
+
+	// A password someone else chose is one its owner has to replace; changing your own
+	// clears the obligation. Only the request hook knows who is asking.
+	app.OnRecordUpdateRequest("users").BindFunc(func(e *core.RecordRequestEvent) error {
+		info, err := e.RequestInfo()
+		if err != nil {
+			return err
+		}
+		if _, sets := info.Body["password"]; sets {
+			e.Record.Set("mustChangePassword", e.Auth != nil && e.Auth.Id != e.Record.Id)
+		}
+		return e.Next()
+	})
+
+	// Refusing the next sign-in is not enough: without rotating the token key, whoever was
+	// already signed in stays signed in until their token expires on its own.
+	app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
+		if e.Record.GetBool("disabled") && !e.Record.Original().GetBool("disabled") {
+			e.Record.RefreshTokenKey()
+		}
+		return e.Next()
+	})
 }

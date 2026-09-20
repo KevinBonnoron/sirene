@@ -748,7 +748,9 @@
     "voiceDesigner.textFieldsExpected": "description, language, model et transcript doivent être des champs texte",
     "auth.emailTaken": "Un compte existe déjà avec cet email",
     "model.noAcceptingServer": "Aucun serveur d'inférence en ligne n'accepte ce modèle : vérifiez son matériel, sa VRAM et la politique de chaque serveur",
-    "auth.registrationClosed": "Cette instance n'accepte pas de nouveaux comptes."
+    "auth.registrationClosed": "Cette instance n'accepte pas de nouveaux comptes.",
+    "auth.accountDisabled": "Ce compte a été désactivé",
+    "auth.passwordChangeRequired": "Ce compte doit d'abord choisir un nouveau mot de passe"
   },
   "form": {
     "showPassword": "Afficher le mot de passe",
@@ -780,7 +782,18 @@
     "removeDescription": "Ses voix, sessions, générations et clés API sont supprimées avec lui. Cette action est irréversible.",
     "removed": "{{name}} supprimé",
     "removeFailed": "Échec de la suppression du compte",
-    "loadFailed": "Échec du chargement des utilisateurs"
+    "loadFailed": "Échec du chargement des utilisateurs",
+    "edit": "Modifier",
+    "editTitle": "Modifier {{name}}",
+    "name": "Nom",
+    "newPassword": "Nouveau mot de passe",
+    "passwordUnchanged": "Laisser vide pour le conserver",
+    "passwordHint": "À renseigner seulement pour le remplacer ; vous devrez le transmettre vous-même.",
+    "active": "Actif",
+    "activeHint": "Un compte désactivé ne peut plus se connecter, et ses sessions ouvertes sont coupées aussitôt.",
+    "disabled": "Désactivé",
+    "saved": "Compte mis à jour",
+    "saveFailed": "Échec de la mise à jour du compte"
   },
   "invites": {
     "invite": "Inviter quelqu’un",
@@ -797,5 +810,14 @@
     "revoked": "Invitation révoquée",
     "revokeFailed": "Échec de la révocation de l'invitation",
     "createFailed": "Échec de la création de l'invitation"
+  },
+  "forcedPassword": {
+    "title": "Choisissez un mot de passe",
+    "description": "Le mot de passe de ce compte a été défini par un administrateur. Choisissez le vôtre pour continuer.",
+    "current": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirm": "Confirmer le mot de passe",
+    "submit": "Continuer",
+    "failed": "Échec de la définition du mot de passe"
   }
 }

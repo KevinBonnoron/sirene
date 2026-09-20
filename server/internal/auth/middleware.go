@@ -106,6 +106,9 @@ func Resolve(keys *APIKeys) *hook.Handler[*core.RequestEvent] {
 				if err != nil {
 					return err
 				}
+				if user.GetBool("disabled") {
+					return apierr.Forbidden(apierr.CodeAuthAccountDisabled, "This account has been disabled")
+				}
 				e.Auth = user
 				setIdentity(e, &Identity{UserID: user.Id, Scopes: resolved.Scopes, Type: TypeAPIKey})
 				return e.Next()
@@ -144,6 +147,21 @@ func RequireUser() *hook.Handler[*core.RequestEvent] {
 
 func IsAdmin(e *core.RequestEvent) bool {
 	return e.Auth != nil && e.Auth.GetString("role") == "admin"
+}
+
+// Everything but /auth: the account is legitimately signed in, it just may not use the
+// instance until the password an admin chose for it has been replaced. Replacing it goes
+// through PocketBase's own collection route, which this group does not cover.
+func RequireCurrentPassword() *hook.Handler[*core.RequestEvent] {
+	return &hook.Handler[*core.RequestEvent]{
+		Id: "sireneRequireCurrentPassword",
+		Func: func(e *core.RequestEvent) error {
+			if e.Auth != nil && e.Auth.GetBool("mustChangePassword") && !strings.HasPrefix(e.Request.URL.Path, "/api/auth/") {
+				return apierr.Forbidden(apierr.CodeAuthPasswordChangeRequired, "This account must choose a new password first")
+			}
+			return e.Next()
+		},
+	}
 }
 
 func RequireAdmin() *hook.Handler[*core.RequestEvent] {

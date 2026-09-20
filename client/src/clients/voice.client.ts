@@ -3,13 +3,12 @@ import { universalClient, withFetchDelegate, withMethods } from 'universal-clien
 import { authInterceptor } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
 
+// Creating and updating a voice go through PocketBase; what stays here is what a
+// collection rule cannot express — packing and unpacking an archive.
 export const voiceClient = universalClient(
   withFetchDelegate(config.server.url, authInterceptor),
   withMethods(({ delegate }) => ({
-    create: (formData: FormData) => delegate.post<Voice>('/voices', formData),
-    update: (id: string, formData: FormData) => delegate.put<Voice>(`/voices/${id}`, formData),
     exportZip: (id: string) => delegate.get<Blob>(`/voices/${id}/export`),
     importZip: (formData: FormData) => delegate.post<Voice>('/voices/import', formData),
-    createSample: (voiceId: string, formData: FormData) => delegate.post<unknown>(`/voices/${voiceId}/samples`, formData),
   })),
 );

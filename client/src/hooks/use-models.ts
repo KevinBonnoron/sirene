@@ -16,26 +16,31 @@ export function useModels() {
   const queryClient = useQueryClient();
   const { jobs } = useJobs();
 
+  // The event stream says when either changes, so neither goes stale on a timer: a
+  // navigation between the list and a detail page would otherwise refetch both.
   const catalogQuery = useQuery({
     queryKey: CATALOG_KEY,
     queryFn: () => modelClient.catalog(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 
   const installedQuery = useQuery({
     queryKey: INSTALLED_KEY,
     queryFn: () => modelClient.installed(),
     placeholderData: EMPTY_INSTALLED,
-    staleTime: 10 * 1000,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 
   useEffect(
     () =>
       subscribeToAppEvents(({ event }) => {
         // A dropped stream leaves an unknown amount of missed changes behind it.
-        if (event === 'models' || event === 'dropped') {
-          queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
+        if (event !== 'models' && event !== 'dropped') {
+          return;
         }
+        // An import adds a custom model to the catalogue as well as to the installs.
+        queryClient.invalidateQueries({ queryKey: INSTALLED_KEY });
+        queryClient.invalidateQueries({ queryKey: CATALOG_KEY });
       }),
     [queryClient],
   );

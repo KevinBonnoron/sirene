@@ -9,6 +9,7 @@ import { SessionsDialog } from '@/components/studio/sessions-dialog';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useOwnGenerations } from '@/hooks/use-own-generations';
+import { isSectionActive } from '@/lib/nav-active';
 import { useAuth } from '@/providers/auth-provider';
 import { UserMenu } from './user-menu';
 
@@ -57,7 +58,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={currentPath === item.href} tooltip={item.label}>
+                  <SidebarMenuButton asChild isActive={isSectionActive(currentPath, item.href)} tooltip={item.label}>
                     <Link to={item.href}>
                       <item.icon className="size-4" />
                       <span>{item.label}</span>
@@ -119,7 +120,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={currentPath === item.href} tooltip={item.label}>
+                    <SidebarMenuButton asChild isActive={isSectionActive(currentPath, item.href)} tooltip={item.label}>
                       <Link to={item.href}>
                         <item.icon className="size-4" />
                         <span>{item.label}</span>

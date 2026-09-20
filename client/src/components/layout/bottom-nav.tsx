@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { AudioLines, Clock, Mic, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isSectionActive } from '@/lib/nav-active';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
@@ -18,7 +19,7 @@ export function BottomNav() {
   return (
     <div className="flex h-14 items-center justify-around border-t bg-background px-2">
       {navItems.map((item) => (
-        <Link key={item.href} to={item.href} className={cn('flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground', currentPath === item.href && 'text-foreground')}>
+        <Link key={item.href} to={item.href} className={cn('flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground', isSectionActive(currentPath, item.href) && 'text-foreground')}>
           <item.icon className={item.primary ? 'size-7' : 'size-5'} />
           <span className="text-2xs">{item.label}</span>
         </Link>

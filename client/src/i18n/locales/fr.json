@@ -819,5 +819,17 @@
     "confirm": "Confirmer le mot de passe",
     "submit": "Continuer",
     "failed": "Échec de la définition du mot de passe"
+  },
+  "workerBootstrap": {
+    "title": "Préparation de Sirene",
+    "description": "Le premier lancement installe le moteur de synthèse sur cette machine. Quelques minutes, une seule fois.",
+    "failedTitle": "Le moteur de synthèse n'a pas pu démarrer",
+    "failedDescription": "Sirene ne peut rien générer tant qu'il ne tourne pas. Relancez l'application pour réessayer.",
+    "logFile": "Le détail se trouve dans",
+    "steps": {
+      "python": "Environnement Python",
+      "dependencies": "Dépendances du moteur",
+      "starting": "Démarrage du moteur"
+    }
   }
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/KevinBonnoron/sirene/server/internal/apierr"
 	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
+	"github.com/KevinBonnoron/sirene/server/internal/bootstrap"
 	"github.com/KevinBonnoron/sirene/server/internal/config"
 	"github.com/KevinBonnoron/sirene/server/internal/generation"
 	"github.com/KevinBonnoron/sirene/server/internal/hooks"
@@ -41,6 +42,21 @@ type Options struct {
 	UIDir         string
 	Automigrate   bool
 	MigrationsDir string
+	// Set when the server runs inside the desktop app.
+	Desktop *Desktop
+}
+
+// A single local user, and an inference worker the same process installs and starts.
+type Desktop struct {
+	// Exchanged by the app's own window for a session on the local account.
+	Secret string
+	Worker *WorkerStatus
+}
+
+type WorkerStatus = bootstrap.Status
+
+func NewWorkerStatus(logFile string) *WorkerStatus {
+	return bootstrap.New(logFile)
 }
 
 func OptionsFromEnv() Options {
@@ -92,6 +108,10 @@ func New(opts Options) *pocketbase.PocketBase {
 		Generation: generation.New(app, modelSvc, rt, voiceSvc),
 		Sessions:   sessions.New(app),
 	}
+	if opts.Desktop != nil {
+		deps.DesktopSecret = opts.Desktop.Secret
+		deps.Worker = opts.Desktop.Worker
+	}
 
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// PocketBase defaults these to 5 minutes, which cuts SSE and long generation streams.
@@ -108,6 +128,11 @@ func New(opts Options) *pocketbase.PocketBase {
 
 		if err := deps.Servers.Bootstrap(); err != nil {
 			return err
+		}
+		if opts.Desktop != nil {
+			if err := auth.ProvisionLocalAccount(se.App); err != nil {
+				return err
+			}
 		}
 		deps.Servers.StartHealthLoop()
 

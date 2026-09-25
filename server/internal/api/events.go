@@ -6,6 +6,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/router"
 
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
+	"github.com/KevinBonnoron/sirene/server/internal/bootstrap"
 	"github.com/KevinBonnoron/sirene/server/internal/jobs"
 	"github.com/KevinBonnoron/sirene/server/internal/sse"
 )
@@ -29,11 +30,26 @@ func registerEvents(p *router.RouterGroup[*core.RequestEvent], d *Deps) {
 			}
 		}
 
+		// Only inside the desktop app, where the worker is installed by the same process.
+		var worker <-chan bootstrap.State
+		if d.Worker != nil {
+			ch, snapshot, stop := d.Worker.Subscribe()
+			defer stop()
+			worker = ch
+			if err := w.Event("worker", mustJSON(snapshot)); err != nil {
+				return nil
+			}
+		}
+
 		ctx := e.Request.Context()
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
+			case state := <-worker:
+				if err := w.Event("worker", mustJSON(state)); err != nil {
+					return nil
+				}
 			case <-changes:
 				if err := w.Event("models", "1"); err != nil {
 					return nil

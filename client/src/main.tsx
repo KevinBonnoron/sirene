@@ -4,7 +4,10 @@ import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import './i18n';
 import './index.css';
+import { captureDesktopSecret } from './lib/desktop';
 import { routeTree } from './routeTree.gen';
+
+captureDesktopSecret();
 
 const queryClient = new QueryClient();
 

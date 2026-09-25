@@ -82,6 +82,29 @@ func registerAuth(g *router.RouterGroup[*core.RequestEvent], d *Deps) {
 		return e.JSON(http.StatusOK, out)
 	})
 
+	if d.DesktopSecret != "" {
+		g.POST("/auth/desktop", func(e *core.RequestEvent) error {
+			var body struct {
+				Secret *string `json:"secret"`
+			}
+			if err := bindJSON(e, &body); err != nil {
+				return err
+			}
+			if body.Secret == nil {
+				return apierr.Unauthorized(apierr.CodeAuthInvalidCredentials, "Not the desktop window")
+			}
+			rec, err := auth.LocalAccount(e.App, d.DesktopSecret, *body.Secret)
+			if err != nil {
+				return apierr.Unauthorized(apierr.CodeAuthInvalidCredentials, "Not the desktop window")
+			}
+			out, err := authResponse(rec)
+			if err != nil {
+				return err
+			}
+			return e.JSON(http.StatusOK, out)
+		})
+	}
+
 	g.POST("/auth/register", func(e *core.RequestEvent) error {
 		var body struct {
 			Email           *string `json:"email"`

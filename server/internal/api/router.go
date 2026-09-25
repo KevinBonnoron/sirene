@@ -29,6 +29,7 @@ func Register(se *core.ServeEvent, d *Deps) {
 		return e.JSON(http.StatusOK, map[string]bool{
 			"needsSetup":          count == 0,
 			"registrationEnabled": enabled,
+			"desktop":             d.DesktopSecret != "",
 		})
 	})
 

@@ -192,9 +192,18 @@ func Start(ctx context.Context, p Paths, port *Reservation, logf func(string, ..
 	return proc, nil
 }
 
-func Bootstrap(ctx context.Context, p Paths, port *Reservation, logf func(string, ...any)) (*Process, error) {
+// The stages the window shows while the worker cannot answer yet. The client names each one.
+const (
+	StagePython       = "python"
+	StageDependencies = "dependencies"
+	StageStarting     = "starting"
+	StageReady        = "ready"
+)
+
+func Bootstrap(ctx context.Context, p Paths, port *Reservation, logf func(string, ...any), stage func(string)) (*Process, error) {
 	// Start releases it right before binding; this covers every earlier failure.
 	defer port.Release()
+	stage(StagePython)
 	if err := EnsurePython(ctx, p, logf); err != nil {
 		return nil, err
 	}
@@ -202,9 +211,11 @@ func Bootstrap(ctx context.Context, p Paths, port *Reservation, logf func(string
 	if err != nil {
 		return nil, err
 	}
+	stage(StageDependencies)
 	if err := EnsureDeps(ctx, p, hash, logf); err != nil {
 		return nil, err
 	}
+	stage(StageStarting)
 	number := port.Port()
 	proc, err := Start(ctx, p, port, logf)
 	if err != nil {
@@ -230,6 +241,7 @@ func Bootstrap(ctx context.Context, p Paths, port *Reservation, logf func(string
 		return nil, errors.New("inference worker exited before becoming healthy")
 	}
 	logf("inference worker ready")
+	stage(StageReady)
 	return proc, nil
 }
 

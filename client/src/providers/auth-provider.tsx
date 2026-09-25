@@ -3,6 +3,7 @@ import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/auth-interceptor';
 import { config } from '@/lib/config';
+import { desktopSecret } from '@/lib/desktop';
 
 interface AuthContextValue {
   user: User | null;
@@ -30,10 +31,24 @@ async function authRequest(path: string, body: Record<string, string>) {
   return res.json() as Promise<{ token: string; user: User }>;
 }
 
+// The desktop window has no password to type: it holds the secret its own process gave it.
+async function signInAsDesktop(): Promise<User | null> {
+  const secret = desktopSecret();
+  if (!secret) {
+    return null;
+  }
+  const data = await authRequest('/desktop', { secret }).catch(() => null);
+  if (!data) {
+    return null;
+  }
+  setStoredToken(data.token);
+  return data.user;
+}
+
 async function fetchCurrentUser(): Promise<User | null> {
   const token = getStoredToken();
   if (!token) {
-    return null;
+    return signInAsDesktop();
   }
   let res: Response;
   try {
@@ -48,7 +63,7 @@ async function fetchCurrentUser(): Promise<User | null> {
   }
   if (res.status === 401 || res.status === 403) {
     clearStoredToken();
-    return null;
+    return signInAsDesktop();
   }
   // Only outages are worth retrying; another 4xx would fail the same way five times.
   throw new Error(`${res.status >= 500 ? 'auth.unavailable' : 'auth.failed'}:${res.status}`);

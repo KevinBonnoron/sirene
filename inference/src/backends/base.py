@@ -215,19 +215,32 @@ class TTSBackend(ABC):
             chunk = result.audio[i : i + chunk_size]
             yield TTSResult(audio=chunk, sample_rate=result.sample_rate)
 
+    # An allocation, not just a capability flag: a driver can report a device it then
+    # refuses to allocate on, and finding that out at load time beats finding it out
+    # halfway through a generation.
     @staticmethod
     def _resolve_device(device: str) -> str:
-        if not device.startswith("cuda"):
-            return "cpu"
+        if device.startswith("cuda"):
+            return TTSBackend._probe(
+                device, "cuda", lambda torch: torch.cuda.is_available()
+            )
+        if device == "mps":
+            return TTSBackend._probe(
+                "mps", "MPS", lambda torch: torch.backends.mps.is_available()
+            )
+        return "cpu"
+
+    @staticmethod
+    def _probe(device: str, label: str, available) -> str:
         try:
             import torch
 
-            if not torch.cuda.is_available():
-                raise RuntimeError("CUDA not available")
-            torch.zeros(1, device="cuda")
+            if not available(torch):
+                raise RuntimeError(f"{label} not available")
+            torch.zeros(1, device=device)
             return device
         except Exception as e:
-            logger.warning(f"CUDA requested but unavailable ({e}), falling back to CPU")
+            logger.warning(f"{label} requested but unusable ({e}), falling back to CPU")
             return "cpu"
 
     @staticmethod

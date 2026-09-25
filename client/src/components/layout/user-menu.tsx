@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
+import { useSetupStatus } from '@/hooks/use-setup-status';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage, setLanguage } from '@/i18n';
 import { avatarUrl, userInitials } from '@/lib/user-avatar';
 import { useAuth } from '@/providers/auth-provider';
@@ -16,6 +17,8 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 export function UserMenu() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  // The local account has no password to sign back in with.
+  const canSignOut = !useSetupStatus().data?.desktop;
   const currentLanguage = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language) ? (i18n.language as SupportedLanguage) : 'en';
 
   if (!user) {
@@ -68,11 +71,15 @@ export function UserMenu() {
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={logout}>
-          <LogOut className="size-4" />
-          {t('auth.logout')}
-        </DropdownMenuItem>
+        {canSignOut && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={logout}>
+              <LogOut className="size-4" />
+              {t('auth.logout')}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

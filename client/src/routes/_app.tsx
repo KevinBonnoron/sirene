@@ -1,7 +1,9 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { ForcedPasswordChange } from '@/components/auth/forced-password-change';
+import { WorkerBootstrap } from '@/components/auth/worker-bootstrap';
 import { AppLayout } from '@/components/layout/app-layout';
-import { setupStatusQueryOptions } from '@/hooks/use-setup-status';
+import { setupStatusQueryOptions, useSetupStatus } from '@/hooks/use-setup-status';
+import { useWorkerStatus } from '@/hooks/use-worker-status';
 import { authMeQueryOptions, useAuth } from '@/providers/auth-provider';
 
 export const Route = createFileRoute('/_app')({
@@ -20,9 +22,14 @@ export const Route = createFileRoute('/_app')({
 
 function AppRoute() {
   const { user } = useAuth();
+  const { data: status } = useSetupStatus();
+  const worker = useWorkerStatus();
   // In place of the app rather than on a route of its own: no navigation goes around it.
   if (user?.mustChangePassword) {
     return <ForcedPasswordChange />;
+  }
+  if (status?.desktop && worker?.stage !== 'ready') {
+    return <WorkerBootstrap state={worker} />;
   }
   return (
     <AppLayout>

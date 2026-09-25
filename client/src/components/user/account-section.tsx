@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useSetupStatus } from '@/hooks/use-setup-status';
 import { explainApiError } from '@/lib/api-error';
 import { setStoredToken } from '@/lib/auth-interceptor';
 import { pb } from '@/lib/pocketbase';
@@ -21,6 +22,7 @@ const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml';
 export function AccountSection({ user }: { user: User }) {
   const { t } = useTranslation();
   const { login, refresh } = useAuth();
+  const desktop = useSetupStatus().data?.desktop ?? false;
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(user.name ?? '');
   const [savingName, setSavingName] = useState(false);
@@ -155,51 +157,56 @@ export function AccountSection({ user }: { user: User }) {
         </Section>
       </form>
 
-      <Separator />
+      {/* Both forms ask for a current password the local account never had. */}
+      {!desktop && (
+        <>
+          <Separator />
 
-      <form onSubmit={saveEmail}>
-        <Section title={t('profile.email.title')} description={t('profile.email.description')}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="profile-email">{t('profile.email.label')}</Label>
-              <Input id="profile-email" type="email" value={email} autoComplete="email" disabled={savingEmail} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-email-password">{t('profile.currentPassword')}</Label>
-              <Input id="profile-email-password" type="password" value={emailPassword} autoComplete="current-password" disabled={savingEmail} onChange={(e) => setEmailPassword(e.target.value)} />
-            </div>
-          </div>
-          <Button type="submit" size="sm" disabled={savingEmail || !emailPassword || email.trim() === user.email}>
-            {savingEmail && <Loader2 className="size-4 animate-spin" />}
-            {t('profile.email.submit')}
-          </Button>
-        </Section>
-      </form>
+          <form onSubmit={saveEmail}>
+            <Section title={t('profile.email.title')} description={t('profile.email.description')}>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email">{t('profile.email.label')}</Label>
+                  <Input id="profile-email" type="email" value={email} autoComplete="email" disabled={savingEmail} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email-password">{t('profile.currentPassword')}</Label>
+                  <Input id="profile-email-password" type="password" value={emailPassword} autoComplete="current-password" disabled={savingEmail} onChange={(e) => setEmailPassword(e.target.value)} />
+                </div>
+              </div>
+              <Button type="submit" size="sm" disabled={savingEmail || !emailPassword || email.trim() === user.email}>
+                {savingEmail && <Loader2 className="size-4 animate-spin" />}
+                {t('profile.email.submit')}
+              </Button>
+            </Section>
+          </form>
 
-      <Separator />
+          <Separator />
 
-      <form onSubmit={savePassword}>
-        <Section title={t('profile.password.title')} description={t('profile.password.description')}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="profile-old-password">{t('profile.currentPassword')}</Label>
-              <Input id="profile-old-password" type="password" value={oldPassword} autoComplete="current-password" disabled={savingPassword} onChange={(e) => setOldPassword(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-new-password">{t('profile.password.newPassword')}</Label>
-              <Input id="profile-new-password" type="password" value={newPassword} autoComplete="new-password" disabled={savingPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-confirm-password">{t('profile.password.confirm')}</Label>
-              <Input id="profile-confirm-password" type="password" value={confirmPassword} autoComplete="new-password" disabled={savingPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-            </div>
-          </div>
-          <Button type="submit" size="sm" disabled={savingPassword || !oldPassword || !newPassword || !confirmPassword}>
-            {savingPassword && <Loader2 className="size-4 animate-spin" />}
-            {t('profile.password.submit')}
-          </Button>
-        </Section>
-      </form>
+          <form onSubmit={savePassword}>
+            <Section title={t('profile.password.title')} description={t('profile.password.description')}>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-old-password">{t('profile.currentPassword')}</Label>
+                  <Input id="profile-old-password" type="password" value={oldPassword} autoComplete="current-password" disabled={savingPassword} onChange={(e) => setOldPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-new-password">{t('profile.password.newPassword')}</Label>
+                  <Input id="profile-new-password" type="password" value={newPassword} autoComplete="new-password" disabled={savingPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-confirm-password">{t('profile.password.confirm')}</Label>
+                  <Input id="profile-confirm-password" type="password" value={confirmPassword} autoComplete="new-password" disabled={savingPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                </div>
+              </div>
+              <Button type="submit" size="sm" disabled={savingPassword || !oldPassword || !newPassword || !confirmPassword}>
+                {savingPassword && <Loader2 className="size-4 animate-spin" />}
+                {t('profile.password.submit')}
+              </Button>
+            </Section>
+          </form>
+        </>
+      )}
     </div>
   );
 }

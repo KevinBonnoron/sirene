@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/KevinBonnoron/sirene/server/internal/appconfig"
 	"github.com/KevinBonnoron/sirene/server/internal/auth"
+	"github.com/KevinBonnoron/sirene/server/internal/bootstrap"
 	"github.com/KevinBonnoron/sirene/server/internal/config"
 	"github.com/KevinBonnoron/sirene/server/internal/generation"
 	"github.com/KevinBonnoron/sirene/server/internal/infsrv"
@@ -31,4 +32,7 @@ type Deps struct {
 	Voices     *voices.Service
 	Generation *generation.Service
 	Sessions   *sessions.Service
+	// Both empty outside the desktop app.
+	DesktopSecret string
+	Worker        *bootstrap.Status
 }

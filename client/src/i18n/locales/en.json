@@ -819,5 +819,17 @@
     "confirm": "Confirm the password",
     "submit": "Continue",
     "failed": "Failed to set the password"
+  },
+  "workerBootstrap": {
+    "title": "Getting Sirene ready",
+    "description": "The first launch installs the speech engine on this machine. It takes a few minutes, once.",
+    "failedTitle": "The speech engine could not start",
+    "failedDescription": "Sirene cannot generate anything until it does. Restart the app to try again.",
+    "logFile": "Details are in",
+    "steps": {
+      "python": "Python runtime",
+      "dependencies": "Speech engine dependencies",
+      "starting": "Starting the engine"
+    }
   }
 }

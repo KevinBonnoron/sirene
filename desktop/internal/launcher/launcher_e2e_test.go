@@ -22,7 +22,7 @@ func TestBootstrapEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proc, err := Bootstrap(ctx, paths, port, t.Logf)
+	proc, err := Bootstrap(ctx, paths, port, t.Logf, func(string) {})
 	if err != nil {
 		t.Fatal(err)
 	}
